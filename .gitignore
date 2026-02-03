@@ -1,0 +1,67 @@
+# Common IDEs and editors
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+.DS_Store
+.history/
+.svn/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.class
+*.pyc
+
+# --- Client (Flutter) ---
+client/.dart_tool/
+client/.flutter-plugins
+client/.flutter-plugins-dependencies
+client/.packages
+client/build/
+client/.pub-cache/
+client/.pub/
+client/coverage/
+client/migrate_working_dir/
+client/ios/Flutter/.last_build_id
+client/android/app/debug
+client/android/app/profile
+client/android/app/release
+client/linux/flutter/ephemeral/
+client/windows/flutter/ephemeral/
+client/macos/Flutter/ephemeral/
+client/web/stacktrace
+client/app.*.symbols
+client/app.*.map.json
+**/doc/api/
+
+# --- Server (Go) ---
+# Binaries and compiled files
+server/server
+server/main
+server/bin/
+server/__debug_bin
+server/server.exe
+server/server.test
+server/server.out
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+*.test.exe
+
+# Go Vendor directory (optional, but common if using modules)
+# server/vendor/
+
+# --- Databases and Data ---
+*.db
+*.sqlite
+server/data/

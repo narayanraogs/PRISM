@@ -1,0 +1,49 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,getChAFetch,Fetch1?,0.1,FALSE,TRUE,FALSE,Control
+2,getChBFetch,Fetch2?,0.1,FALSE,TRUE,FALSE,Control
+3,setChAAverageState,SENS1:AVER:STAT,0.1,TRUE,FALSE,FALSE,Control
+4,setChAEvaluatePower,,0.1,TRUE,FALSE,FALSE,Control
+5,setChAFrequency,SENS1:FREQ,0.5,TRUE,FALSE,FALSE,Control
+6,setChAResolution,DISP:WIND1:RES,0.5,TRUE,FALSE,FALSE,Control
+7,setChASweep,INIT1:IMM,0.5,FALSE,FALSE,FALSE,Control
+8,setChBAverageState,SENS2:AVER:STAT,0.1,TRUE,FALSE,FALSE,Control
+9,setChBEvaluatePower,,0.1,TRUE,FALSE,FALSE,Control
+10,setChBFrequency,SENS2:FREQ,0.5,TRUE,FALSE,FALSE,Control
+11,setChBResolution,DISP:WIND2:RES,0.5,TRUE,FALSE,FALSE,Control
+12,setChBSweep,INIT2:IMM,0.5,FALSE,FALSE,FALSE,Control
+13,setHoldFunction,DET:FUNC,0.1,TRUE,FALSE,FALSE,Control
+14,setHoldState,DET:FUNC,0.1,TRUE,FALSE,FALSE,Control
+15,setUnitdBm,UNIT1:POW DBM,0,FALSE,FALSE,FALSE,Control
+16,setFrequencyChA,SENS1:FREQ,0.5,TRUE,FALSE,FALSE,Control
+17,setFrequencyChB,SENS2:FREQ,0.5,TRUE,FALSE,FALSE,Control
+18,reset,*RST,0.5,FALSE,FALSE,FALSE,Control
+19,setPulseMeasurementMode,SYST:PRES RADAR,0.1,FALSE,FALSE,FALSE,Control
+20,getAveragePower,FETCH#:POW:AC?,0.1,FALSE,TRUE,FALSE,Control
+21,getPulseAveragePower,FETCH#:Power:ac?,0.1,FALSE,TRUE,FALSE,Control
+22,getPulsePeakPower,FETCH#:Power:ac?,0.1,FALSE,TRUE,FALSE,Control
+23,getRiseTime,TRAC#:MEAS:TRAN1:POS:DUR?,0.1,FALSE,TRUE,FALSE,Control
+24,getFallTime,TRAC#:MEAS:TRAN1:NEG:DUR?,0.1,FALSE,TRUE,FALSE,Control
+25,getDutyCycle,TRAC#:MEAS:PULS:DCYC?,0.1,FALSE,TRUE,FALSE,Control
+26,getPulsePeriod,TRAC#:MEAS:PULS:PER?,0.1,FALSE,TRUE,FALSE,Control
+27,getPulseOnTime,TRAC#:MEAS:PULS:DUR?,0.1,FALSE,TRUE,FALSE,Control
+28,getPulseOffTime,TRAC#:MEAS:PULS:SEP?,0.1,FALSE,TRUE,FALSE,Control
+29,setVBWOff,SENS#:BAND:VIDeo Off,0.1,FALSE,FALSE,FALSE,Control
+30,setTraceScreen,DISP:WIND#:FORM,0.1,TRUE,FALSE,FALSE,Control
+31,setGate1Start,SENS#:SWE1:OFFS:TIME,0.1,TRUE,FALSE,FALSE,Control
+32,setGate1Length,SENS#:SWE1:TIME,0.1,TRUE,FALSE,FALSE,Control
+33,setXScalePerDivision,SENS#:TRAC:X:Scale:PDIV,0.1,TRUE,FALSE,FALSE,Control
+34,setXStart,SENS#:TRAC:OFFSET:Time,0.1,TRUE,FALSE,FALSE,Control
+35,setYScalePerDivision,SENS#:TRAC:Y:Scale:PDIV,0.1,TRUE,FALSE,FALSE,Control
+36,setYMax,SENS#:TRAC:LIM:UPP,0.1,TRUE,FALSE,FALSE,Control
+37,setTriggerSource,TRIG#:SOUR INT#,0.1,FALSE,FALSE,FALSE,Control
+38,setTriggerLevel,TRIG:LEV,0.1,TRUE,FALSE,FALSE,Control
+39,setHysteresisLevel,TRIG:HYST,0.1,TRUE,FALSE,FALSE,Controls
+40,setHoldOff,TRIG:SOUR HOLD,0.1,TRUE,FALSE,FALSE,Control
+41,selectWindow,DISP:WIND#:SEL,0.1,FALSE,FALSE,FALSE,Control
+42,setFullScreenMode,DISP:SCR:FORM FSCR,0.1,FALSE,FALSE,FALSE,Control
+43,setWindowMode,DISP:SCR:FORM WIND,0.1,FALSE,FALSE,FALSE,Control
+44,setAutoScale,SENS#:TRAC:AUT,0.5,FALSE,FALSE,FALSE,Control
+45,getMode,SENS#:DET:FUNC?,0.1,FALSE,TRUE,FALSE,Control
+46,getFrequency,sens#:freq?,0.1,FALSE,TRUE,FALSE,Control
+47,getPulseAveragePowerChA,Meas3:Power:ac?,0.1,FALSE,TRUE,FALSE,Control
+48,getPulseAveragePowerChB,Meas4:Power:ac?,0.1,FALSE,TRUE,FALSE,Control

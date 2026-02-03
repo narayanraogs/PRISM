@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:prism_client/theme/app_theme.dart';
+import 'package:prism_client/layouts/main_layout.dart';
+import 'package:prism_client/screens/generic_screen.dart';
+import 'package:prism_client/screens/rf_uplink_screen.dart';
+import 'package:prism_client/screens/test_screen.dart';
+import 'package:prism_client/screens/schedule_screen.dart';
+import 'package:prism_client/services/server_service.dart';
+
+import 'package:prism_client/services/notification_service.dart';
+
+void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ServerService()),
+        ChangeNotifierProvider(create: (context) => NotificationService()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'PRISM',
+      theme: AppTheme.lightTheme,
+      home: const RootPage(),
+    );
+  }
+}
+
+class RootPage extends StatefulWidget {
+  const RootPage({super.key});
+
+  @override
+  State<RootPage> createState() => _RootPageState();
+}
+
+class _RootPageState extends State<RootPage> {
+  int _selectedIndex = 0;
+
+  final List<String> _titles = [
+    'RF Uplink',
+    'Tests',
+    'Schedule',
+    'Stability',
+    'Spectrum Dump',
+    'Monitor',
+    'TVAC Cable Calibration',
+    'Cable Loss Measurement',
+    'Attenuation',
+    'TSM Internal Path Loss',
+    'GTx Charecterization',
+    'Up Down converter',
+    'Test Phase',
+    'Downlink Loss',
+    'Uplink Loss',
+    'View Reports',
+    'Generate reports',
+    'Stability reports',
+    'Insights',
+    'PPT Generation',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return MainLayout(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      child: IndexedStack(
+        index: _selectedIndex,
+        children: _titles.asMap().entries.map((entry) {
+          final index = entry.key;
+          final title = entry.value;
+          if (index == 0) {
+            return const RFUplinkScreen();
+          }
+          if (index == 1) {
+            return const TestScreen();
+          }
+          if (index == 2) {
+            return const ScheduleScreen();
+          }
+          return GenericScreen(title: title);
+        }).toList(),
+      ),
+    );
+  }
+}

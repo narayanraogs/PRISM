@@ -1,0 +1,6 @@
+SlNo,ComponentName,ComponentType,ComponentCode
+1,TCU,TCU,1010
+2,IFM-1,IFM,1040
+3,TMS-1,TMS,1020
+4,TMS-2,TMS,1021
+5,Global,Global,1001

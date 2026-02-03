@@ -1,0 +1,54 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,getChAAvgAndPeakPower,PMRDO 1,0.1,FALSE,TRUE,FALSE,Control
+2,getChBAvgAndPeakPower,PMRDO 2,0.1,FALSE,TRUE,FALSE,Control
+3,getChannelAPower,CWO 1,0.2,FALSE,TRUE,FALSE,Control
+4,getChannelBPower,CWO 2,0.2,FALSE,TRUE,FALSE,Control
+5,setAverageStateChA,CWAVG 1,0.1,TRUE,FALSE,FALSE,Control
+6,setAverageStateChB,CWAVG 2,0.1,TRUE,FALSE,FALSE,Control
+7,setAvgAndPeakMeasurement,"PMMEAS 1,2",0.1,FALSE,FALSE,FALSE,Control
+8,setChACaptureTime,"TRCAPT 1,PMOD,",0.1,TRUE,FALSE,FALSE,Control
+9,setChAPulseMeasurementMode,"CHMODE 1,PMOD",0.2,FALSE,FALSE,FALSE,Control
+10,setChBCaptureTime,"TRCAPT 2,PMOD,",0.1,TRUE,FALSE,FALSE,Control
+11,setChBPulseMeasurementMode,"CHMODE 2,PMOD",0.2,FALSE,FALSE,FALSE,Control
+12,setDisplayReadOut,"PMDTYP 1,RDO",0.1,FALSE,FALSE,FALSE,Control
+13,setFrequencyChA,"SNCFRQ A,",0.2,TRUE,FALSE,FALSE,Control
+14,setFrequencyChB,"SNCFRQ B,",0.2,TRUE,FALSE,FALSE,Control
+15,setResolutionChA,"CHRES A, ",0.2,TRUE,FALSE,FALSE,Control
+16,setResolutionChB,"CHRES B, ",0.2,TRUE,FALSE,FALSE,Control
+17,setUnitdBm,"CHUNIT 1,DBM",0.2,FALSE,FALSE,FALSE,Control
+18,setFrequencyChA,"SNCFRQ A,",0,TRUE,FALSE,FALSE,Control
+19,setFrequencyChB,"SNCFRQ B,",0,TRUE,FALSE,FALSE,Control
+20,reset,*RST,0.5,FALSE,FALSE,FALSE,Control
+21,getPowerCW,CWO #,0.2,FALSE,TRUE,FALSE,Control
+22,setPulseMeasurementMode,"CHMODE #,PMOD",0.2,False,FALSE,FALSE,Control
+23,setDisplayFormat,"PMDTYP #,PRF",0.2,False,FALSE,FALSE,Control
+24,setCaptureTime,"TRCAPT #,PMOD,",0.2,True,FALSE,FALSE,Control
+25,setContMeasurementOn,"CHMODE #, CW",0.1,False,FALSE,FALSE,Control
+26,setAverageOn,"PMMEAS #,2",0.1,False,FALSE,FALSE,Control
+27,getPulsePower,GPMO #,0.1,False,TRUE,FALSE,Control
+28,setInternalTrigger,"TRSRC #,PMOD,INTA",0.1,True,FALSE,FALSE,Control
+29,setOneScreen,CHDISPN 1,0.1,False,FALSE,FALSE,Control
+30,setGateReference1,"GPTIMST #,1, ",0.1,True,FALSE,FALSE,Control
+31,setGateReference2,"GPTIMSP #,1, ",0.1,True,FALSE,FALSE,Control
+32,getRiseTime,MKPRTO #,0.1,False,TRUE,FALSE,Control
+33,getFallTime,MKPFTO #,0.1,False,TRUE,FALSE,Control
+34,getPulsePeriod,MKPRIO #,0.1,False,TRUE,FALSE,Control
+35,getPulseWidth,MKPWTO #,0.1,False,TRUE,FALSE,Control
+36,getPulseOffTime,MKPOTO #,0.1,False,TRUE,FALSE,Control
+37,getDutyCycle,TRAC1:MEAS:PULS:DCYC?,0.1,False,TRUE,FALSE,Control
+38,setAutoScale,PMPAUTO #,0.1,FALSE,FALSE,FALSE,Control
+39,setRepeatGates,"GP1REPN #,5",0.1,FALSE,FALSE,FALSE,Control
+40,setGateRepeatOffset,"GP1REPS #,ON",0.1,FALSE,FALSE,FALSE,Control
+41,setGateRepeatTime,"GP1REPT #,",0.1,TRUE,FALSE,FALSE,Control
+42,setLowerMarkerVal,"MKPSLT #,",0.1,TRUE,FALSE,FALSE,Control
+43,setUpperMarkerVal,"MKPSUT #,",0.1,TRUE,FALSE,FALSE,Control
+44,setSourceMarker,"MKPSSV #,gate",0.1,False,FALSE,FALSE,Control
+45,setAllMarkerOff,MKAOFF #,0.1,False,FALSE,FALSE,Control
+46,setActiveMarkerPos,"MKAPOS 1,",0.1,TRUE,FALSE,FALSE,Control
+47,setActiveMarker,"MKACTN #,1",0.1,False,FALSE,FALSE,Control
+48,setMarkerOn,"MKSTATE #,1,",0.1,True,FALSE,FALSE,Control
+49,setTriggerDelay,"TRDLYT #,PMOD,",0.1,TRUE,FALSE,FALSE,Control
+50,getIdentity,*IDN?,0.1,FALSE,TRUE,FALSE,Control
+51,setSensorConfig,"CHCFG #,",0.1,TRUE,FALSE,FALSE,Control
+52,setActiveChannel,CHACTIV #,0.1,FALSE,FALSE,FALSE,Control
+53,getFrequency,SNCFRQ #,0.1,False,TRUE,FALSE,Control

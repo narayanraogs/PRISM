@@ -1,0 +1,48 @@
+﻿SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,getChAFetch,FETC1?,0.1,FALSE,TRUE,FALSE,Control
+2,getChBFetch,FETC2?,0.1,FALSE,TRUE,FALSE,Control
+3,setChAAverageState,AVER1:STAT,0.1,TRUE,FALSE,FALSE,Control
+4,setChAEvaluatePower,CALC:CHAN1:FEED,0.1,TRUE,FALSE,FALSE,Control
+5,setChAFrequency,SENS1:FREQ,0.5,TRUE,FALSE,FALSE,Control
+6,setChAResolution,CONF1:POW:AC DEF,0.5,TRUE,FALSE,FALSE,Control
+7,setChASweep,INIT1:IMM,0.5,FALSE,FALSE,FALSE,Control
+8,setChBAverageState,AVER2:STAT,0.1,TRUE,FALSE,FALSE,Control
+9,setChBEvaluatePower,CALC:CHAN2:FEED,0.1,TRUE,FALSE,FALSE,Control
+10,setChBFrequency,SENS2:FREQ,0.5,TRUE,FALSE,FALSE,Control
+11,setChBResolution,CONF2:POW:AC DEF,0.5,TRUE,FALSE,FALSE,Control
+12,setChBSweep,INIT2:IMM,0.5,FALSE,FALSE,FALSE,Control
+13,setHoldFunction,CALC:HOLD:FUNC,0.1,TRUE,FALSE,FALSE,Control
+14,setHoldState,CALC:HOLD,0.1,TRUE,FALSE,FALSE,Control
+15,setUnitdBm,UNIT:POW DBM,0,FALSE,FALSE,FALSE,Control
+16,setFrequencyChA,SENS1:FREQ,0.5,TRUE,0,FALSE,Control
+17,setFrequencyChB,SENS2:FREQ,0.5,TRUE,0,FALSE,Control
+18,reset,*RST,0.5,FALSE,0,FALSE,Control
+19,setStartTime,CALC:TRAC#:X:LEFT,0.1,TRUE,0,FALSE,Control
+20,setTraceLength,CALC:TRAC#:X:LENG,0.1,TRUE,0,FALSE,Control
+21,setPowerReference,CALC:TRAC#:Y:TOP:DBM,0.05,TRUE,0,FALSE,Control
+22,setPowerDiv,CALC:TRAC#:Y:SPAN:ONE,0.1,TRUE,0,FALSE,Control
+23,setTriggerSource,TRIG:SOUR INT,0.1,FALSE,0,FALSE,Control
+24,setTriggerLevel,TRIG:LEV,0.1,TRUE,0,FALSE,Control
+25,getRiseTime,CALC:TRAC#:MEAS:TRAN:POS:DUR?,0.1,FALSE,1,FALSE,Control
+26,getFallTime,CALC:TRAC#:MEAS:TRAN:NEG:DUR?,0.1,FALSE,1,FALSE,Control
+27,getPulsePeriod,CALC:TRAC#:MEAS:PULS:PER?,0.1,FALSE,1,FALSE,Control
+28,getPulseOnTime,CALC:TRAC#:MEAS:PULS:DUR?,0.1,FALSE,1,FALSE,Control
+29,getPulseOffTime,CALC:TRAC#:MEAS:PULS:SEP?,0.1,FALSE,1,FALSE,Control
+30,getDutyCycle,CALC:TRAC#:MEAS:PULS:DCYC?,0.1,FALSE,1,FALSE,Control
+31,getAveragePower,CALC:TRAC#:MEAS:POW:AVG?,0.1,FALSE,1,FALSE,Control
+32,getPulsePeakPower,CALC:TRAC#:MEAS:POW:MAX?,0.1,FALSE,1,FALSE,Control
+33,getPulseAveragePower,CALC:TRAC#:MEAS:POW:PULS:TOP?,0.1,FALSE,1,FALSE,Control
+34,setOneScreen,DISP:LAY L1,0.1,FALSE,0,FALSE,Control
+35,setPulseMeasurementMode,CALC:TYPE PULSe,0.1,FALSE,0,FALSE,Control
+36,setPulseMeasurementON,TRAC#:MEAS ON,0.1,FALSE,0,FALSE,Control
+37,displayRiseTime,DISP:TRAC#:MEAS:TRAN:POS:DUR ON,0.1,FALSE,0,FALSE,Control
+38,displayFallTime,DISP:TRAC#:MEAS:TRAN:NEG:DUR ON,0.1,FALSE,0,FALSE,Control
+39,displayPulsePeriod,DISP:TRAC#:MEAS:PULS:PER ON,0.1,FALSE,0,FALSE,Control
+40,displayPulseOnTime,DISP:TRAC#:MEAS:PULS:DUR ON,0.1,FALSE,0,FALSE,Control
+41,displayPulseOffTime,DISP:TRAC#:MEAS:PULS:SEP ON,0.1,FALSE,0,FALSE,Control
+42,displayDutyCycle,DISP:TRAC#:MEAS:PULS:DCYC ON,0.1,FALSE,0,FALSE,Control
+43,displayAveragePower,DISP:TRAC#:MEAS:POW:AVG ON,0.1,FALSE,0,FALSE,Control
+44,displayPulsePeakPower,DISP:TRAC#:MEAS:POW:MAX ON,0.1,FALSE,0,FALSE,Control
+45,displayPulseAveragePower,DISP:TRAC#:MEAS:POW:PULS:TOP ON,0.1,FALSE,0,FALSE,Control
+46,getIdentity,*IDN?,0.1,FALSE,1,FALSE,Control
+47,getFrequency,sens#:freq?,0.1,False,TRUE,FALSE,Control

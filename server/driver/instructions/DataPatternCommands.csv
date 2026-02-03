@@ -1,0 +1,7 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,setCW,0x0058;1,2,True,False,False,Control
+2,setPRBS,0x0057;1,2,True,False,False,Control
+3,setFrame,0x0056;1,2,True,False,False,Control
+4,setFrequency,0x0052;8,2,True,False,False,Control
+5,setModIndex,0x0053;1,2,True,False,False,Control
+6,getConfiguration,0x0059;0,2,True,True,False,Control

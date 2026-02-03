@@ -1,0 +1,6 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,getDriverStatus,D?,0.1,FALSE,TRUE,FALSE,Control
+2,getError,E?,0.1,FALSE,TRUE,FALSE,Control
+3,setAttn,ATN#=,0.1,True,FALSE,FALSE,Control
+4,setDriverStatus,D#,0.1,True,FALSE,FALSE,Control
+5,getAttn,ATN#?,0.1,FALSE,TRUE,FALSE,Control

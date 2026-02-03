@@ -1,0 +1,9 @@
+version: "2"
+sql:
+    - engine: "sqlite"
+      queries: "queryResults.sql"
+      schema: "schemaResults.sql"
+      gen:
+          go:
+              package: "resultsDB"
+              out: "./"

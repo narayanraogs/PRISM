@@ -1,0 +1,117 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,getAmplitudeTrace,TRAC? TRACE1,0.1,FALSE,TRUE,FALSE,Control
+2,getCenterFrequency,:SENS:FREQ:CENT?,0,FALSE,TRUE,FALSE,Control
+3,getChannelPower,:READ:CHP:CHP?,0.1,FALSE,TRUE,FALSE,Control
+4,getDeviceMake,*IDN?,0,FALSE,TRUE,FALSE,Control
+5,getError,:SYST:ERR?,0.1,FALSE,TRUE,FALSE,Control
+6,getMarkerFrequency,:CALC:MARK#:FCO:X?,0.5,FALSE,TRUE,FALSE,Control
+7,getMarkerX,:CALC:MARK#:X?,0.1,FALSE,TRUE,FALSE,Control
+8,getMarkerY,:CALC:MARK#:Y?,0.1,FALSE,TRUE,FALSE,Control
+9,getMarkerYPhaseNoise,:CALC:LPL:MARK#:Y?,0.5,FALSE,TRUE,FALSE,Control
+10,getNdBBandwidth,CALC:BAND:RES?,0.1,FALSE,TRUE,FALSE,Control
+11,getOperationWait,*OPC?,0.1,FALSE,TRUE,FALSE,Control
+12,getPeakTable,:CALCulate:MARKer:PEAK:TABLe:READout?,0.5,FALSE,TRUE,FALSE,Control
+13,getRBW,:SENS:BAND:RES?,0.1,FALSE,TRUE,FALSE,Control
+14,getReferenceLevel,:DISP:WIND:TRAC:Y:SCAL:RLEV?,0,FALSE,TRUE,FALSE,Control
+15,getScreenDump,:MMEM:DATA?,2,TRUE,TRUE,TRUE,Control
+16,getSpan,:SENS:FREQ:SPAN?,0.1,FALSE,TRUE,FALSE,Control
+17,getSweepTime,:SENS:SWE:TIME?,0.1,FALSE,TRUE,FALSE,Control
+18,getVBW,:SENS:BAND:VID?,0,FALSE,TRUE,FALSE,Control
+19,setAllMarkerOff,:CALC:MARK:AOFF,0,FALSE,FALSE,FALSE,Control
+20,setAmplitudeScale,:DISP:WIND:TRAC:Y:SCAL:PDIV,0.5,TRUE,FALSE,FALSE,Control
+21,setAutoAlign,:CAL:AUTO,0,TRUE,FALSE,FALSE,Control
+22,setAutoTune,:SENS:FREQ:CARR:SEAR,0,FALSE,FALSE,FALSE,Control
+23,setAverageNoChannelPower,:CHP:AVER:COUN,0,TRUE,FALSE,FALSE,Control
+24,setAverageOnChannelPower,:CHP:AVER,0,TRUE,FALSE,FALSE,Control
+25,setBandwidthState,:CALC:BAND:STATE,0.25,TRUE,FALSE,FALSE,Control
+26,setCenterFrequency,:SENS:FREQ:CENT,0,TRUE,FALSE,FALSE,Control
+27,setClearScreen,*CLS,0,FALSE,FALSE,FALSE,Control
+28,setClearStatus,*CLS,0,TRUE,FALSE,FALSE,Control
+29,setContinuousSweep,:INITiate:CONTinuous 1,0,FALSE,FALSE,FALSE,Control
+30,setCounterGate,:CALCulate:MARKer#:FCOunt:GATetime,0.1,TRUE,FALSE,FALSE,Control
+31,setDecadeTable,:DISP:LPL:VIEW DEC,0,FALSE,FALSE,FALSE,Control
+32,setDeletePicture,:MMEM:DEL,1,TRUE,FALSE,FALSE,Control
+33,setFullScreen,:DISP:FSCR:STAT ON,0,FALSE,FALSE,FALSE,Control
+34,setIntegratedBW,:CHP:BAND:INT,0,TRUE,FALSE,FALSE,Control
+35,setMarkerFrequencyCounterMode,:CALC:MARK#:FCO:STAT,0,TRUE,FALSE,FALSE,Control
+36,setMarkerFrequencyCounterResolution,:CALC:MARK#:FCO:RES,0,TRUE,FALSE,FALSE,Control
+37,setMarkerLeftPeak,:CALC:MARK#:MAX:LEFT,0,FALSE,FALSE,FALSE,Control
+38,setMarkerMax,:CALC:MARK#:MAX:PEAK,0,FALSE,FALSE,FALSE,Control
+39,setMarkerMin,:CALC:MARK#:MIN,1,FALSE,FALSE,FALSE,Control
+40,setMarkerMode,:CALC:MARK#:MODE,0.5,TRUE,FALSE,FALSE,Control
+41,setMarkerNextPeak,:CALC:MARK#:MAX:NEXT,0,FALSE,FALSE,FALSE,Control
+42,setMarkerPeakExcursion,:CALC:MARK#:PEAK:EXC,0,TRUE,FALSE,FALSE,Control
+43,setMarkerPeakExcursionAutoState,:CALC:MARK#:PEAK:EXC:AUTO:STAT,0,TRUE,FALSE,FALSE,Control
+44,setMarkerPeakExcursionState,:CALC:MARK#:PEAK:EXC:STAT,0,TRUE,FALSE,FALSE,Control
+45,setMarkerPeakThreshold,:CALC:MARK#:PEAK:THR,0,TRUE,FALSE,FALSE,Control
+46,setMarkerPeakThresholdAutoState,:CALC:MARK#:PEAK:THR:AUTO:STAT,0,TRUE,FALSE,FALSE,Control
+47,setMarkerPeakThresholdState,:CALC:MARK#:PEAK:THR:STAT,0,TRUE,FALSE,FALSE,Control
+48,setMarkerPhaseNoise,:CALC:LPL:MARK#:MODE,0.5,TRUE,FALSE,FALSE,Control
+49,setMarkerRightPeak,:CALC:MARK#:MAX:RIGH,0,FALSE,FALSE,FALSE,Control
+50,setMarkerX,:CALC:MARK#:X,0,TRUE,FALSE,FALSE,Control
+51,setMarkerXPhaseNoise,:CALC:LPL:MARK#:X,0,TRUE,FALSE,FALSE,Control
+52,setMonochromeBackground,:MMEM:STOR:SCR:THEM FMON,0,FALSE,FALSE,FALSE,Control
+53,setNdBBandwidth,:CALC:BAND:NDB,5,TRUE,FALSE,FALSE,Control
+54,setNoOfTracePoints,:SWE:POIN,2,TRUE,FALSE,FALSE,Control
+55,setPeakTable,:CALCulate:MARKer:PEAK:TABLe:STATe 1,0.1,FALSE,FALSE,FALSE,Control
+56,setPhaseNoiseLogMode,:INIT:LPLOT,0,FALSE,FALSE,FALSE,Control
+57,setPhaseNoiseMode,:INST:SEL PNOISE,0,FALSE,FALSE,FALSE,Control
+58,setRBW,:SENS:BAND:RES,0,TRUE,FALSE,FALSE,Control
+59,setReferenceLevel,:DISP:WIND:TRAC:Y:SCAL:RLEV,0,TRUE,FALSE,FALSE,Control
+60,setSAMode,:INST:SEL SA,0,FALSE,FALSE,FALSE,Control
+61,setSaveTrace,:MMEM:STOR:TRAC:DATA,0.5,TRUE,FALSE,FALSE,Control
+62,setScreenDump,:MMEM:STOR:SCR,1,TRUE,FALSE,FALSE,Control
+63,setSignalTrackingOff,:SENS:FREQ:CARR:TRAC:STAT,0,FALSE,FALSE,FALSE,Control
+64,setSingleSweep,:INITiate:CONTinuous 0,0,FALSE,FALSE,FALSE,Control
+65,setSpan,:SENS:FREQ:SPAN,0,TRUE,FALSE,FALSE,Control
+66,setStartOffsetPhaseNoise,:SENS:LPL:FREQ:OFFS:STAR,0,TRUE,FALSE,FALSE,Control
+67,setStopOffsetPhaseNoise,:SENS:LPL:FREQ:OFFS:STOP,0,TRUE,FALSE,FALSE,Control
+68,setSweepRestart,:INITiate:RESTart,0.1,FALSE,FALSE,FALSE,Control
+69,setSystemPreset,:SYST:PRES,2,FALSE,FALSE,FALSE,Control
+70,setTraceMode,:TRAC:MODE,0,TRUE,FALSE,FALSE,Control
+71,setVBW,:SENS:BAND:VID,0,TRUE,FALSE,FALSE,Control
+72,wait,*WAI,0,FALSE,FALSE,FALSE,Control
+73,setOccupiedBWMode,:CONF:OBW,0.1,False,FALSE,FALSE,Control
+74,getOccupiedBW,:READ:OBW?,0.1,False,TRUE,FALSE,Control
+75,setOccupiedBW,:OBW:PERC,0.1,True,FALSE,FALSE,Control
+76,setOBWSpan,:SENS:OBW:FREQ:SPAN,0,TRUE,FALSE,FALSE,Control
+77,setOBWRBW,:SENS:OBW:BAND:RES,0,TRUE,FALSE,FALSE,Control
+78,setOBWVBW,:SENS:OBW:BAND:VID,0,TRUE,FALSE,FALSE,Control
+79,setTraceModeOBW,:TRAC:OBW:TYPE,0,TRUE,FALSE,FALSE,Control
+80,setScreenDumpVSA,:MMEM:STOR:BITM,0,TRUE,FALSE,FALSE,Alternate
+81,setMeasurementContinuous,:INITiate:CONTinuous,1,TRUE,FALSE,FALSE,Alternate
+82,setMeasurementStart,:INITiate:RESTart,0,FALSE,FALSE,FALSE,Alternate
+83,setMeasurementStop,:INITiate:PAUSe,0,FALSE,FALSE,FALSE,Alternate
+84,getTableHeader,:TRAC#:DATA:TABL:NAME?,0,FALSE,TRUE,FALSE,Alternate
+85,getTableData,:TRAC#:DATA:TABL?,0,FALSE,TRUE,TRUE,Alternate
+86,getTableDataAsString,:TRAC#:DATA:TABL?,0,TRUE,TRUE,FALSE,Alternate
+87,getSelectedInstrument,:INST:SEL?,0,FALSE,TRUE,FALSE,Control
+88,setSpanVSAMode,:SENS:FREQ:SPAN,0,TRUE,FALSE,FALSE,Alternate
+89,setRBWVSAMode,:SENS:BAND:RES,0,TRUE,FALSE,FALSE,Alternate
+90,setVSAMode,:INST:SEL VSA89601,2,TRUE,FALSE,FALSE,Control
+91,setPulseModulation,:PULS:MOD:CW:ENAB 1,2,False,FALSE,FALSE,Alternate
+92,setSpectrogramMode,:TRAC#:SPEC:STYL,2,TRUE,FALSE,FALSE,Alternate
+93,setRange,:INPUT:ANAL:RANG:CHAN#:DBM,2,TRUE,FALSE,FALSE,Alternate
+94,setClearScreen,*CLS,2,FALSE,FALSE,FALSE,Alternate
+95,setPulseMeasurementMode,:MEAS:CONF PULS,2,FALSE,FALSE,FALSE,Alternate
+96,setPulseAcquisitionTime,:PULS:TIME:LENG,2,TRUE,FALSE,FALSE,Alternate
+97,setPulseAnalysisLength,:PULS:ANAL:WIDT:FREQ,2,TRUE,FALSE,FALSE,Alternate
+98,setQuickCal,:CALibration:QUICk,2,FALSE,FALSE,FALSE,Alternate
+99,setOverlayEnable,:TRACe1:OVERLAY:ENAB 1,2,FALSE,TRUE,FALSE,Alternate
+100,setReset,*RST,2,FALSE,FALSE,FALSE,Alternate
+101,setYScaleTop,:TRACE:Y:SCALE:TOP,2,True,FALSE,False,Alternate
+102,setDivisionYAxis,:TRACE:Y:SCALE:PDIV,2,TRUE,FALSE,FALSE,Alternate
+103,setPulseReferencePoint,:PULS:DET:THR:REF,2,TRUE,FALSE,FALSE,Alternate
+104,setPulseReferenceLevel,:PULS:DET:THR,2,TRUE,FALSE,FALSE,Alternate
+105,setPulseHysteresisLevel,:PULS:DET:HYST,2,TRUE,FALSE,FALSE,Alternate
+106,getTraceDataName,:TRAC:DATA:NAME:LIST?,2,FALSE,TRUE,FALSE,Alternate
+107,setTraceVisible,:TRAC#:VIS,2,TRUE,FALSE,FALSE,Alternate
+108,setTraceName,:TRAC#:DATA:Name,2,TRUE,FALSE,FALSE,Alternate
+109,setDisplayLayout,:DISP:LAY,2,TRUE,FALSE,FALSE,Alternate
+110,setDisplayPoints,:PULSe:Advanced:Trend:Points:Display,2,TRUE,FALSE,FALSE,Alternate
+111,setBufferLength,:PULSe:Advanced:Trend:Points:Buffer,2,TRUE,FALSE,FALSE,Alternate
+112,setTraceModeSA,:TRAC#:TYPE,2,TRUE,FALSE,FALSE,Alternate
+113,setCenterFrequencyVSAMode,:SENS:FREQ:CENT,0,TRUE,FALSE,FALSE,Alternate
+114,getScreenDumpVSA,:MMEM:DATA?,2,TRUE,TRUE,TRUE,Alternate
+115,getSweepTimeOBW,:SENS:OBW:SWE:TIME?,0.1,FALSE,TRUE,FALSE,Control
+116,setAutoRange,:Inp:Anal:Rang:Auto,0.1,FALSE,False,FALSE,Alternate

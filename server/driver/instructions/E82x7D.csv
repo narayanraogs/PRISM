@@ -1,0 +1,13 @@
+SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
+1,setPower,:POW,0,TRUE,FALSE,FALSE,Control
+2,setFrequency,:FREQ,0.5,TRUE,FALSE,FALSE,Control
+3,setReset,SYST:PRES,1,FALSE,FALSE,FALSE,Control
+4,setRFOn,OUTPut:STATe ON,1,FALSE,FALSE,FALSE,Control
+5,setRFOff,OUTPut:STATe OFF,0.5,FALSE,FALSE,FALSE,Control
+6,getRFState,OUTPut:STATe?,0,FALSE,TRUE,FALSE,Control
+7,setModOn,:OUTP:MOD ON,0.5,FALSE,FALSE,FALSE,Control
+8,setModOff,:OUTP:MOD OFF,0.5,FALSE,FALSE,FALSE,Control
+9,getModState,:OUTP:MOD?,0,FALSE,TRUE,FALSE,Control
+10,getDeviceMake,*IDN?,0,FALSE,TRUE,FALSE,Control
+11,setAlcOn,:OUTP:POW:ALC ON,0.2,FALSE,FALSE,FALSE,Control
+12,setAlcOff,:OUTP:POW:ALC OFF,0.2,FALSE,FALSE,FALSE,Control
