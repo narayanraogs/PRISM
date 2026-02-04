@@ -11,6 +11,23 @@ import (
 	"time"
 )
 
+type TVACCableLossRecord struct {
+	SlNo         int                `json:"slNo"`
+	CableName    string             `json:"cableName"`
+	CycleName    string             `json:"cycleName"`
+	Phase        string             `json:"phase"`
+	Date         string             `json:"date"`
+	Time         string             `json:"time"`
+	IsReference  bool               `json:"isReference"`
+	Measurements []MeasurementPoint `json:"measurements"`
+}
+
+type MeasurementPoint struct {
+	Frequency float64 `json:"frequency"` // GHz
+	Loss      float64 `json:"loss"`      // Absolute Loss (dB)
+	Delta     float64 `json:"delta"`     // Difference from reference (dB)
+}
+
 type TVACCableLossMeasurement struct {
 	pmChannel     string
 	deviceProfile string
@@ -22,16 +39,13 @@ type TVACCableLossMeasurement struct {
 	reference     string
 	newCable      bool
 	testPhase     string
-	currentStatus [][]string
 	stop          bool
 	statusMonitor chan MeasurementStatus
 }
 
 type MeasurementStatus struct {
-	CurrentStatus [][]string
-	Message       string
-	Completed     bool
-	Success       bool
+	Message string `json:"message"`
+	Error   bool   `json:"error"`
 }
 
 func (tclm *TVACCableLossMeasurement) GetStatusMonitor() chan MeasurementStatus {
@@ -47,10 +61,18 @@ func (tclm *TVACCableLossMeasurement) Initialize(pmChannel string, deviceProfile
 	tclm.pmChannel = pmChannel
 	tclm.deviceProfile = deviceProfile
 	tclm.testPhase = testPhase
-
 	tclm.statusMonitor = make(chan MeasurementStatus, 20)
-	tclm.loadDevices()
 	tclm.stop = false
+	tclm.reference = "1"
+
+	if !tclm.loadDevices() {
+		tclm.statusMonitor <- MeasurementStatus{
+			Message: "Failed to load device profiles for " + deviceProfile,
+			Error:   true,
+		}
+		close(tclm.statusMonitor)
+		return
+	}
 }
 
 func (tclm *TVACCableLossMeasurement) Stop() {
@@ -93,16 +115,10 @@ func (tclm *TVACCableLossMeasurement) startMeasurement() []string {
 		freqs = append(freqs, fmt.Sprintf("%.2f", f))
 	}
 	tclm.frequencies = freqs
-	tclm.currentStatus = make([][]string, 0)
-	tclm.currentStatus = append(tclm.currentStatus, freqs)
-	measured := make([]string, len(freqs))
-	tclm.currentStatus = append(tclm.currentStatus, measured)
 	if !ok {
 		var measure = MeasurementStatus{
-			Completed:     true,
-			Success:       false,
-			Message:       "Unable to get details from Database",
-			CurrentStatus: make([][]string, 0),
+			Message: "Unable to get details from Database",
+			Error:   true,
 		}
 		tclm.statusMonitor <- measure
 		close(tclm.statusMonitor)
@@ -111,39 +127,38 @@ func (tclm *TVACCableLossMeasurement) startMeasurement() []string {
 	return freqs
 }
 
-func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string, offset map[string]float64) bool {
+func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string, offset map[string]float64) ([]float64, bool) {
 	response := tclm.pm.SetChAAverageOff()
 	if !response.Success {
 		tclm.setError("Unable to communicate with PM")
-		return false
+		return nil, false
 	}
 	response = tclm.pm.SetChBAverageOff()
 	if !response.Success {
 		tclm.setError("Unable to communicate with PM")
-		return false
+		return nil, false
 	}
 	response = tclm.sg.SetModOff()
 	if !response.Success {
 		tclm.setError("Unable to communicate with SG")
-		return false
+		return nil, false
 	}
 	defer func() {
 		tclm.pm.SetChAAverageOn()
 		tclm.pm.SetChBAverageOn()
 		tclm.sg.SetRFOff()
 	}()
+	var measuredLosses = make([]float64, 0)
 
-	for i, freq := range frequencies {
+	for _, freq := range frequencies {
 		if tclm.stop {
 			tclm.setError("User Aborted")
-			return false
+			return nil, false
 		}
 
 		var measure = MeasurementStatus{
-			Completed:     false,
-			Success:       true,
-			Message:       "Measuring Loss for " + freq + " Hz",
-			CurrentStatus: make([][]string, 0),
+			Message: "Measuring Loss for " + freq + " Hz",
+			Error:   false,
 		}
 		tclm.statusMonitor <- measure
 
@@ -151,60 +166,60 @@ func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string
 		response = tclm.sg.SetFrequency(f)
 		if !response.Success {
 			tclm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 		power := offset[freq]
 		power = power * -1
 		response = tclm.sg.SetPower(power)
 		if !response.Success {
-			tclm.setError("Unable to communicate with SG")
-			return false
+			tclm.setError("Unable to communicate with SG when setting power")
+			return nil, false
 		}
 		response = tclm.sg.SetRFOn()
 		if !response.Success {
-			tclm.setError("Unable to communicate with SG")
-			return false
+			tclm.setError("Unable to communicate with SG when setting RF")
+			return nil, false
 		}
 		if strings.EqualFold(tclm.pmChannel, "A") {
 			response = tclm.pm.SetChannelA(f)
 			if !response.Success {
 				tclm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
 			response = tclm.pm.GetPowerChannelA(true)
 			if !response.Success {
 				tclm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
-			if response.Result["ChannelBPower"].Value < -60 {
+			if response.Result["Power"].Value < -60 {
 				tclm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
+				return nil, false
 			}
-			tclm.currentStatus[1][i] = fmt.Sprintf("%.2f", response.Result["Power"].Value)
+			measuredLosses = append(measuredLosses, response.Result["Power"].Value)
 		} else {
 			response = tclm.pm.SetChannelB(f)
 			if !response.Success {
 				tclm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
 			response = tclm.pm.GetPowerChannelB(true)
 			if !response.Success {
 				tclm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
-			if response.Result["ChannelBPower"].Value < -60 {
+			if response.Result["Power"].Value < -60 {
 				tclm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
+				return nil, false
 			}
-			tclm.currentStatus[1][i] = fmt.Sprintf("%.2f", response.Result["Power"].Value)
+			measuredLosses = append(measuredLosses, response.Result["Power"].Value)
 		}
 		response = tclm.sg.SetRFOff()
 		if !response.Success {
 			tclm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 	}
-	return true
+	return measuredLosses, true
 }
 
 func (tclm *TVACCableLossMeasurement) MeasurePMReference() {
@@ -218,15 +233,21 @@ func (tclm *TVACCableLossMeasurement) MeasurePMReference() {
 		offset[freq] = 0
 	}
 
-	ok := tclm.measureForFrequencies(frequencies, offset)
+	var measurements []MeasurementPoint
+
+	pmOffset, ok := tclm.measureForFrequencies(frequencies, offset)
 	if !ok {
 		return
 	}
 
-	var measurement cableLossMeasured
-	measurement.Frequency = tclm.currentStatus[0]
-	measurement.Measured = tclm.currentStatus[1]
-	jsonData, err := json.MarshalIndent(measurement, "", " ")
+	for i, freq := range frequencies {
+		var m MeasurementPoint
+		m.Frequency, _ = strconv.ParseFloat(freq, 64)
+		m.Loss = pmOffset[i]
+		m.Delta = 0.0
+		measurements = append(measurements, m)
+	}
+	jsonData, err := json.MarshalIndent(measurements, "", " ")
 	if err != nil {
 		return
 	}
@@ -238,10 +259,8 @@ func (tclm *TVACCableLossMeasurement) MeasurePMReference() {
 	}
 
 	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+		Error:   false,
+		Message: "Measurement Completed",
 	}
 	tclm.statusMonitor <- measure
 	close(tclm.statusMonitor)
@@ -258,26 +277,28 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACReference(cableName string, tes
 		return
 	}
 
-	ok := tclm.measureForFrequencies(frequencies, cableReference)
+	losses, ok := tclm.measureForFrequencies(frequencies, cableReference)
 	if !ok {
 		return
 	}
 
-	var measurement cableLossMeasured
-	measurement.Frequency = tclm.currentStatus[0]
-	measurement.Measured = tclm.currentStatus[1]
+	var measurement []MeasurementPoint = make([]MeasurementPoint, 0)
+	for i, freq := range frequencies {
+		var m MeasurementPoint
+		m.Frequency, _ = strconv.ParseFloat(freq, 64)
+		m.Loss = losses[i]
+		m.Delta = 0.0
+		measurement = append(measurement, m)
+	}
 	jsonData, err := json.MarshalIndent(measurement, "", " ")
 	if err != nil {
 		return
 	}
-
 	resultsDB.InsertTVACCableLoss(tclm.startDate, tclm.startTime, cableName, tclm.testPhase, "1", string(jsonData))
 
 	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+		Error:   false,
+		Message: "Measurement Completed",
 	}
 	tclm.statusMonitor <- measure
 	close(tclm.statusMonitor)
@@ -290,17 +311,13 @@ func (tclm *TVACCableLossMeasurement) getTVACPMReference() map[string]float64 {
 	if !ok {
 		return nil
 	}
-	var pmMeasured cableLossMeasured
+	var pmMeasured []MeasurementPoint
 	err := json.Unmarshal([]byte(ref), &pmMeasured)
 	if err != nil {
 		return nil
 	}
-	for i, freq := range pmMeasured.Frequency {
-		value, err := strconv.ParseFloat(pmMeasured.Measured[i], 64)
-		if err != nil {
-			continue
-		}
-		tbr[freq] = value
+	for _, m := range pmMeasured {
+		tbr[fmt.Sprintf("%.2f", m.Frequency)] = m.Loss
 	}
 	return tbr
 }
@@ -311,17 +328,13 @@ func (tclm *TVACCableLossMeasurement) getTVACCableReference(cableName string) ma
 	if !ok {
 		return nil
 	}
-	var refCableMeasured cableLossMeasured
+	var refCableMeasured []MeasurementPoint
 	err := json.Unmarshal([]byte(ref), &refCableMeasured)
 	if err != nil {
 		return nil
 	}
-	for i, freq := range refCableMeasured.Frequency {
-		value, err := strconv.ParseFloat(refCableMeasured.Measured[i], 64)
-		if err != nil {
-			continue
-		}
-		tbr[freq] = value
+	for _, m := range refCableMeasured {
+		tbr[fmt.Sprintf("%.2f", m.Frequency)] = m.Loss
 	}
 	return tbr
 }
@@ -336,15 +349,23 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACCableLoss(cableName string, tes
 		tclm.setError("Unable to read PM Reference, Rerun PM Reference")
 		return
 	}
+	refLosses := tclm.getTVACCableReference(cableName)
 
-	ok := tclm.measureForFrequencies(frequencies, pmReference)
+	losses, ok := tclm.measureForFrequencies(frequencies, pmReference)
 	if !ok {
 		return
 	}
 
-	var measurement cableLossMeasured
-	measurement.Frequency = tclm.currentStatus[0]
-	measurement.Measured = tclm.currentStatus[1]
+	var measurement []MeasurementPoint = make([]MeasurementPoint, 0)
+
+	for i, freq := range frequencies {
+		var m MeasurementPoint
+		m.Frequency, _ = strconv.ParseFloat(freq, 64)
+		m.Loss = losses[i]
+		m.Delta = losses[i] - refLosses[freq]
+		measurement = append(measurement, m)
+	}
+
 	jsonData, err := json.MarshalIndent(measurement, "", " ")
 	if err != nil {
 		return
@@ -352,39 +373,9 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACCableLoss(cableName string, tes
 
 	resultsDB.InsertTVACCableLoss(tclm.startDate, tclm.startTime, cableName, tclm.testPhase, "0", string(jsonData))
 
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Computing Difference",
-		CurrentStatus: make([][]string, 0),
-	}
-	tclm.statusMonitor <- measure
-
-	var computed cableLossMeasured
-	computed.Frequency = make([]string, 0)
-	computed.Measured = make([]string, 0)
-
-	refLosses := tclm.getTVACCableReference(cableName)
-	for i, frequency := range measurement.Frequency {
-		refLoss := refLosses[frequency]
-		measuredLoss, _ := strconv.ParseFloat(measurement.Measured[i], 64)
-		diff := measuredLoss - refLoss
-		computed.Frequency = append(computed.Frequency, frequency)
-		computed.Measured = append(computed.Measured, fmt.Sprintf("%0.2f", diff))
-	}
-
-	jsonData, err = json.MarshalIndent(computed, "", " ")
-	if err != nil {
-		return
-	}
-
-	resultsDB.InsertTVACCableLoss(tclm.startDate, tclm.startTime, cableName, tclm.testPhase, "Diff", string(jsonData))
-
-	measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	measure := MeasurementStatus{
+		Error:   false,
+		Message: "Measurement Completed",
 	}
 	tclm.statusMonitor <- measure
 
@@ -393,10 +384,8 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACCableLoss(cableName string, tes
 
 func (tclm *TVACCableLossMeasurement) setError(message string) {
 	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+		Message: message,
+		Error:   true,
 	}
 	tclm.statusMonitor <- measure
 	close(tclm.statusMonitor)

@@ -8,6 +8,8 @@ import 'package:prism_client/screens/test_screen.dart';
 import 'package:prism_client/screens/schedule_screen.dart';
 import 'package:prism_client/screens/stability_screen.dart';
 import 'package:prism_client/screens/spectrum_dump_screen.dart';
+import 'package:prism_client/screens/monitor_screen.dart';
+import 'package:prism_client/screens/tvac_cable_loss_screen.dart';
 import 'package:prism_client/services/server_service.dart';
 
 import 'package:prism_client/services/notification_service.dart';
@@ -99,6 +101,12 @@ class _RootPageState extends State<RootPage> {
           }
           if (index == 4) {
             return const SpectrumDumpScreen();
+          }
+          if (index == 5) {
+            return MonitorScreen(isActive: _selectedIndex == 5);
+          }
+          if (index == 6) {
+            return const TVACCableLossScreen();
           }
           return GenericScreen(title: title);
         }).toList(),

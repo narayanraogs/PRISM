@@ -28,5 +28,12 @@ func GetRouter() *gin.Engine {
 	r.POST("/saveSpectrum", saveSpectrum)
 	r.POST("/dumpTrace", dumpTrace)
 	r.POST("/dumpScreenshot", dumpScreenshot)
+	//MonitorRelated
+	r.POST("/getMonitorMetadata", getMonitorMetadata)
+	r.GET("/monitor", monitor)
+	//TVACCableLossRelated
+	r.POST("/getTVACCableLossMetadata", getTVACCableLossMetadata)
+	r.POST("/getTVACCableMeasuredDetails", getTVACCableMeasuredDetails)
+	r.GET("/measureTVACCableLoss", measureTVACCableLoss)
 	return r
 }

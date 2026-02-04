@@ -1,5 +1,7 @@
 package server
 
+import "prismServer/utilities"
+
 type ServerStatus struct {
 	SatelliteName string
 	TestPhase     string
@@ -156,4 +158,48 @@ type MonitorMetadata struct {
 	Instruments     map[string][]string
 	OK              bool
 	Message         string
+}
+
+type MonitorRequest struct {
+	InstrumentType string
+	Instrument     string
+}
+
+type MonitorResponse struct {
+	Image                string
+	PMChannelA           float64
+	PMChannelB           float64
+	PPMChannelAPeakPower float64
+	PPMChannelBPeakPower float64
+	PPMChannelAAvgPower  float64
+	PPMChannelBAvgPower  float64
+	OK                   bool
+	Message              string
+}
+
+type TVACCableLossMetadata struct {
+	Frequencies    []float64 `json:"frequencies"`
+	DeviceProfiles []string  `json:"deviceProfiles"`
+	ExistingCables []string  `json:"existingCables"`
+	IsPMZeroed     bool      `json:"isPmZeroed"`
+	OK             bool      `json:"ok"`
+	Message        string    `json:"message"`
+}
+
+type TVACCableLossRequest struct {
+	Action        string `json:"action"` // "ZeroPM" | "Measure"
+	DeviceProfile string `json:"deviceProfile"`
+	Channel       string `json:"channel"` // "A" | "B"
+	CableName     string `json:"cableName"`
+	CycleName     string `json:"cycleName"`
+	Phase         string `json:"phase"`      // "Ambient" | "Hot" | "Cold"
+	RequestRef    bool   `json:"requestRef"` // Manual baseline override
+}
+
+type TVACCableLossResponse struct {
+	LatestRecord utilities.TVACCableLossRecord   `json:"latestRecord"`
+	History      []utilities.TVACCableLossRecord `json:"history"`
+	IsPMZeroed   bool                            `json:"isPmZeroed"`
+	OK           bool                            `json:"ok"`
+	Message      string                          `json:"message"`
 }

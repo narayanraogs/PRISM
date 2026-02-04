@@ -129,7 +129,7 @@ func getTVACCableLossMeasurementStatus(conn *websocket.Conn, cid *client) {
 	monitor := cid.global.TCLM.GetStatusMonitor()
 	for msg := range monitor {
 		var values = []string{msg.Message}
-		if msg.Completed {
+		/*if msg.Completed {
 			values = append(values, "Completed")
 		} else {
 			values = append(values, "In-Progress")
@@ -138,7 +138,7 @@ func getTVACCableLossMeasurementStatus(conn *websocket.Conn, cid *client) {
 			values = append(values, "Success")
 		} else {
 			values = append(values, "Failed")
-		}
+		}*/
 
 		var value parameterValue
 		value.Name = "TVACCableLossMeasurementStatus"

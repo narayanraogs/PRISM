@@ -29,7 +29,7 @@ func (device *e82x7d) loadLANDetails(name string) bool {
 	device.connection.ReadPortNo = int(d.ReadPort.Int64)
 	device.connection.DopplerPortNo = int(d.DopplerPort.Int64)
 	device.connection.Timeout = int(d.TimeoutInMillisecs)
-	device.connection.Configure(" ", "\n", true, true)
+	device.connection.Configure(" ", "\n", true, false)
 	return true
 }
 

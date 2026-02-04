@@ -167,47 +167,13 @@ func InsertTVACCableLoss(date string, time string, cableName string, testPhase s
 	return true
 }
 
-func GetAllTVACCableLosses() ([][]string, bool) {
-	var tbr = make([][]string, 0)
-	var frequencies = make([]string, 0)
+func GetAllTVACCableLosses() ([]TVACCableLoss, bool) {
 	ctx := context.Background()
 	values, err := dbObject.getTVACCableLosses(ctx)
 	if err != nil {
 		return nil, false
 	}
-	frequencyNames, _ := database.GetLossMeasurementFrequencyNames()
-	for _, name := range frequencyNames {
-		freq, _ := database.GetFrequencyForLossMeasurement(name)
-		frequencies = append(frequencies, fmt.Sprintf("%.2f", freq))
-	}
-
-	firstRow := make([]string, 0)
-	firstRow = append(firstRow, "SlNo", "Cable Name", "Test Phase", "Reference", "Date", "Time")
-	firstRow = append(firstRow, frequencyNames...)
-	secondRow := make([]string, 0)
-	secondRow = append(secondRow, "", "", "", "", "", "")
-	secondRow = append(secondRow, frequencies...)
-	tbr = append(tbr, firstRow, secondRow)
-	for i, value := range values {
-		var row = make([]string, 0)
-		row = append(row, strconv.Itoa(i+1), value.CableName)
-		row = append(row, value.TestPhase)
-		row = append(row, value.Reference, value.Date, value.Time)
-		var cableLoss cableLossMeasured
-		err = json.Unmarshal([]byte(value.Loss), &cableLoss)
-
-		for _, freq := range frequencies {
-			index := slices.Index(cableLoss.Frequency, freq)
-			if index == -1 {
-				row = append(row, "-")
-			} else {
-				row = append(row, cableLoss.Measured[index])
-			}
-		}
-
-		tbr = append(tbr, row)
-	}
-	return tbr, true
+	return values, true
 }
 
 func GetTVACCableLossPMReference() (string, bool) {

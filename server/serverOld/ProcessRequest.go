@@ -71,7 +71,8 @@ func processTableValueRequest(c *client, request valueRequest) tableValueRespons
 		}
 		message = "No entries in TSM loss table, click Re-Generate table"
 	case "TVACCableLossTable":
-		values, ok = resultsDB.GetAllTVACCableLosses()
+		//values, ok = resultsDB.GetAllTVACCableLosses()
+		values = make([][]string, 24)
 		if ok {
 			values = values[2:]
 		}

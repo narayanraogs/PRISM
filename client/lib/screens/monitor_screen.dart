@@ -1,0 +1,592 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:prism_client/services/server_service.dart';
+import 'package:prism_client/services/notification_service.dart';
+
+class MonitorScreen extends StatefulWidget {
+  final bool isActive;
+  const MonitorScreen({super.key, required this.isActive});
+
+  @override
+  State<MonitorScreen> createState() => _MonitorScreenState();
+}
+
+class _MonitorScreenState extends State<MonitorScreen> {
+  MonitorMetadata? _metadata;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  String? _selectedType;
+  String? _selectedInstrument;
+
+  Stream<MonitorResponse>? _monitorStream;
+  bool _isMonitoring = false;
+  DateTime? _lastUpdateTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMetadata();
+  }
+
+  @override
+  void didUpdateWidget(MonitorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive && _isMonitoring) {
+      _stopMonitor();
+    }
+  }
+
+  Future<void> _loadMetadata() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final service = Provider.of<ServerService>(context, listen: false);
+    final metadata = await service.fetchMonitorMetadata();
+
+    if (metadata != null && metadata.ok) {
+      setState(() {
+        _metadata = metadata;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = metadata?.message ?? 'Failed to load metadata';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _startMonitor() {
+    if (_selectedType == null || _selectedInstrument == null) return;
+
+    final service = Provider.of<ServerService>(context, listen: false);
+    setState(() {
+      _isMonitoring = true;
+      // Using broadcast stream so we can listen locally and use it in StreamBuilder
+      final stream = service
+          .connectMonitor(_selectedType!, _selectedInstrument!)
+          .asBroadcastStream();
+      _monitorStream = stream;
+
+      stream.listen(
+        (data) {
+          if (mounted) {
+            setState(() {
+              _lastUpdateTime = DateTime.now();
+            });
+          }
+        },
+        onError: (err) {
+          if (mounted) {
+            setState(() {
+              _isMonitoring = false;
+              _monitorStream = null;
+            });
+          }
+        },
+      );
+    });
+
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+    notificationService.addNotification(
+      title: 'Monitoring Started',
+      message: 'Monitoring $_selectedInstrument...',
+      type: NotificationType.info,
+    );
+  }
+
+  void _stopMonitor() {
+    final service = Provider.of<ServerService>(context, listen: false);
+    service.closeMonitor();
+    setState(() {
+      _isMonitoring = false;
+      _monitorStream = null;
+      _lastUpdateTime = null;
+    });
+
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+    notificationService.addNotification(
+      title: 'Monitoring Stopped',
+      message: 'Disconnected from instrument.',
+      type: NotificationType.info,
+    );
+  }
+
+  @override
+  void dispose() {
+    final service = Provider.of<ServerService>(context, listen: false);
+    service.closeMonitor();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Error: $_errorMessage',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadMetadata,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            _buildHeader(theme),
+            const SizedBox(height: 24),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(flex: 3, child: _buildSelectionPanel(theme)),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 7, child: _buildMonitorView(theme)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Row(
+      children: [
+        Icon(
+          Icons.monitor_heart_rounded,
+          color: theme.colorScheme.primary,
+          size: 32,
+        ),
+        const SizedBox(width: 16),
+        Text(
+          'Continuous Monitor',
+          style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectionPanel(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SELECTION',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildDropdown(
+            label: 'Type',
+            value: _selectedType,
+            items: _metadata?.instrumentTypes ?? [],
+            onChanged: _isMonitoring
+                ? null
+                : (val) => setState(() {
+                    _selectedType = val;
+                    _selectedInstrument = null;
+                  }),
+          ),
+          const SizedBox(height: 16),
+          _buildDropdown(
+            label: 'Instrument',
+            value: _selectedInstrument,
+            items: _selectedType != null
+                ? (_metadata?.instruments[_selectedType] ?? [])
+                : [],
+            onChanged: _isMonitoring
+                ? null
+                : (val) => setState(() => _selectedInstrument = val),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_selectedType != null && _selectedInstrument != null)
+                  ? (_isMonitoring ? _stopMonitor : _startMonitor)
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isMonitoring
+                    ? Colors.red
+                    : theme.colorScheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                _isMonitoring ? 'STOP MONITOR' : 'START MONITOR',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonitorView(ThemeData theme) {
+    if (!_isMonitoring) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.monitor_rounded,
+                size: 64,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 16),
+              const Text('Select instrument to start monitor'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder<MonitorResponse>(
+      stream: _monitorStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final data = snapshot.data!;
+        if (!data.ok) {
+          return Center(
+            child: Text(
+              'Device Error: ${data.message}',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          );
+        }
+
+        if (_selectedType == 'SA' || _selectedType == 'VSA') {
+          return _buildImageMonitor(data);
+        } else {
+          return _buildPowerMeterMonitor(data);
+        }
+      },
+    );
+  }
+
+  Widget _buildImageMonitor(MonitorResponse data) {
+    if (data.image.isEmpty)
+      return const Center(child: Text('Waiting for image...'));
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.memory(
+              base64Decode(data.image),
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+            ),
+          ),
+          if (_lastUpdateTime != null)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Last Update: ${_lastUpdateTime!.hour.toString().padLeft(2, '0')}:${_lastUpdateTime!.minute.toString().padLeft(2, '0')}:${_lastUpdateTime!.second.toString().padLeft(2, '0')}',
+                  style: GoogleFonts.shareTechMono(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPowerMeterMonitor(MonitorResponse data) {
+    final isPPM = _selectedType == 'PPM';
+
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A), // Dark background for "screen" feel
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade800, width: 4),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _selectedInstrument ?? 'Power Meter',
+                style: GoogleFonts.shareTechMono(
+                  color: Colors.greenAccent,
+                  fontSize: 18,
+                ),
+              ),
+              Row(
+                children: [
+                  if (_lastUpdateTime != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Text(
+                        'Last Update: ${_lastUpdateTime!.hour.toString().padLeft(2, '0')}:${_lastUpdateTime!.minute.toString().padLeft(2, '0')}:${_lastUpdateTime!.second.toString().padLeft(2, '0')}',
+                        style: GoogleFonts.shareTechMono(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'LIVE',
+                      style: GoogleFonts.shareTechMono(
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 40),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildChannelDisplay(
+                    'CHANNEL A',
+                    isPPM ? data.ppmChannelAPeakPower : data.pmChannelA,
+                    isPPM ? data.ppmChannelAAvgPower : null,
+                  ),
+                ),
+                const VerticalDivider(
+                  color: Colors.white10,
+                  width: 64,
+                  thickness: 1,
+                ),
+                Expanded(
+                  child: _buildChannelDisplay(
+                    'CHANNEL B',
+                    isPPM ? data.ppmChannelBPeakPower : data.pmChannelB,
+                    isPPM ? data.ppmChannelBAvgPower : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChannelDisplay(String label, double mainVal, double? subVal) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.shareTechMono(
+            color: Colors.blueAccent,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              mainVal.toStringAsFixed(3),
+              style: GoogleFonts.orbitron(
+                fontSize: 64,
+                fontWeight: FontWeight.bold,
+                color: Colors.greenAccent,
+                shadows: [
+                  Shadow(
+                    color: Colors.greenAccent.withOpacity(0.5),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'dBm',
+              style: GoogleFonts.shareTechMono(
+                color: Colors.greenAccent,
+                fontSize: 24,
+              ),
+            ),
+          ],
+        ),
+        if (subVal != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            'AVG POWER',
+            style: GoogleFonts.shareTechMono(color: Colors.grey, fontSize: 12),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                subVal.toStringAsFixed(3),
+                style: GoogleFonts.orbitron(
+                  fontSize: 24,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'dBm',
+                style: GoogleFonts.shareTechMono(
+                  color: Colors.orangeAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+        const Spacer(),
+        // Simple "Bar Meter" visual
+        Container(
+          height: 8,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: FractionallySizedBox(
+            widthFactor: ((mainVal + 100) / 130).clamp(0.0, 1.0),
+            alignment: Alignment.centerLeft,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.greenAccent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required void Function(String?)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          items: items
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(
+                    e,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+}

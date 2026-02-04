@@ -348,6 +348,213 @@ class SpectrumDumpMetadata {
   }
 }
 
+class MonitorMetadata {
+  final List<String> instrumentTypes;
+  final Map<String, List<String>> instruments;
+  final bool ok;
+  final String message;
+
+  MonitorMetadata({
+    required this.instrumentTypes,
+    required this.instruments,
+    required this.ok,
+    required this.message,
+  });
+
+  factory MonitorMetadata.fromJson(Map<String, dynamic> json) {
+    return MonitorMetadata(
+      instrumentTypes: List<String>.from(json['InstrumentTypes'] ?? []),
+      instruments:
+          (json['Instruments'] as Map<String, dynamic>?)?.map(
+            (key, value) => MapEntry(key, List<String>.from(value)),
+          ) ??
+          {},
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class MonitorResponse {
+  final String image;
+  final double pmChannelA;
+  final double pmChannelB;
+  final double ppmChannelAPeakPower;
+  final double ppmChannelBPeakPower;
+  final double ppmChannelAAvgPower;
+  final double ppmChannelBAvgPower;
+  final bool ok;
+  final String message;
+
+  MonitorResponse({
+    required this.image,
+    required this.pmChannelA,
+    required this.pmChannelB,
+    required this.ppmChannelAPeakPower,
+    required this.ppmChannelBPeakPower,
+    required this.ppmChannelAAvgPower,
+    required this.ppmChannelBAvgPower,
+    required this.ok,
+    required this.message,
+  });
+
+  factory MonitorResponse.fromJson(Map<String, dynamic> json) {
+    return MonitorResponse(
+      image: json['Image'] ?? '',
+      pmChannelA: (json['PMChannelA'] as num?)?.toDouble() ?? 0.0,
+      pmChannelB: (json['PMChannelB'] as num?)?.toDouble() ?? 0.0,
+      ppmChannelAPeakPower:
+          (json['PPMChannelAPeakPower'] as num?)?.toDouble() ?? 0.0,
+      ppmChannelBPeakPower:
+          (json['PPMChannelBPeakPower'] as num?)?.toDouble() ?? 0.0,
+      ppmChannelAAvgPower:
+          (json['PPMChannelAAvgPower'] as num?)?.toDouble() ?? 0.0,
+      ppmChannelBAvgPower:
+          (json['PPMChannelBAvgPower'] as num?)?.toDouble() ?? 0.0,
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class MeasurementPoint {
+  final double frequency;
+  final double loss;
+  final double delta;
+
+  MeasurementPoint({
+    required this.frequency,
+    required this.loss,
+    required this.delta,
+  });
+
+  factory MeasurementPoint.fromJson(Map<String, dynamic> json) {
+    return MeasurementPoint(
+      frequency: (json['frequency'] as num?)?.toDouble() ?? 0.0,
+      loss: (json['loss'] as num?)?.toDouble() ?? 0.0,
+      delta: (json['delta'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class TVACCableLossRecord {
+  final int slNo;
+  final String cableName;
+  final String cycleName;
+  final String phase;
+  final String date;
+  final String time;
+  final bool isReference;
+  final List<MeasurementPoint> measurements;
+
+  TVACCableLossRecord({
+    required this.slNo,
+    required this.cableName,
+    required this.cycleName,
+    required this.phase,
+    required this.date,
+    required this.time,
+    required this.isReference,
+    required this.measurements,
+  });
+
+  factory TVACCableLossRecord.fromJson(Map<String, dynamic> json) {
+    return TVACCableLossRecord(
+      slNo: json['slNo'] ?? 0,
+      cableName: json['cableName'] ?? '',
+      cycleName: json['cycleName'] ?? '',
+      phase: json['phase'] ?? '',
+      date: json['date'] ?? '',
+      time: json['time'] ?? '',
+      isReference: json['isReference'] ?? false,
+      measurements:
+          (json['measurements'] as List?)
+              ?.map((e) => MeasurementPoint.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class TVACCableLossMetadata {
+  final List<double> frequencies;
+  final List<String> deviceProfiles;
+  final List<String> existingCables;
+  final bool isPmZeroed;
+  final bool ok;
+  final String message;
+
+  TVACCableLossMetadata({
+    required this.frequencies,
+    required this.deviceProfiles,
+    required this.existingCables,
+    required this.isPmZeroed,
+    required this.ok,
+    required this.message,
+  });
+
+  factory TVACCableLossMetadata.fromJson(Map<String, dynamic> json) {
+    return TVACCableLossMetadata(
+      frequencies:
+          (json['frequencies'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      deviceProfiles: List<String>.from(json['deviceProfiles'] ?? []),
+      existingCables: List<String>.from(json['existingCables'] ?? []),
+      isPmZeroed: json['isPmZeroed'] ?? false,
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class TVACCableLossResponse {
+  final TVACCableLossRecord? latestRecord;
+  final List<TVACCableLossRecord> history;
+  final bool isPmZeroed;
+  final bool ok;
+  final String message;
+
+  TVACCableLossResponse({
+    this.latestRecord,
+    required this.history,
+    required this.isPmZeroed,
+    required this.ok,
+    required this.message,
+  });
+
+  factory TVACCableLossResponse.fromJson(Map<String, dynamic> json) {
+    return TVACCableLossResponse(
+      latestRecord: json['latestRecord'] != null
+          ? TVACCableLossRecord.fromJson(json['latestRecord'])
+          : null,
+      history:
+          (json['history'] as List?)
+              ?.map((e) => TVACCableLossRecord.fromJson(e))
+              .toList() ??
+          [],
+      isPmZeroed: json['isPmZeroed'] ?? false,
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class MeasurementStatus {
+  final String message;
+  final bool error;
+
+  MeasurementStatus({required this.message, required this.error});
+
+  factory MeasurementStatus.fromJson(Map<String, dynamic> json) {
+    return MeasurementStatus(
+      message: json['message'] ?? '',
+      error: json['error'] ?? false,
+    );
+  }
+}
+
 class TestResult {
   final String testName;
   final String testCategory;
@@ -896,6 +1103,57 @@ class ServerService extends ChangeNotifier {
     _progressChannel = null;
   }
 
+  WebSocketChannel? _monitorChannel;
+
+  Stream<MonitorResponse> connectMonitor(String type, String instrument) {
+    String host;
+    if (kDebugMode) {
+      host = 'localhost:8080';
+    } else {
+      host = html.window.location.host;
+    }
+    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/monitor';
+
+    _monitorChannel = WebSocketChannel.connect(Uri.parse(url));
+
+    // Send initial request
+    _monitorChannel!.sink.add(
+      jsonEncode({'InstrumentType': type, 'Instrument': instrument}),
+    );
+
+    return _monitorChannel!.stream.map((data) {
+      return MonitorResponse.fromJson(jsonDecode(data));
+    });
+  }
+
+  void closeMonitor() {
+    _monitorChannel?.sink.close();
+    _monitorChannel = null;
+  }
+
+  Future<TVACCableLossMetadata?> fetchTVACCableLossMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getTVACCableLossMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return TVACCableLossMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching TVAC Cable Loss Metadata: $e');
+    }
+    return null;
+  }
+
   Future<StabilityMetadata?> fetchStabilityMetadata() async {
     final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
     final protocol = html.window.location.protocol == 'https:'
@@ -938,6 +1196,29 @@ class ServerService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error fetching Spectrum Dump Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<MonitorMetadata?> fetchMonitorMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getMonitorMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({}),
+      );
+
+      if (response.statusCode == 200) {
+        return MonitorMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Monitor Metadata: $e');
     }
     return null;
   }
@@ -1105,6 +1386,48 @@ class ServerService extends ChangeNotifier {
       debugPrint('Error saving Spectrum: $e');
     }
     return null;
+  }
+
+  Future<TVACCableLossResponse?> fetchTVACCableMeasuredDetails() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getTVACCableMeasuredDetails';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return TVACCableLossResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching TVAC Cable Loss Details: $e');
+    }
+    return null;
+  }
+
+  Stream<MeasurementStatus> streamTVACCableLossAction(
+    Map<String, dynamic> request,
+  ) {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/measureTVACCableLoss';
+
+    final channel = WebSocketChannel.connect(Uri.parse(url));
+    channel.sink.add(jsonEncode(request));
+
+    return channel.stream
+        .map((event) {
+          return MeasurementStatus.fromJson(jsonDecode(event));
+        })
+        .handleError((error) {
+          debugPrint('TVAC Action Stream Error: $error');
+          return MeasurementStatus(message: error.toString(), error: true);
+        });
   }
 
   @override
