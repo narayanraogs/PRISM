@@ -119,16 +119,18 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                       children: [
                         Text(
                           'RF Operations',
-                          style: theme.textTheme.displaySmall?.copyWith(
+                          style: GoogleFonts.outfit(
                             fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
                           ),
                         ),
                         Text(
                           'Configure and manage RF uplink paths',
                           style: TextStyle(
                             color: Colors.grey.shade600,
-                            fontSize: 13,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -218,12 +220,12 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                                               op['title'] as String,
                                               style: GoogleFonts.inter(
                                                 fontWeight: isSelected
-                                                    ? FontWeight.bold
-                                                    : FontWeight.w500,
+                                                    ? FontWeight.w900
+                                                    : FontWeight.bold,
                                                 color: isSelected
                                                     ? theme.colorScheme.primary
-                                                    : Colors.grey.shade700,
-                                                fontSize: 13,
+                                                    : Colors.black,
+                                                fontSize: 16,
                                               ),
                                             ),
                                           ),
@@ -504,11 +506,11 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
             children: [
               Text(
                 'LIVE ROUTE STATUS',
-                style: GoogleFonts.outfit(
-                  color: Colors.white38,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                style: GoogleFonts.inter(
+                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
                 ),
               ),
               const SizedBox(height: 8),
@@ -746,9 +748,12 @@ class _RFUplinkFormState extends State<RFUplinkForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'RF Uplink Configuration',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
+          'RF UPLINK CONFIGURATION',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+            color: theme.colorScheme.primary,
+            letterSpacing: 1.5,
           ),
         ),
         const SizedBox(height: 8),
@@ -949,9 +954,12 @@ class _RemoveLinkFormState extends State<RemoveLinkForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Remove Existing Link',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  'REMOVE EXISTING LINK',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1153,9 +1161,12 @@ class _RoutePathFormState extends State<RoutePathForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Route Path & Attenuation',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  'ROUTE PATH & ATTENUATION',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 4),

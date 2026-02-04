@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/services/notification_service.dart';
 
@@ -13,7 +14,14 @@ class GenericScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.displayMedium),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: Container(

@@ -264,13 +264,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           children: [
             Text(
               'Test Scheduler',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: GoogleFonts.outfit(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
             ),
             Text(
               'Build and manage automatically executed test sequences',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -304,10 +310,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 Text(
                   'CATEGORIES',
                   style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade500,
-                    letterSpacing: 1.2,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const Spacer(),
@@ -354,10 +360,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   title: Text(
                     category,
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 16,
                       fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
+                          ? FontWeight.w900
+                          : FontWeight.bold,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : Colors.black,
                     ),
                   ),
                   selectedTileColor: theme.colorScheme.primary.withOpacity(
@@ -408,9 +417,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Select Configuration',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    'SELECT CONFIGURATION',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      color: theme.colorScheme.primary,
+                      letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -559,10 +571,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       Text(
                         test.testName,
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 16,
                           fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
+                              ? FontWeight.w900
+                              : FontWeight.bold,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : Colors.black,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -570,8 +585,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       Text(
                         test.testCategory,
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade500,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -615,10 +633,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       hintText: 'Schedule Name',
                     ),
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade500,
-                      letterSpacing: 1.2,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),
@@ -759,7 +777,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   test.testName,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 16,
+                    color: Colors.black,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

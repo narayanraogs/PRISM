@@ -162,14 +162,19 @@ class _TestScreenState extends State<TestScreen> {
           children: [
             Text(
               'Test Executive',
-              style: theme.textTheme.displaySmall?.copyWith(
+              style: GoogleFonts.outfit(
                 fontSize: 28,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
             ),
             Text(
               'Select category, configuration and tests to begin',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -205,10 +210,10 @@ class _TestScreenState extends State<TestScreen> {
                 Text(
                   'CATEGORIES',
                   style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade500,
-                    letterSpacing: 1.2,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const Spacer(),
@@ -277,12 +282,12 @@ class _TestScreenState extends State<TestScreen> {
                             category,
                             style: GoogleFonts.inter(
                               fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
+                                  ? FontWeight.w900
+                                  : FontWeight.bold,
                               color: isSelected
                                   ? theme.colorScheme.primary
-                                  : Colors.grey.shade700,
-                              fontSize: 13,
+                                  : Colors.black,
+                              fontSize: 16,
                             ),
                           ),
                         ),
@@ -362,9 +367,12 @@ class _TestScreenState extends State<TestScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Select Configuration',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
+                              'SELECT CONFIGURATION',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                                color: theme.colorScheme.primary,
+                                letterSpacing: 1.5,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -403,9 +411,12 @@ class _TestScreenState extends State<TestScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Summary',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
+                              'SUMMARY',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                                color: theme.colorScheme.primary,
+                                letterSpacing: 1.5,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -602,12 +613,12 @@ class _TestScreenState extends State<TestScreen> {
                         test.testName,
                         style: GoogleFonts.inter(
                           fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
+                              ? FontWeight.w900
+                              : FontWeight.bold,
                           color: isSelected
                               ? theme.colorScheme.primary
-                              : Colors.black87,
-                          fontSize: 14,
+                              : Colors.black,
+                          fontSize: 16,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -617,9 +628,10 @@ class _TestScreenState extends State<TestScreen> {
                           test.testCategory,
                           style: TextStyle(
                             color: isSelected
-                                ? theme.colorScheme.primary.withOpacity(0.7)
-                                : Colors.grey.shade500,
-                            fontSize: 11,
+                                ? theme.colorScheme.primary
+                                : Colors.black87,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                     ],

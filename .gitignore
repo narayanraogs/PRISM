@@ -41,8 +41,6 @@ client/app.*.map.json
 
 # --- Server (Go) ---
 # Binaries and compiled files
-server/server
-server/main
 server/bin/
 server/__debug_bin
 server/server.exe
@@ -52,7 +50,7 @@ server/server.out
 *.exe~
 *.dll
 *.so
-*.dylib
+*.dylibo
 
 # Test binaries
 *.test

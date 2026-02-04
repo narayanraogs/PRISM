@@ -235,10 +235,10 @@ func (device *n9040b) waitTillFirstPulse() utils.CommandResponse {
 func (device *n9040b) getScreenshot(mode string) utils.CommandResponse {
 	var restore bool = false
 	switch strings.ToLower(mode) {
-	case "magnitude capture":
+	case "magnitude":
 		device.setSelectedTrace(1)
 		restore = true
-	case "spectrogram capture":
+	case "spectrogram":
 		device.setSelectedTrace(2)
 		restore = true
 	case "pulse magnitude":

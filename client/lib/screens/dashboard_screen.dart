@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -14,8 +15,12 @@ class DashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Dashboard overview',
-                style: Theme.of(context).textTheme.displayMedium,
+                'Dashboard Overview',
+                style: GoogleFonts.outfit(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
               ),
               ElevatedButton.icon(
                 onPressed: () {},
@@ -93,12 +98,21 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  style: GoogleFonts.outfit(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
                     color: Colors.black,
                   ),
                 ),
-                Text(title, style: TextStyle(color: Colors.grey.shade600)),
+                Text(
+                  title.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).colorScheme.primary,
+                    letterSpacing: 1.5,
+                  ),
+                ),
               ],
             ),
           ],

@@ -238,6 +238,116 @@ class SummaryTable {
   }
 }
 
+class StabilityMetadata {
+  final List<String> instrumentTypes;
+  final Map<String, List<String>> instruments;
+  final Map<String, List<String>> parameters;
+  final List<SpectrumProfile> profiles;
+  final List<String> plConfigs;
+  final List<String> pulseProfiles;
+  final bool ok;
+  final String message;
+
+  StabilityMetadata({
+    required this.instrumentTypes,
+    required this.instruments,
+    required this.parameters,
+    required this.profiles,
+    required this.plConfigs,
+    required this.pulseProfiles,
+    required this.ok,
+    required this.message,
+  });
+
+  factory StabilityMetadata.fromJson(Map<String, dynamic> json) {
+    return StabilityMetadata(
+      instrumentTypes: List<String>.from(json['InstrumentTypes'] ?? []),
+      instruments:
+          (json['Instruments'] as Map<String, dynamic>?)?.map(
+            (key, value) => MapEntry(key, List<String>.from(value)),
+          ) ??
+          {},
+      parameters:
+          (json['Parameters'] as Map<String, dynamic>?)?.map(
+            (key, value) => MapEntry(key, List<String>.from(value)),
+          ) ??
+          {},
+      profiles:
+          (json['Profiles'] as List?)
+              ?.map((e) => SpectrumProfile.fromJson(e))
+              .toList() ??
+          [],
+      plConfigs: List<String>.from(json['PLConfigs'] ?? []),
+      pulseProfiles: List<String>.from(json['PulseProfiles'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class SpectrumProfile {
+  final String profileName;
+  final double centerFrequency;
+  final double span;
+  final double rbw;
+  final double vbw;
+
+  SpectrumProfile({
+    required this.profileName,
+    required this.centerFrequency,
+    required this.span,
+    required this.rbw,
+    required this.vbw,
+  });
+
+  factory SpectrumProfile.fromJson(Map<String, dynamic> json) {
+    return SpectrumProfile(
+      profileName: json['ProfileName'] ?? '',
+      centerFrequency: (json['CenterFrequency'] as num?)?.toDouble() ?? 0.0,
+      span: (json['Span'] as num?)?.toDouble() ?? 0.0,
+      rbw: (json['RBW'] as num?)?.toDouble() ?? 0.0,
+      vbw: (json['VBW'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class SpectrumDumpMetadata {
+  final List<String> spectrumDumpMode;
+  final Map<String, List<String>> instruments;
+  final List<SpectrumProfile> spectrumProfiles;
+  final List<String> screenshotProfiles;
+  final bool ok;
+  final String message;
+
+  SpectrumDumpMetadata({
+    required this.spectrumDumpMode,
+    required this.instruments,
+    required this.spectrumProfiles,
+    required this.screenshotProfiles,
+    required this.ok,
+    required this.message,
+  });
+
+  factory SpectrumDumpMetadata.fromJson(Map<String, dynamic> json) {
+    return SpectrumDumpMetadata(
+      spectrumDumpMode: List<String>.from(json['SpectrumDumpMode'] ?? []),
+      instruments:
+          (json['Instruments'] as Map<String, dynamic>?)?.map(
+            (key, value) => MapEntry(key, List<String>.from(value)),
+          ) ??
+          {},
+      spectrumProfiles:
+          (json['SpectrumProfiles'] as List?)
+              ?.map((e) => SpectrumProfile.fromJson(e))
+              .toList() ??
+          [],
+      screenshotProfiles: List<String>.from(json['ScreenshotProfiles'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
 class TestResult {
   final String testName;
   final String testCategory;
@@ -519,6 +629,38 @@ class AllTests {
   }
 }
 
+class ReadSpectrumResponse {
+  final double centerFrequency;
+  final double span;
+  final double rbw;
+  final double vbw;
+  final double referenceLevel;
+  final bool ok;
+  final String message;
+
+  ReadSpectrumResponse({
+    required this.centerFrequency,
+    required this.span,
+    required this.rbw,
+    required this.vbw,
+    required this.referenceLevel,
+    required this.ok,
+    required this.message,
+  });
+
+  factory ReadSpectrumResponse.fromJson(Map<String, dynamic> json) {
+    return ReadSpectrumResponse(
+      centerFrequency: (json['CenterFrequency'] as num?)?.toDouble() ?? 0.0,
+      span: (json['Span'] as num?)?.toDouble() ?? 0.0,
+      rbw: (json['RBW'] as num?)?.toDouble() ?? 0.0,
+      vbw: (json['VBW'] as num?)?.toDouble() ?? 0.0,
+      referenceLevel: (json['ReferenceLevel'] as num?)?.toDouble() ?? 0.0,
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
 class ServerService extends ChangeNotifier {
   WebSocketChannel? _channel;
   ServerStatus _status = ServerStatus();
@@ -752,6 +894,217 @@ class ServerService extends ChangeNotifier {
   void closeTestProgress() {
     _progressChannel?.sink.close();
     _progressChannel = null;
+  }
+
+  Future<StabilityMetadata?> fetchStabilityMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getStabilityMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({}),
+      );
+
+      if (response.statusCode == 200) {
+        return StabilityMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Stability Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<SpectrumDumpMetadata?> fetchSpectrumDumpMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getSpectrumDumpMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({}),
+      );
+
+      if (response.statusCode == 200) {
+        return SpectrumDumpMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Spectrum Dump Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> setSpectrum({
+    required String sa,
+    required double centerFrequency,
+    required double span,
+    required double rbw,
+    required double vbw,
+    required bool autoReference,
+    required double referenceLevel,
+    required String mode,
+  }) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/setSpectrum';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'SA': sa,
+          'CenterFrequency': centerFrequency,
+          'Span': span,
+          'RBW': rbw,
+          'VBW': vbw,
+          'AutoReference': autoReference,
+          'ReferenceLevel': referenceLevel,
+          'Mode': mode,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error setting Spectrum: $e');
+    }
+    return null;
+  }
+
+  Future<ReadSpectrumResponse?> readSpectrum(String sa) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/readSpectrum';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'SA': sa}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReadSpectrumResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error reading Spectrum: $e');
+    }
+    return null;
+  }
+
+  Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/dumpSpectrum';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'SA': sa}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReadSpectrumResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error dumping Spectrum: $e');
+    }
+    return null;
+  }
+
+  Future<ReadSpectrumResponse?> dumpTrace({
+    required String sa,
+    required int tracePoints,
+  }) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/dumpTrace';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'SA': sa, 'TracePoints': tracePoints}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReadSpectrumResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error dumping Trace: $e');
+    }
+    return null;
+  }
+
+  Future<ReadSpectrumResponse?> dumpScreenshot({
+    required String vsa,
+    required String mode,
+  }) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/dumpScreenshot';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'VSA': vsa, 'Mode': mode}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReadSpectrumResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error dumping Screenshot: $e');
+    }
+    return null;
+  }
+
+  Future<ReadSpectrumResponse?> saveSpectrum({
+    required String spectrumBase64,
+    required String remark,
+  }) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/saveSpectrum';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'Spectrum': spectrumBase64, 'Remark': remark}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReadSpectrumResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error saving Spectrum: $e');
+    }
+    return null;
   }
 
   @override

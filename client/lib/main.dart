@@ -6,6 +6,8 @@ import 'package:prism_client/screens/generic_screen.dart';
 import 'package:prism_client/screens/rf_uplink_screen.dart';
 import 'package:prism_client/screens/test_screen.dart';
 import 'package:prism_client/screens/schedule_screen.dart';
+import 'package:prism_client/screens/stability_screen.dart';
+import 'package:prism_client/screens/spectrum_dump_screen.dart';
 import 'package:prism_client/services/server_service.dart';
 
 import 'package:prism_client/services/notification_service.dart';
@@ -91,6 +93,12 @@ class _RootPageState extends State<RootPage> {
           }
           if (index == 2) {
             return const ScheduleScreen();
+          }
+          if (index == 3) {
+            return const StabilityScreen();
+          }
+          if (index == 4) {
+            return const SpectrumDumpScreen();
           }
           return GenericScreen(title: title);
         }).toList(),
