@@ -1,9 +1,9 @@
 package utilities
 
 import (
-	"fmt"
 	"prismServer/driver"
 	"strings"
+	"time"
 )
 
 type saStability struct {
@@ -53,7 +53,7 @@ func (info *saStability) addMonitor(mode string, desc string, center float64, sp
 	info.spans = append(info.spans, tbc)
 }
 
-func startSAStability(saName string, info *saStability, stab *StabilityPlot) {
+func startSAStability(saName string, info *saStability, dataChannel chan StabilityUpdate) {
 	var sa driver.SA
 	ok := sa.LoadDevice(saName)
 	if !ok {
@@ -84,13 +84,20 @@ func startSAStability(saName string, info *saStability, stab *StabilityPlot) {
 			if span.frequencyPresent {
 				response = sa.GetFrequencyInCounterMode(1)
 				frequency := response.Result["Frequency"].Value
-				fmt.Println(frequency)
-				stab.addPoint(span.frequencyDescription, frequency)
+				dataChannel <- StabilityUpdate{
+					Description: span.frequencyDescription,
+					Value:       frequency,
+					Timestamp:   time.Now(),
+				}
 			}
 			if span.powerPresent {
 				response = sa.GetMaxMarkerValue()
 				power := response.Result["MarkerY"].Value
-				stab.addPoint(span.powerDescription, power)
+				dataChannel <- StabilityUpdate{
+					Description: span.powerDescription,
+					Value:       power,
+					Timestamp:   time.Now(),
+				}
 			}
 		}
 	}

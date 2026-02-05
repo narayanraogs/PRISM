@@ -33,7 +33,7 @@ type ppmStability struct {
 	stop                      bool
 }
 
-func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) {
+func startPPMStability(ppmName string, info *ppmStability, dataChannel chan StabilityUpdate) {
 	var ppm driver.PPM
 	ok := ppm.LoadDevice(ppmName)
 	if !ok {
@@ -85,14 +85,22 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.peakPowerDescriptionChA, resp.Result["PulsePeakPower"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.peakPowerDescriptionChA,
+				Value:       resp.Result["PulsePeakPower"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 		if info.avgPowerPresentChA {
 			resp := ppm.GetPeakPower("A", false)
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.avgPowerDescriptionChA, resp.Result["PulseAveragePower"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.avgPowerDescriptionChA,
+				Value:       resp.Result["PulseAveragePower"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 
 		if info.pulseWidthPresentChA {
@@ -100,7 +108,11 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.pulseWidthDescriptionChA, resp.Result["PulseOnTime"].Value*1e6)
+			dataChannel <- StabilityUpdate{
+				Description: info.pulseWidthDescriptionChA,
+				Value:       resp.Result["PulseOnTime"].Value * 1e6,
+				Timestamp:   time.Now(),
+			}
 		}
 
 		if info.pulsePeriodPresentChA {
@@ -108,7 +120,11 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.pulsePeriodDescriptionChA, resp.Result["PulsePeriod"].Value*1e6)
+			dataChannel <- StabilityUpdate{
+				Description: info.pulsePeriodDescriptionChA,
+				Value:       resp.Result["PulsePeriod"].Value * 1e6,
+				Timestamp:   time.Now(),
+			}
 		}
 
 		if info.peakPowerPresentChB {
@@ -116,14 +132,22 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.peakPowerDescriptionChB, resp.Result["PulsePeakPower"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.peakPowerDescriptionChB,
+				Value:       resp.Result["PulsePeakPower"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 		if info.avgPowerPresentChB {
 			resp := ppm.GetPeakPower("B", false)
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.avgPowerDescriptionChB, resp.Result["PulseAveragePower"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.avgPowerDescriptionChB,
+				Value:       resp.Result["PulseAveragePower"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 
 		if info.pulseWidthPresentChB {
@@ -131,7 +155,11 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.pulseWidthDescriptionChB, resp.Result["PulseOnTime"].Value*1e6)
+			dataChannel <- StabilityUpdate{
+				Description: info.pulseWidthDescriptionChB,
+				Value:       resp.Result["PulseOnTime"].Value * 1e6,
+				Timestamp:   time.Now(),
+			}
 		}
 
 		if info.pulsePeriodPresentChB {
@@ -139,7 +167,11 @@ func startPPMStability(ppmName string, info *ppmStability, stab *StabilityPlot) 
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.pulsePeriodDescriptionChB, resp.Result["PulsePeriod"].Value*1e6)
+			dataChannel <- StabilityUpdate{
+				Description: info.pulsePeriodDescriptionChB,
+				Value:       resp.Result["PulsePeriod"].Value * 1e6,
+				Timestamp:   time.Now(),
+			}
 		}
 	}
 }

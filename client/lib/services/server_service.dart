@@ -245,6 +245,7 @@ class StabilityMetadata {
   final List<SpectrumProfile> profiles;
   final List<String> plConfigs;
   final List<String> pulseProfiles;
+  final List<String> ppmChannels;
   final bool ok;
   final String message;
 
@@ -255,6 +256,7 @@ class StabilityMetadata {
     required this.profiles,
     required this.plConfigs,
     required this.pulseProfiles,
+    required this.ppmChannels,
     required this.ok,
     required this.message,
   });
@@ -279,6 +281,7 @@ class StabilityMetadata {
           [],
       plConfigs: List<String>.from(json['PLConfigs'] ?? []),
       pulseProfiles: List<String>.from(json['PulseProfiles'] ?? []),
+      ppmChannels: List<String>.from(json['PPMChannels'] ?? []),
       ok: json['OK'] ?? false,
       message: json['Message'] ?? '',
     );
@@ -1090,6 +1093,89 @@ class TestDescription {
       extraParameters.hashCode;
 }
 
+class StabilityDataUpdate {
+  final String description;
+  final double value;
+  final DateTime timestamp;
+
+  StabilityDataUpdate({
+    required this.description,
+    required this.value,
+    required this.timestamp,
+  });
+
+  factory StabilityDataUpdate.fromJson(Map<String, dynamic> json) {
+    return StabilityDataUpdate(
+      description: json['Description'] ?? '',
+      value: (json['Value'] as num?)?.toDouble() ?? 0.0,
+      timestamp: json['Timestamp'] != null 
+          ? DateTime.parse(json['Timestamp'])
+          : DateTime.now(),
+    );
+  }
+}
+
+class StabilityResponse {
+  final List<StabilityDataUpdate> updates;
+  final bool ok;
+  final String message;
+
+  StabilityResponse({
+    required this.updates,
+    required this.ok,
+    required this.message,
+  });
+
+  factory StabilityResponse.fromJson(Map<String, dynamic> json) {
+    return StabilityResponse(
+      updates: (json['Updates'] as List?)
+          ?.map((e) => StabilityDataUpdate.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class StabilityParameterSelection {
+  final String description;
+  final String instrumentType;
+  final String instrument;
+  final String parameter;
+  final String details;
+  final Map<String, dynamic>? extraDetails;
+
+  StabilityParameterSelection({
+    required this.description,
+    required this.instrumentType,
+    required this.instrument,
+    required this.parameter,
+    required this.details,
+    this.extraDetails,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'description': description,
+        'instrumentType': instrumentType,
+        'instrument': instrument,
+        'parameter': parameter,
+        'details': details,
+        'extraDetails': extraDetails,
+      };
+
+  factory StabilityParameterSelection.fromJson(Map<String, dynamic> json) =>
+      StabilityParameterSelection(
+        description: json['description'] ?? '',
+        instrumentType: json['instrumentType'] ?? '',
+        instrument: json['instrument'] ?? '',
+        parameter: json['parameter'] ?? '',
+        details: json['details'] ?? '',
+        extraDetails: json['extraDetails'] != null
+            ? Map<String, dynamic>.from(json['extraDetails'])
+            : null,
+      );
+}
+
 class AllTests {
   final List<String> categories;
   final Map<String, List<String>> configurations;
@@ -1555,6 +1641,45 @@ class ServerService extends ChangeNotifier {
       debugPrint('Error fetching Stability Metadata: $e');
     }
     return null;
+  }
+
+  WebSocketChannel? _stabilityChannel;
+
+  Stream<StabilityResponse> connectStability(
+    List<StabilityParameterSelection> parameters,
+    String profileName,
+  ) {
+    String host;
+    if (kDebugMode) {
+      host = 'localhost:8080';
+    } else {
+      host = html.window.location.host;
+    }
+    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/stability';
+
+    _stabilityChannel = WebSocketChannel.connect(Uri.parse(url));
+
+    // Send initial request
+    _stabilityChannel!.sink.add(
+      jsonEncode({
+        'ProfileName': profileName,
+        'Parameters': parameters.map((p) => p.toJson()).toList(),
+      }),
+    );
+
+    return _stabilityChannel!.stream.map((data) {
+      return StabilityResponse.fromJson(jsonDecode(data));
+    });
+  }
+
+  void closeStability() {
+    _stabilityChannel?.sink.close();
+    _stabilityChannel = null;
+  }
+
+  void sendAbortStability() {
+    _stabilityChannel?.sink.add(jsonEncode({'Action': 'abort'}));
   }
 
   Future<SpectrumDumpMetadata?> fetchSpectrumDumpMetadata() async {

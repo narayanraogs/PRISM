@@ -231,7 +231,7 @@ func handleStartStability(c *client, request actionRequest) (string, bool) {
 	if stability == nil {
 		return "Unable to get Start Stability", false
 	}
-	utilities.StartStability(stability, &c.global.Stability)
+	//utilities.StartStability(stability, &c.global.Stability)
 	return "", true
 }
 

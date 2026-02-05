@@ -2,6 +2,7 @@ package utilities
 
 import (
 	"prismServer/driver"
+	"time"
 )
 
 type pmStability struct {
@@ -14,7 +15,7 @@ type pmStability struct {
 	stop                bool
 }
 
-func startPMStability(pmName string, info *pmStability, stab *StabilityPlot) {
+func startPMStability(pmName string, info *pmStability, dataChannel chan StabilityUpdate) {
 	var pm driver.PM
 	ok := pm.LoadDevice(pmName)
 	if !ok {
@@ -32,14 +33,22 @@ func startPMStability(pmName string, info *pmStability, stab *StabilityPlot) {
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.channelADescription, resp.Result["Power"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.channelADescription,
+				Value:       resp.Result["Power"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 		if info.channelBPresent {
 			resp := pm.GetPowerChannelB(false)
 			if !resp.Success {
 				continue
 			}
-			stab.addPoint(info.channelBDescription, resp.Result["Power"].Value)
+			dataChannel <- StabilityUpdate{
+				Description: info.channelBDescription,
+				Value:       resp.Result["Power"].Value,
+				Timestamp:   time.Now(),
+			}
 		}
 	}
 }

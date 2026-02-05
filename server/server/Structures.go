@@ -95,6 +95,7 @@ type StabilityMetadata struct {
 	Profiles        []SpectrumProfile
 	PLConfigs       []string
 	PulseProfiles   []string
+	PPMChannels     []string
 	OK              bool
 	Message         string
 }
@@ -314,4 +315,34 @@ type SelectTestPhaseRequest struct {
 type AddNewTestPhaseRequest struct {
 	NewPhase string
 	CopyFrom string
+}
+
+// StabilityRequest is sent by the client immediately after connection
+type StabilityRequest struct {
+	ProfileName string                        `json:"ProfileName"`
+	Parameters  []StabilityParameterSelection `json:"Parameters"`
+}
+
+// StabilityParameterSelection matches the configuration from the client
+type StabilityParameterSelection struct {
+	Description    string                 `json:"description"`
+	InstrumentType string                 `json:"instrumentType"`
+	Instrument     string                 `json:"instrument"`
+	Parameter      string                 `json:"parameter"`
+	Details        string                 `json:"details"`
+	ExtraDetails   map[string]interface{} `json:"extraDetails"`
+}
+
+// StabilityUpdate is an individual data point sent from server to client
+
+// StabilityResponse is the wrapper sent to the client periodically
+type StabilityResponse struct {
+	Updates []utilities.StabilityUpdate `json:"Updates"`
+	OK      bool                        `json:"OK"`
+	Message string                      `json:"Message"`
+}
+
+// StabilityAction is for control messages (like "abort")
+type StabilityAction struct {
+	Action string `json:"Action"`
 }

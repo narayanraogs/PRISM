@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:prism_client/screens/stability_monitoring_screen.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
@@ -10,45 +12,6 @@ class StabilityScreen extends StatefulWidget {
 
   @override
   State<StabilityScreen> createState() => _StabilityScreenState();
-}
-
-class StabilityParameterSelection {
-  final String description;
-  final String instrumentType;
-  final String instrument;
-  final String parameter;
-  final String details;
-  final Map<String, dynamic>? extraDetails;
-
-  StabilityParameterSelection({
-    required this.description,
-    required this.instrumentType,
-    required this.instrument,
-    required this.parameter,
-    required this.details,
-    this.extraDetails,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'description': description,
-    'instrumentType': instrumentType,
-    'instrument': instrument,
-    'parameter': parameter,
-    'details': details,
-    'extraDetails': extraDetails,
-  };
-
-  factory StabilityParameterSelection.fromJson(Map<String, dynamic> json) =>
-      StabilityParameterSelection(
-        description: json['description'] ?? '',
-        instrumentType: json['instrumentType'] ?? '',
-        instrument: json['instrument'] ?? '',
-        parameter: json['parameter'] ?? '',
-        details: json['details'] ?? '',
-        extraDetails: json['extraDetails'] != null
-            ? Map<String, dynamic>.from(json['extraDetails'])
-            : null,
-      );
 }
 
 class _StabilityScreenState extends State<StabilityScreen> {
@@ -81,8 +44,10 @@ class _StabilityScreenState extends State<StabilityScreen> {
   // PPM Specific
   List<String> _ppmPLConfigs = [];
   List<String> _ppmPulseProfiles = [];
+  List<String> _ppmChannels = [];
   String? _selectedPpmPLConfig;
   String? _selectedPpmPulseProfile;
+  String? _selectedPpmChannel;
 
   // TM Specific
   final TextEditingController _tmMnemonicController = TextEditingController();
@@ -111,6 +76,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
           _spectrumProfiles = metadata.profiles;
           _ppmPLConfigs = metadata.plConfigs;
           _ppmPulseProfiles = metadata.pulseProfiles;
+          _ppmChannels = metadata.ppmChannels;
           _isLoading = false;
         });
       } else {
@@ -192,20 +158,21 @@ class _StabilityScreenState extends State<StabilityScreen> {
       }
 
       extraDetails = {
-        'originalValue': freq,
-        'originalUnit': _pmFrequencyUnit,
         'frequencyHz': freq * multiplier,
       };
     } else if (_selectedType == 'PPM') {
-      if (_selectedPpmPLConfig == null || _selectedPpmPulseProfile == null) {
+      if (_selectedPpmPLConfig == null ||
+          _selectedPpmPulseProfile == null ||
+          _selectedPpmChannel == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please select PL Config and Pulse Profile'),
+            content: Text('Please select Channel, PL Config and Pulse Profile'),
           ),
         );
         return;
       }
       extraDetails = {
+        'channel': _selectedPpmChannel,
         'plConfig': _selectedPpmPLConfig,
         'pulseProfile': _selectedPpmPulseProfile,
       };
@@ -242,6 +209,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
       _pmFrequencyController.clear();
       _selectedPpmPLConfig = null;
       _selectedPpmPulseProfile = null;
+      _selectedPpmChannel = null;
       _tmMnemonicController.clear();
       _selectedParameter = null;
     });
@@ -1050,6 +1018,19 @@ class _StabilityScreenState extends State<StabilityScreen> {
           });
         },
       ),
+      const SizedBox(height: 16),
+      _buildDropdownEffect(
+        theme,
+        label: 'Channel',
+        value: _selectedPpmChannel,
+        items: _ppmChannels,
+        icon: Icons.settings_input_component_rounded,
+        onChanged: (val) {
+          setState(() {
+            _selectedPpmChannel = val;
+          });
+        },
+      ),
     ];
   }
 
@@ -1299,12 +1280,11 @@ class _StabilityScreenState extends State<StabilityScreen> {
         surfaceTintColor: Colors.white,
         backgroundColor: Colors.white,
         title: Text(
-          'Start Stability',
+          'Start Stability Monitoring?',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Starting stability monitoring for ${_selectedParameters.length} parameters...',
-          style: GoogleFonts.inter(color: Colors.grey.shade600),
+          'This will initiate real-time monitoring for ${_selectedParameters.length} parameters using the profile "${_profileNameController.text}".',
         ),
         actions: [
           TextButton(
@@ -1312,7 +1292,21 @@ class _StabilityScreenState extends State<StabilityScreen> {
             child: const Text('CANCEL'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => StabilityMonitoringScreen(
+                    parameters: List.from(_selectedParameters),
+                    profileName: _profileNameController.text,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('CONFIRM'),
           ),
         ],
