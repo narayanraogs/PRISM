@@ -137,6 +137,10 @@ func (o *Orchestrator) RunTests() {
 		o.CommChannel <- o.Progress
 
 		if o.ctx.Err() != nil {
+			for j := i + 1; j < len(o.TestTypes); j++ {
+				o.Progress.TestStatus[j].TestStatus = "Aborted"
+			}
+			o.CommChannel <- o.Progress
 			break
 		}
 

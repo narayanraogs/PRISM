@@ -132,51 +132,6 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          actions: [
-            if (_isCompleted)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  label: const Text('DISMISS'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                  ),
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: _isAborting ? null : _handleAbort,
-                  icon: _isAborting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.stop),
-                  label: Text(_isAborting ? 'ABORTING...' : 'ABORT'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                ),
-              ),
-          ],
         ),
         body: StreamBuilder<TestProgressResponse>(
           stream: _progressStream,
@@ -1167,17 +1122,24 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
               ],
               if (!_isCompleted) ...[
                 const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // Abort logic - normally we'd send an abort signal via websocket
-                    _handleInput('ABORT');
-                  },
-                  icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                  label: const Text('ABORT'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
+                ElevatedButton.icon(
+                  onPressed: _isAborting ? null : _handleAbort,
+                  icon: _isAborting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.stop_circle_outlined, size: 18),
+                  label: Text(_isAborting ? 'ABORTING...' : 'ABORT'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
+                      horizontal: 24,
                       vertical: 16,
                     ),
                     shape: RoundedRectangleBorder(
@@ -1188,8 +1150,8 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
               ] else ...[
                 ElevatedButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('BACK TO DASHBOARD'),
+                  icon: const Icon(Icons.close),
+                  label: const Text('DISMISS'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey.shade800,
                     foregroundColor: Colors.white,

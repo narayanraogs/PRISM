@@ -1401,7 +1401,11 @@ class ServerService extends ChangeNotifier {
   }
 
   void sendAbort() {
-    _progressChannel?.sink.add('abort');
+    _progressChannel?.sink.add(
+      jsonEncode({
+        'Parameters': ['abort'],
+      }),
+    );
   }
 
   void closeTestProgress() {

@@ -142,8 +142,11 @@ func testProgress(c *gin.Context) {
 			var inp ClientInput
 			err := conn.ReadJSON(&inp)
 			if err != nil {
-				// Client disconnected or sent bad data, close the channel to signal this
 				return
+			}
+			if len(inp.Parameters) > 0 && inp.Parameters[0] == "abort" {
+				orchestrator.Abort()
+				continue
 			}
 			clientInputChan <- inp
 		}
@@ -151,18 +154,6 @@ func testProgress(c *gin.Context) {
 
 	// Goroutine to run the tests
 	go orchestrator.RunTests()
-
-	go func() {
-		for {
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-			if string(msg) == "abort" {
-				orchestrator.Abort()
-			}
-		}
-	}()
 
 	// This single loop is the ONLY consumer of the CommChannel.
 	for update := range orchestrator.CommChannel {
