@@ -26,6 +26,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
   bool _isLoading = true;
   String _measuringStatus = '';
   bool _showGraph = false;
+  bool _showConnections = false;
 
   List<String> _cableSuggestions = [];
   List<String> _deviceProfiles = [];
@@ -85,9 +86,67 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
     }
   }
 
+  void _showAppNotification({
+    required String title,
+    required String message,
+    required NotificationType type,
+  }) {
+    if (!mounted) return;
+
+    // 1. Add to Persistence Notification Center
+    context.read<NotificationService>().addNotification(
+      title: title,
+      message: message,
+      type: type,
+    );
+
+    // 2. Show Toast (SnackBar)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              type == NotificationType.success
+                  ? Icons.check_circle
+                  : type == NotificationType.error
+                  ? Icons.error
+                  : Icons.info,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(message, style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: type == NotificationType.success
+            ? Colors.green.shade600
+            : type == NotificationType.error
+            ? Colors.red.shade600
+            : type == NotificationType.warning
+            ? Colors.orange.shade600
+            : Colors.blue.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   void _performAction(String action) {
     if (_cableNameController.text.trim().isEmpty && action != 'pmreference') {
-      context.read<NotificationService>().addNotification(
+      _showAppNotification(
         title: 'Validation Error',
         message: 'Please enter a Cable Name',
         type: NotificationType.error,
@@ -152,7 +211,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                 _isMeasuring = false;
                 _measuringStatus = '';
               });
-              context.read<NotificationService>().addNotification(
+              _showAppNotification(
                 title: 'Connection Error',
                 message: e.toString(),
                 type: NotificationType.error,
@@ -200,6 +259,8 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (_showConnections)
+                                _buildConnectionsOverlay(theme),
                               _buildTopStatusCards(theme),
                               const SizedBox(height: 24),
                               Row(
@@ -261,6 +322,39 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                         'This may take a few minutes...',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          context
+                              .read<ServerService>()
+                              .abortTVACCableLossMeasurement();
+                          setState(() {
+                            _isMeasuring = false;
+                            _measuringStatus = '';
+                          });
+                          _showAppNotification(
+                            title: 'Measurement Aborted',
+                            message:
+                                'The measurement process was stopped by user.',
+                            type: NotificationType.warning,
+                          );
+                        },
+                        icon: const Icon(Icons.stop, size: 18),
+                        label: const Text('Abort Measurement'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade50,
+                          foregroundColor: Colors.red,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.red.shade100),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -292,6 +386,129 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface.withOpacity(0.8),
           ),
+        ),
+      ),
+      actions: [
+        IconButton.filledTonal(
+          onPressed: () => setState(() => _showConnections = !_showConnections),
+          icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
+          tooltip: 'Show Connection Diagrams',
+        ),
+        const SizedBox(width: 16),
+      ],
+    );
+  }
+
+  Widget _buildConnectionsOverlay(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Reference Connection Diagrams',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _showConnections = false),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildDiagramCard(
+                theme,
+                '1. PM Zero Connection',
+                'Connect Power Sensor directly to PM Zero output for reference.',
+                Icons.shutter_speed,
+              ),
+              const SizedBox(width: 20),
+              _buildDiagramCard(
+                theme,
+                '2. Cable Measurement',
+                'Insert the cable under test between the source and the sensor.',
+                Icons.settings_input_antenna,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiagramCard(
+    ThemeData theme,
+    String title,
+    String desc,
+    IconData icon,
+  ) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 140,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.image_outlined, size: 40, color: Colors.grey),
+                  SizedBox(height: 8),
+                  Text(
+                    '[ Placeholder Image ]',
+                    style: TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              desc,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -655,18 +872,6 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton.filledTonal(
-                onPressed: _isMeasuring
-                    ? () => setState(() => _isMeasuring = false)
-                    : null,
-                icon: const Icon(Icons.stop),
-                style: IconButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.red.withOpacity(0.1),
-                  foregroundColor: Colors.red,
                 ),
               ),
             ],

@@ -12,6 +12,22 @@ type TSMAttnProvider struct {
 	Difference       []float64
 }
 
+func (t *TSMAttnProvider) GetDeviation(required float64) float64 {
+	index := slices.Index(t.RequiredAttn, required)
+	if index != -1 {
+		return t.Difference[index]
+	}
+	if required < slices.Min(t.RequiredAttn) {
+		return required - t.MeasuredAttn[0]
+	}
+
+	if required > slices.Max(t.RequiredAttn) {
+		return required - t.MeasuredAttn[len(t.MeasuredAttn)-1]
+	}
+	index = getNearest(t.MeasuredAttn, required)
+	return required - t.MeasuredAttn[index]
+}
+
 func GetCorrectedProfile(measured TSMAttnProvider, fixedPadValue float64, stepSize float64) TSMAttnProvider {
 	minValue := slices.Min(measured.RequiredAttn)
 	maxValue := slices.Max(measured.RequiredAttn)

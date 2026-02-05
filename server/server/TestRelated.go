@@ -92,7 +92,7 @@ func startTests(c *gin.Context) {
 func testProgress(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		logger.Log.Error("Error upgrading connection:", err)
+		logger.Log.Error("Error upgrading connection:", "error", err)
 		return
 	}
 	defer conn.Close()
@@ -100,7 +100,7 @@ func testProgress(c *gin.Context) {
 	var req StartTestsRequest
 	err = conn.ReadJSON(&req)
 	if err != nil {
-		logger.Log.Error("Error reading initial client registration:", err)
+		logger.Log.Error("Error reading initial client registration:", "error", err)
 		return
 	}
 
@@ -152,6 +152,18 @@ func testProgress(c *gin.Context) {
 	// Goroutine to run the tests
 	go orchestrator.RunTests()
 
+	go func() {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			if string(msg) == "abort" {
+				orchestrator.Abort()
+			}
+		}
+	}()
+
 	// This single loop is the ONLY consumer of the CommChannel.
 	for update := range orchestrator.CommChannel {
 		// 1. Forward the update to the client (with a lock).
@@ -159,7 +171,7 @@ func testProgress(c *gin.Context) {
 		err := conn.WriteJSON(update)
 		writeMutex.Unlock()
 		if err != nil {
-			logger.Log.Error("Websocket write error:", err)
+			logger.Log.Error("Websocket write error:", "error", err)
 			return // Exit if we can't write to the client.
 		}
 

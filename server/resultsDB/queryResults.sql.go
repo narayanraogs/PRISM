@@ -163,6 +163,33 @@ func (q *Queries) getCableNames(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const getCableNamesForCableLoss = `-- name: getCableNamesForCableLoss :many
+Select distinct "CableName" from "CableLosses"
+`
+
+func (q *Queries) getCableNamesForCableLoss(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getCableNamesForCableLoss)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var CableName string
+		if err := rows.Scan(&CableName); err != nil {
+			return nil, err
+		}
+		items = append(items, CableName)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMeasuredTSMInternalLoss = `-- name: getMeasuredTSMInternalLoss :one
 Select "PathMnemonic","MeasuredLosses" from "TSMInternalLoss"
 where "InputPort" = ? and "OutputPort" = ?
@@ -408,7 +435,7 @@ type insertCableLossEntryParams struct {
 	Date        string
 	Time        string
 	CableName   string
-	CableLength int64
+	CableLength float64
 	Loss        string
 }
 

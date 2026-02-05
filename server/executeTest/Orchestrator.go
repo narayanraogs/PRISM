@@ -136,6 +136,10 @@ func (o *Orchestrator) RunTests() {
 		}
 		o.CommChannel <- o.Progress
 
+		if o.ctx.Err() != nil {
+			break
+		}
+
 		time.Sleep(1 * time.Second)
 	}
 }

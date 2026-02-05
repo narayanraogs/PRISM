@@ -23,11 +23,12 @@ type SGPowerMeasurement struct {
 	sa              driver.SA
 	sg              driver.SG
 	currentStatus   [][]string
-	statusMonitor   chan MeasurementStatus
+	statusMonitor   chan AttnMeasurementStatus
+	deviations      []CorrectedDeviation
 	stop            bool
 }
 
-func (sg *SGPowerMeasurement) GetStatusMonitor() chan MeasurementStatus {
+func (sg *SGPowerMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return sg.statusMonitor
 }
 
@@ -40,9 +41,17 @@ func (sg *SGPowerMeasurement) Initialize(deviceProfile string, rxName string, sp
 	sg.minPower = minPower
 	sg.stepSize = stepSize
 	sg.currentStatus = make([][]string, 0)
-	sg.statusMonitor = make(chan MeasurementStatus, 20)
-	sg.loadDevices()
-	sg.loadDetails()
+	sg.statusMonitor = make(chan AttnMeasurementStatus, 20)
+	ok := sg.loadDevices()
+	if !ok {
+		sg.setError("Unable to load devices")
+		return
+	}
+	ok = sg.loadDetails()
+	if !ok {
+		sg.setError("Unable to load details")
+		return
+	}
 	header := make([]string, 0)
 	header = append(header, "Sl. No", "Set Power", "Measured Power", "Deviation")
 	sg.currentStatus = append(sg.currentStatus, header)
@@ -89,22 +98,22 @@ func (sg *SGPowerMeasurement) loadDetails() bool {
 }
 
 func (sg *SGPowerMeasurement) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: true,
+		Error:     true,
+		Message:   message,
+		HasData:   false,
 	}
 	sg.statusMonitor <- measure
 	close(sg.statusMonitor)
 }
 
 func (sg *SGPowerMeasurement) StartMeasurement() {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "SG Power Measurement Started",
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "SG Power Measurement Started",
+		HasData:   false,
 	}
 	sg.statusMonitor <- measure
 	response := sg.sa.SetAlignmentOff()
@@ -167,7 +176,7 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 		return
 	}
 	cableLoss := response.Result["MarkerY"].Value
-	slNo := 1
+	slNo := 0
 	slNoStr := strconv.Itoa(slNo)
 
 	for powerSet := sg.minPower; powerSet <= sg.maxPower; powerSet = powerSet + sg.stepSize {
@@ -193,27 +202,27 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 		actualPower := response.Result["MarkerY"].Value - cableLoss
 
 		actualPowerStr := fmt.Sprintf("%.3f", actualPower)
-		slNoStr = strconv.Itoa(slNo)
 		slNo = slNo + 1
+		slNoStr = strconv.Itoa(slNo)
+
 		difference := actualPower - powerSet
 		differenceStr := fmt.Sprintf("%.3f", difference)
 		row := make([]string, 0)
 		row = append(row, slNoStr, powerStr, actualPowerStr, differenceStr)
 		sg.currentStatus = append(sg.currentStatus, row)
-		measure = MeasurementStatus{
+		measure = AttnMeasurementStatus{
 			Completed:     false,
-			Success:       true,
+			Error:         false,
+			PlotDeviation: true,
 			Message:       "Completed Measurement for " + powerStr,
-			CurrentStatus: make([][]string, 0),
 		}
-		measure.CurrentStatus = append(measure.CurrentStatus, row)
+		measure.AddData(slNo, powerSet, actualPower, difference)
 		sg.statusMonitor <- measure
 	}
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Saving Results",
-		CurrentStatus: make([][]string, 0),
+	measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "Saving Results",
 	}
 	sg.statusMonitor <- measure
 
@@ -231,12 +240,46 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 		}
 	}
 
-	measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var requried = make([]float64, 0)
+	var measured = make([]float64, 0)
+	var difference = make([]float64, 0)
+	for i, row := range sg.currentStatus {
+		if i == 0 {
+			continue
+		}
+		tempR, _ := strconv.ParseFloat(row[1], 64)
+		tempM, _ := strconv.ParseFloat(row[2], 64)
+		tempD, _ := strconv.ParseFloat(row[3], 64)
+		requried = append(requried, tempR)
+		measured = append(measured, tempM)
+		difference = append(difference, tempD)
+	}
+
+	var measuredStruct utils.TSMAttnProvider
+	measuredStruct.RequiredAttn = requried
+	measuredStruct.MeasuredAttn = measured
+	measuredStruct.Difference = difference
+	var correctedStruct utils.TSMAttnProvider
+	correctedStruct = utils.GetCorrectedProfile(measuredStruct, 0, sg.stepSize)
+
+	sg.deviations = make([]CorrectedDeviation, 0)
+	for i := 0; i < len(requried); i++ {
+		var temp CorrectedDeviation
+		temp.SetValue = requried[i]
+		temp.MeasuredDeviation = difference[i]
+		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
+		sg.deviations = append(sg.deviations, temp)
+	}
+
+	measure = AttnMeasurementStatus{
+		Completed: true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
 	sg.statusMonitor <- measure
 	close(sg.statusMonitor)
+}
+
+func (sg *SGPowerMeasurement) GetCorrectedDeviations() []CorrectedDeviation {
+	return sg.deviations
 }

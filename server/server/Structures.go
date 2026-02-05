@@ -1,6 +1,9 @@
 package server
 
-import "prismServer/utilities"
+import (
+	"prismServer/tne"
+	"prismServer/utilities"
+)
 
 type ServerStatus struct {
 	SatelliteName string
@@ -202,4 +205,113 @@ type TVACCableLossResponse struct {
 	IsPMZeroed   bool                            `json:"isPmZeroed"`
 	OK           bool                            `json:"ok"`
 	Message      string                          `json:"message"`
+}
+
+type CableLossMetadata struct {
+	OK             bool     `json:"ok"`
+	Message        string   `json:"message"`
+	Frequencies    []string `json:"frequencies"`    // e.g. ["L-Band;1.5", "S-Band;2.2"]
+	DeviceProfiles []string `json:"deviceProfiles"` // From LossMeasurementFrequencies/DeviceProfiles
+	ExistingCables []string `json:"existingCables"` // Distinct cable names from cable_loss table
+	IsPMZeroed     bool     `json:"isPmZeroed"`     // Check if PM ref exists in resultsDB
+}
+
+type CableLossHistoryResponse struct {
+	OK      bool                  `json:"ok"`
+	Message string                `json:"message"`
+	History []tne.CableLossRecord `json:"history"`
+}
+
+type CableLossRequest struct {
+	Action              string   `json:"action"` // "pmreference" or "measure"
+	DeviceProfile       string   `json:"deviceProfile"`
+	Channel             string   `json:"channel"` // "A" or "B"
+	CableName           string   `json:"cableName"`
+	CableLength         float64  `json:"cableLength"`
+	SelectedFrequencies []string `json:"selectedFrequencies"` // Names only, e.g. ["L-Band", "Ku1"]
+}
+
+type MeasurementStatus struct {
+	Message   string `json:"message"`
+	Completed bool   `json:"completed"`
+	Success   bool   `json:"success"`
+	Error     bool   `json:"error"`
+}
+
+type AttnRange struct {
+	Max      float64
+	Min      float64
+	StepSize float64
+}
+
+type AttnMetaData struct {
+	DeviceProfile    []string
+	Receiver         []string
+	SprectrumProfile []string
+	TSMConfig        []string
+	GTxComponents    []string
+	AttnRanges       map[string]AttnRange
+	OK               bool
+	Message          string
+}
+
+type AttnRequest struct {
+	Type            string
+	DeviceProfile   string
+	Receiver        string
+	SpectrumProfile string
+	TSMConfig       string
+	Component       string
+	Min             float64
+	Max             float64
+	Step            float64
+}
+
+type AttnProgressResponse struct {
+	MeasurementStatus tne.AttnMeasurementStatus `json:"measurementStatus,omitempty"`
+	Deviations        []tne.CorrectedDeviation  `json:"deviations,omitempty"`
+	OK                bool                      `json:"ok"`
+	Message           string                    `json:"message"`
+}
+
+type DatabaseMetadata struct {
+	TestPhases []string
+	OK         bool
+	Message    string
+}
+
+type ConfigsForLossRequest struct {
+	TestPhase string
+}
+
+type ConfigsForLossResponse struct {
+	Configs []string
+	OK      bool
+	Message string
+}
+
+type LossProfileRequest struct {
+	TestPhase string
+	Config    string
+}
+
+type LossProfileResponse struct {
+	Profile string
+	OK      bool
+	Message string
+}
+
+type SaveLossProfileRequest struct {
+	TestPhase string
+	Config    string
+	Profile   string
+}
+
+type SelectTestPhaseRequest struct {
+	TestPhase string
+}
+
+type AddNewTestPhaseRequest struct {
+	NewPhase string
+	CopyFrom string
 }

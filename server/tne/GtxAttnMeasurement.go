@@ -24,11 +24,12 @@ type GTxAttnMeasurement struct {
 	sa              driver.SA
 	gtx             driver.GTX
 	currentStatus   [][]string
-	statusMonitor   chan MeasurementStatus
+	statusMonitor   chan AttnMeasurementStatus
+	deviations      []CorrectedDeviation
 	stop            bool
 }
 
-func (gtx *GTxAttnMeasurement) GetStatusMonitor() chan MeasurementStatus {
+func (gtx *GTxAttnMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return gtx.statusMonitor
 }
 
@@ -42,9 +43,17 @@ func (gtx *GTxAttnMeasurement) Initialize(deviceProfile string, rxName string, s
 	gtx.minPower = minPower
 	gtx.stepSize = stepSize
 	gtx.currentStatus = make([][]string, 0)
-	gtx.statusMonitor = make(chan MeasurementStatus, 20)
-	gtx.loadDevices()
-	gtx.loadDetails()
+	gtx.statusMonitor = make(chan AttnMeasurementStatus, 20)
+	ok := gtx.loadDevices()
+	if !ok {
+		gtx.setError("Unable to Load devices")
+		return
+	}
+	ok = gtx.loadDetails()
+	if !ok {
+		gtx.setError("Unable to Load Details")
+		return
+	}
 	header := make([]string, 0)
 	header = append(header, "Sl. No", "Set Power", "Measured Power", "Deviation")
 	gtx.currentStatus = append(gtx.currentStatus, header)
@@ -91,22 +100,20 @@ func (gtx *GTxAttnMeasurement) loadDetails() bool {
 }
 
 func (gtx *GTxAttnMeasurement) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: true,
+		Error:     true,
+		Message:   message,
 	}
 	gtx.statusMonitor <- measure
 	close(gtx.statusMonitor)
 }
 
 func (gtx *GTxAttnMeasurement) StartMeasurement() {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "GTx Power Measurement Started",
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "GTx Power Measurement Started",
 	}
 	gtx.statusMonitor <- measure
 	response := gtx.sa.SetAlignmentOff()
@@ -190,28 +197,29 @@ func (gtx *GTxAttnMeasurement) StartMeasurement() {
 		actualPower := response.Result["MarkerY"].Value - initalPower
 
 		actualPowerStr := fmt.Sprintf("%.3f", actualPower)
-		slNoStr := strconv.Itoa(slNo)
 		slNo = slNo + 1
+		slNoStr := strconv.Itoa(slNo)
+
 		difference := actualPower - powerSet
 		differenceStr := fmt.Sprintf("%.3f", difference)
 		row := make([]string, 0)
 		row = append(row, slNoStr, powerStr, actualPowerStr, differenceStr)
 		gtx.currentStatus = append(gtx.currentStatus, row)
 
-		measure = MeasurementStatus{
+		measure = AttnMeasurementStatus{
 			Completed:     false,
-			Success:       true,
+			Error:         false,
 			Message:       "Completed Measurement for " + powerStr,
-			CurrentStatus: make([][]string, 0),
+			PlotDeviation: true,
 		}
-		measure.CurrentStatus = append(measure.CurrentStatus, row)
+		measure.AddData(slNo, powerSet, actualPower, difference)
 		gtx.statusMonitor <- measure
 	}
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Saving Results",
-		CurrentStatus: make([][]string, 0),
+	measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "Saving Results",
+		HasData:   false,
 	}
 	gtx.statusMonitor <- measure
 
@@ -229,12 +237,47 @@ func (gtx *GTxAttnMeasurement) StartMeasurement() {
 		}
 	}
 
-	measure = MeasurementStatus{
+	var requried = make([]float64, 0)
+	var measured = make([]float64, 0)
+	var difference = make([]float64, 0)
+	for i, row := range gtx.currentStatus {
+		if i == 0 {
+			continue
+		}
+		tempR, _ := strconv.ParseFloat(row[1], 64)
+		tempM, _ := strconv.ParseFloat(row[2], 64)
+		tempD, _ := strconv.ParseFloat(row[3], 64)
+		requried = append(requried, tempR)
+		measured = append(measured, tempM)
+		difference = append(difference, tempD)
+	}
+
+	var measuredStruct utils.TSMAttnProvider
+	measuredStruct.RequiredAttn = requried
+	measuredStruct.MeasuredAttn = measured
+	measuredStruct.Difference = difference
+	var correctedStruct utils.TSMAttnProvider
+	correctedStruct = utils.GetCorrectedProfile(measuredStruct, 0, gtx.stepSize)
+
+	gtx.deviations = make([]CorrectedDeviation, 0)
+	for i := 0; i < len(requried); i++ {
+		var temp CorrectedDeviation
+		temp.SetValue = requried[i]
+		temp.MeasuredDeviation = difference[i]
+		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
+		gtx.deviations = append(gtx.deviations, temp)
+	}
+	measure = AttnMeasurementStatus{
 		Completed:     true,
-		Success:       true,
+		Error:         false,
 		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+		HasData:       false,
+		PlotDeviation: false,
 	}
 	gtx.statusMonitor <- measure
 	close(gtx.statusMonitor)
+}
+
+func (gtx *GTxAttnMeasurement) GetCorrectedDeviations() []CorrectedDeviation {
+	return gtx.deviations
 }

@@ -13,7 +13,7 @@ type CableLoss struct {
 	Date        string
 	Time        string
 	CableName   string
-	CableLength int64
+	CableLength float64
 	Loss        string
 }
 

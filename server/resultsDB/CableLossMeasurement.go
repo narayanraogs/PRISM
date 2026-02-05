@@ -2,11 +2,6 @@ package resultsDB
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"prismServer/database"
-	"slices"
-	"strconv"
 )
 
 type cableLossMeasured struct {
@@ -32,6 +27,15 @@ func GetCableNames() ([]string, bool) {
 	return cableNames, true
 }
 
+func GetCableNamesForCableLoss() ([]string, bool) {
+	ctx := context.Background()
+	cableNames, err := dbObject.getCableNamesForCableLoss(ctx)
+	if err != nil {
+		return nil, false
+	}
+	return cableNames, true
+}
+
 func UpdateCableLossPMReference(date string, time string, loss string) bool {
 	ctx := context.Background()
 	var arg updateCableLossPMReferenceParams
@@ -45,14 +49,14 @@ func UpdateCableLossPMReference(date string, time string, loss string) bool {
 	return true
 }
 
-func InsertCableLoss(date string, time string, cableName string, cableLength int, loss string) bool {
+func InsertCableLoss(date string, time string, cableName string, cableLength float64, loss string) bool {
 	ctx := context.Background()
 	var arg insertCableLossEntryParams
 	arg.Date = date
 	arg.Time = time
 	arg.Loss = loss
 	arg.CableName = cableName
-	arg.CableLength = int64(cableLength)
+	arg.CableLength = cableLength
 	err := dbObject.insertCableLossEntry(ctx, arg)
 	if err != nil {
 		return false
@@ -60,51 +64,10 @@ func InsertCableLoss(date string, time string, cableName string, cableLength int
 	return true
 }
 
-func GetAllCableLosses() ([][]string, bool) {
-	var tbr = make([][]string, 0)
-	var frequencies = make([]string, 0)
+func GetAllCableLosses() ([]CableLoss, error) {
 	ctx := context.Background()
 	values, err := dbObject.getCableLosses(ctx)
-	if err != nil {
-		return nil, false
-	}
-	frequencyNames, _ := database.GetLossMeasurementFrequencyNames()
-	for _, name := range frequencyNames {
-		freq, _ := database.GetFrequencyForLossMeasurement(name)
-		frequencies = append(frequencies, fmt.Sprintf("%.2f", freq))
-	}
-
-	firstRow := make([]string, 0)
-	firstRow = append(firstRow, "SlNo", "Cable Name", "Cable Length", "Date", "Time")
-	firstRow = append(firstRow, frequencyNames...)
-	secondRow := make([]string, 0)
-	secondRow = append(secondRow, "", "", "", "", "")
-	secondRow = append(secondRow, frequencies...)
-	tbr = append(tbr, firstRow, secondRow)
-	for i, value := range values {
-		var row = make([]string, 0)
-		row = append(row, strconv.Itoa(i+1), value.CableName)
-		row = append(row, strconv.Itoa(int(value.CableLength)))
-		row = append(row, value.Date, value.Time)
-		var cableLoss cableLossMeasured
-		err := json.Unmarshal([]byte(value.Loss), &cableLoss)
-		if err != nil {
-			for i := 0; i < len(frequencies); i++ {
-				row = append(row, "-")
-			}
-		} else {
-			for _, freq := range frequencies {
-				index := slices.Index(cableLoss.Frequency, freq)
-				if index == -1 {
-					row = append(row, "-")
-				} else {
-					row = append(row, cableLoss.Measured[index])
-				}
-			}
-		}
-		tbr = append(tbr, row)
-	}
-	return tbr, true
+	return values, err
 }
 
 func GetCableLossPMReference() (string, bool) {

@@ -120,21 +120,9 @@ class _MainLayoutState extends State<MainLayout> {
 
     // Category 4: Database
     NavigationItem(
-      label: 'Test Phase',
-      icon: Icons.layers_outlined,
-      selectedIcon: Icons.layers,
-      category: 'DATABASE',
-    ),
-    NavigationItem(
-      label: 'Downlink Loss',
-      icon: Icons.arrow_downward,
-      selectedIcon: Icons.arrow_downward,
-      category: 'DATABASE',
-    ),
-    NavigationItem(
-      label: 'Uplink Loss',
-      icon: Icons.arrow_upward,
-      selectedIcon: Icons.arrow_upward,
+      label: 'Database Management',
+      icon: Icons.storage_outlined,
+      selectedIcon: Icons.storage,
       category: 'DATABASE',
     ),
 

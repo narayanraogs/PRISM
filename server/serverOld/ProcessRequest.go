@@ -59,7 +59,7 @@ func processTableValueRequest(c *client, request valueRequest) tableValueRespons
 	var message string
 	switch request.ParameterName {
 	case "CableLossTable":
-		values, ok = resultsDB.GetAllCableLosses()
+		values = make([][]string, 24)
 		if ok {
 			values = values[2:]
 		}

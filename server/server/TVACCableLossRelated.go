@@ -128,6 +128,18 @@ func measureTVACCableLoss(c *gin.Context) {
 		return
 	}
 
+	go func() {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			if string(msg) == "abort" {
+				tvac.Stop()
+			}
+		}
+	}()
+
 	for s := range sts {
 		if err := conn.WriteJSON(s); err != nil {
 			return

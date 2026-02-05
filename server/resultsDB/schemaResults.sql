@@ -34,7 +34,7 @@ CREATE TABLE "CableLosses" (
     "Date"        TEXT NOT NULL,
     "Time"        TEXT    NOT NULL,
     "CableName"   TEXT NOT NULL,
-    "CableLength" INTEGER     NOT NULL,
+    "CableLength" REAL     NOT NULL,
     "Loss"        TEXT NOT NULL
 );
 

@@ -26,11 +26,39 @@ type TSMAttnMeasurement struct {
 	tsm              driver.TSM
 	sg               driver.SG
 	currentStatus    [][]string
-	statusMonitor    chan MeasurementStatus
-	stop             bool
+	statusMonitor    chan AttnMeasurementStatus
+	deviations       []CorrectedDeviation
+
+	stop bool
 }
 
-func (tsm *TSMAttnMeasurement) GetStatusMonitor() chan MeasurementStatus {
+type CorrectedDeviation struct {
+	SetValue           float64
+	MeasuredDeviation  float64
+	CorrectedDeviation float64
+}
+
+type AttnMeasurementStatus struct {
+	SlNo          int
+	SetAttn       float64
+	MeasuredAttn  float64
+	Deviation     float64
+	HasData       bool
+	Completed     bool
+	Error         bool
+	Message       string
+	PlotDeviation bool
+}
+
+func (t *AttnMeasurementStatus) AddData(slNo int, setAttn float64, measured float64, deviation float64) {
+	t.SlNo = slNo
+	t.SetAttn = setAttn
+	t.MeasuredAttn = measured
+	t.Deviation = deviation
+	t.HasData = true
+}
+
+func (tsm *TSMAttnMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return tsm.statusMonitor
 }
 
@@ -44,12 +72,18 @@ func (tsm *TSMAttnMeasurement) Initialize(deviceProfile string, rxName string, s
 	tsm.minPower = minPower
 	tsm.stepSize = stepSize
 	tsm.currentStatus = make([][]string, 0)
-	tsm.statusMonitor = make(chan MeasurementStatus, 20)
-	tsm.loadDevices()
-	tsm.loadDetails()
-	header := make([]string, 0)
-	header = append(header, "Sl. No", "Set Attn", "Measured Attn", "Deviation")
-	tsm.currentStatus = append(tsm.currentStatus, header)
+	tsm.currentStatus = append(tsm.currentStatus, []string{"Sl No", "Set Attn", "Measured Attn", "Deviation"})
+	tsm.statusMonitor = make(chan AttnMeasurementStatus, 20)
+	ok := tsm.loadDevices()
+	if !ok {
+		tsm.setError("Unable to load devices")
+		return
+	}
+	ok = tsm.loadDetails()
+	if !ok {
+		tsm.setError("Unable to load details")
+		return
+	}
 	tsm.stop = false
 }
 
@@ -106,22 +140,20 @@ func (tsm *TSMAttnMeasurement) loadDetails() bool {
 }
 
 func (tsm *TSMAttnMeasurement) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: true,
+		Error:     true,
+		Message:   message,
 	}
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
 }
 
 func (tsm *TSMAttnMeasurement) StartMeasurement() {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "TSM Power Measurement Started",
-		CurrentStatus: make([][]string, 0),
+	var measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "TSM Power Measurement Started",
 	}
 	tsm.statusMonitor <- measure
 	response := tsm.sa.SetAlignmentOff()
@@ -190,11 +222,10 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 		}
 	}
 
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Measuring initial power",
-		CurrentStatus: make([][]string, 0),
+	measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "Measuring initial power",
 	}
 	tsm.statusMonitor <- measure
 
@@ -210,14 +241,13 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 		return
 	}
 	initialPower := response.Result["MarkerY"].Value
-	slNo := 1
+	slNo := 0
 
 	if tsm.tsmConfig.IncludePad.Valid {
-		measure = MeasurementStatus{
-			Completed:     false,
-			Success:       true,
-			Message:       "Measuring Fixed Pad Attenuation",
-			CurrentStatus: make([][]string, 0),
+		measure = AttnMeasurementStatus{
+			Completed: false,
+			Error:     false,
+			Message:   "Measuring Fixed Pad Attenuation",
 		}
 		tsm.statusMonitor <- measure
 
@@ -233,24 +263,20 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 			return
 		}
 		power := response.Result["MarkerY"].Value - initialPower
-		slNoStr := strconv.Itoa(slNo)
 		slNo = slNo + 1
-		powerStr := fmt.Sprintf("%.3f", power)
-		row := make([]string, 0)
-		row = append(row, slNoStr, "FixedPad", powerStr, "-")
-		tsm.currentStatus = append(tsm.currentStatus, row)
 		response = tsm.tsm.SetDriverStatus(tsm.tsmConfig.ExcludePad.String)
 		if !response.Success {
 			tsm.setError("Unable to communicate with TSM")
 			return
 		}
-		measure = MeasurementStatus{
+		measure = AttnMeasurementStatus{
 			Completed:     false,
-			Success:       true,
+			Error:         false,
 			Message:       "Completed Measuring Fixed Pad Attenuation",
-			CurrentStatus: make([][]string, 0),
+			PlotDeviation: false,
 		}
-		measure.CurrentStatus = append(measure.CurrentStatus, row)
+		measure.AddData(slNo, 0, power, 0)
+		tsm.currentStatus = append(tsm.currentStatus, []string{fmt.Sprintf("%d", slNo), "FixedPad", fmt.Sprintf("%.3f", power), "-"})
 		tsm.statusMonitor <- measure
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -278,28 +304,24 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 		}
 		power := response.Result["MarkerY"].Value
 		actualAttn := initialPower - power
-		actualAttnStr := fmt.Sprintf("%.3f", actualAttn)
 		difference := attn - actualAttn
-		differenceStr := fmt.Sprintf("%.3f", difference)
-		slNoStr := strconv.Itoa(slNo)
 		slNo = slNo + 1
-		row := make([]string, 0)
-		row = append(row, slNoStr, setAttn, actualAttnStr, differenceStr)
-		tsm.currentStatus = append(tsm.currentStatus, row)
-		measure = MeasurementStatus{
+		measure = AttnMeasurementStatus{
 			Completed:     false,
-			Success:       true,
+			Error:         false,
 			Message:       "Completed Measuring for " + setAttn + " dB",
-			CurrentStatus: make([][]string, 0),
+			PlotDeviation: true,
 		}
-		measure.CurrentStatus = append(measure.CurrentStatus, row)
+		measure.AddData(slNo, attn, actualAttn, difference)
 		tsm.statusMonitor <- measure
+		tsm.currentStatus = append(tsm.currentStatus, []string{fmt.Sprintf("%d", slNo), setAttn, fmt.Sprintf("%.3f", actualAttn), fmt.Sprintf("%.3f", difference)})
+		time.Sleep(200 * time.Millisecond)
 	}
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Saving Results",
-		CurrentStatus: make([][]string, 0),
+	measure = AttnMeasurementStatus{
+		Completed: false,
+		Error:     false,
+		Message:   "Saving Results",
+		HasData:   false,
 	}
 	tsm.statusMonitor <- measure
 	var requried = make([]float64, 0)
@@ -323,14 +345,22 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 		measured = append(measured, tempM)
 		difference = append(difference, tempD)
 	}
+
 	var measuredStruct utils.TSMAttnProvider
 	measuredStruct.RequiredAttn = requried
 	measuredStruct.MeasuredAttn = measured
 	measuredStruct.Difference = difference
 	var correctedStruct utils.TSMAttnProvider
 	correctedStruct = utils.GetCorrectedProfile(measuredStruct, fixed, tsm.stepSize)
-	//plot measured and corrected in GNU plot and send to client
-	fmt.Println(correctedStruct)
+
+	tsm.deviations = make([]CorrectedDeviation, 0)
+	for i := 1; i < len(requried); i++ {
+		var temp CorrectedDeviation
+		temp.SetValue = requried[i]
+		temp.MeasuredDeviation = difference[i]
+		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
+		tsm.deviations = append(tsm.deviations, temp)
+	}
 
 	for _, rx := range tsm.linkedRxs {
 		fileName := utils.Config.BaseFolder + "/.resources/tsm-" + rx + ".csv"
@@ -340,12 +370,16 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 		}
 	}
 
-	measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	measure = AttnMeasurementStatus{
+		Completed: true,
+		Error:     false,
+		Message:   "Measurement Completed",
+		HasData:   false,
 	}
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
+}
+
+func (tsm *TSMAttnMeasurement) GetCorrectedDeviations() []CorrectedDeviation {
+	return tsm.deviations
 }

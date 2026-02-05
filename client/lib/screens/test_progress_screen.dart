@@ -20,6 +20,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
   final FocusNode _confirmationFocusNode = FocusNode();
 
   bool _isCompleted = false;
+  bool _isAborting = false;
 
   Timer? _countdownTimer;
   int _totalTimeout = 0;
@@ -71,8 +72,45 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     if (!_isCompleted) {
       setState(() {
         _isCompleted = true;
+        _isAborting = false;
       });
     }
+  }
+
+  void _handleAbort() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Abort Test Execution?'),
+        content: const Text(
+          'Are you sure you want to stop all currently running tests? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _isAborting = true;
+              });
+              final serverService = Provider.of<ServerService>(
+                context,
+                listen: false,
+              );
+              serverService.sendAbort();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('ABORT'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -108,6 +146,32 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey.shade200,
                     foregroundColor: Colors.black,
+                    elevation: 0,
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _isAborting ? null : _handleAbort,
+                  icon: _isAborting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.stop),
+                  label: Text(_isAborting ? 'ABORTING...' : 'ABORT'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
                     elevation: 0,
                   ),
                 ),

@@ -1,9 +1,13 @@
 package server
 
 import (
+	"prismServer/global"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+var gbl global.ClientGlobal
 
 func GetRouter() *gin.Engine {
 	r := gin.Default()
@@ -35,5 +39,23 @@ func GetRouter() *gin.Engine {
 	r.POST("/getTVACCableLossMetadata", getTVACCableLossMetadata)
 	r.POST("/getTVACCableMeasuredDetails", getTVACCableMeasuredDetails)
 	r.GET("/measureTVACCableLoss", measureTVACCableLoss)
+	//CableLossRelated
+	r.POST("/getCableLossMetadata", getCableLossMetadata)
+	r.POST("/getCableMeasuredDetails", getCableMeasuredDetails)
+	r.GET("/measureCableLoss", measureCableLoss)
+	//AttnRelated
+	r.POST("/getAttnMetadata", getAttnMetadata)
+	r.GET("/measureAttn", measureAttn)
+	//DatabaseRelated
+	r.POST("/getDatabaseMetadata", getDatabaseMetadata)
+	r.POST("/getConfigsForUplink", getConfigsForUplink)
+	r.POST("/getConfigsForDownlink", getConfigsForDownlink)
+	r.POST("/getUplinkLossProfile", getUplinkLossProfile)
+	r.POST("/getDownlinkLossProfile", getDownlinkLossProfile)
+	r.POST("/saveUplinkLossProfile", saveUplinkLossProfile)
+	r.POST("/saveDownlinkLossProfile", saveDownlinkLossProfile)
+	r.POST("/selectTestPhase", selectTestPhase)
+	r.POST("/addNewTestPhase", addNewTestPhase)
+
 	return r
 }

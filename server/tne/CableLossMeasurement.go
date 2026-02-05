@@ -3,6 +3,7 @@ package tne
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/resultsDB"
@@ -11,6 +12,20 @@ import (
 	"strings"
 	"time"
 )
+
+type CableLossRecord struct {
+	SlNo         int                `json:"slNo"`
+	CableName    string             `json:"cableName"`
+	Length       float64            `json:"length"`
+	Date         string             `json:"date"`
+	Time         string             `json:"time"`
+	Measurements []MeasurementPoint `json:"measurements"` // JSON data from DB
+}
+
+type MeasurementPoint struct {
+	Frequency float64 `json:"frequency"` // Value in GHz
+	Loss      float64 `json:"loss"`      // Value in dB
+}
 
 type CableLossMeasurement struct {
 	pmChannel     string
@@ -22,7 +37,14 @@ type CableLossMeasurement struct {
 	startTime     string
 	currentStatus [][]string
 	stop          bool
-	statusMonitor chan MeasurementStatus
+	statusMonitor chan RTStatus
+}
+
+type RTStatus struct {
+	Message   string `json:"message"`
+	Completed bool   `json:"completed"`
+	Success   bool   `json:"success"`
+	Error     bool   `json:"error"`
 }
 
 type MeasurementStatus struct {
@@ -32,7 +54,7 @@ type MeasurementStatus struct {
 	Success       bool
 }
 
-func (clm *CableLossMeasurement) GetStatusMonitor() chan MeasurementStatus {
+func (clm *CableLossMeasurement) GetStatusMonitor() chan RTStatus {
 	return clm.statusMonitor
 }
 
@@ -45,8 +67,12 @@ func (clm *CableLossMeasurement) Initialize(pmChannel string, deviceProfile stri
 	clm.pmChannel = pmChannel
 	clm.deviceProfile = deviceProfile
 	clm.frequencies = frequencies
-	clm.statusMonitor = make(chan MeasurementStatus, 20)
-	clm.loadDevices()
+	clm.statusMonitor = make(chan RTStatus, 20)
+	ok := clm.loadDevices()
+	if !ok {
+		clm.setError("Unable to load devices")
+		return
+	}
 	clm.stop = false
 }
 
@@ -99,11 +125,11 @@ func (clm *CableLossMeasurement) startMeasurement() []string {
 	measured := make([]string, len(freqs))
 	clm.currentStatus = append(clm.currentStatus, measured)
 	if !ok {
-		var measure = MeasurementStatus{
-			Completed:     true,
-			Success:       false,
-			Message:       "Unable to get details from Database",
-			CurrentStatus: make([][]string, 0),
+		var measure = RTStatus{
+			Completed: true,
+			Success:   false,
+			Error:     true,
+			Message:   "Unable to get details from Database",
 		}
 		clm.statusMonitor <- measure
 		close(clm.statusMonitor)
@@ -112,45 +138,45 @@ func (clm *CableLossMeasurement) startMeasurement() []string {
 	return freqs
 }
 
-func (clm *CableLossMeasurement) measureForFrequencies(frequencies []string, offset map[string]float64, measureAll bool) bool {
+func (clm *CableLossMeasurement) measureForFrequencies(frequencies []string, offset map[string]float64, measureAll bool) ([]float64, bool) {
 	response := clm.pm.SetChAAverageOff()
 	if !response.Success {
 		clm.setError("Unable to communicate with PM")
-		return false
+		return nil, false
 	}
 	response = clm.pm.SetChBAverageOff()
 	if !response.Success {
 		clm.setError("Unable to communicate with PM")
-		return false
+		return nil, false
 	}
 	response = clm.sg.SetModOff()
 	if !response.Success {
 		clm.setError("Unable to communicate with SG")
-		return false
+		return nil, false
 	}
 	defer func() {
 		clm.pm.SetChAAverageOn()
 		clm.pm.SetChBAverageOn()
 		clm.sg.SetRFOff()
-		fmt.Println("Restored")
 	}()
+	var result = make([]float64, 0)
 
-	for i, freq := range frequencies {
+	for _, freq := range frequencies {
 		if clm.stop {
 			clm.setError("User Aborted")
-			return false
+			return nil, false
 		}
 		if !measureAll {
 			if slices.Index(clm.frequencies, freq) == -1 {
-				clm.currentStatus[1][i] = "-"
+				result = append(result, math.NaN())
 				continue
 			}
 		}
-		var measure = MeasurementStatus{
-			Completed:     false,
-			Success:       true,
-			Message:       "Measuring Loss for " + freq + " Hz",
-			CurrentStatus: make([][]string, 0),
+		var measure = RTStatus{
+			Completed: false,
+			Success:   true,
+			Error:     false,
+			Message:   "Measuring Loss for " + freq + " Hz",
 		}
 		clm.statusMonitor <- measure
 
@@ -158,61 +184,61 @@ func (clm *CableLossMeasurement) measureForFrequencies(frequencies []string, off
 		response = clm.sg.SetFrequency(f)
 		if !response.Success {
 			clm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 		power := offset[freq]
 		power = power * -1
 		response = clm.sg.SetPower(power)
 		if !response.Success {
 			clm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 		response = clm.sg.SetRFOn()
 		if !response.Success {
 			clm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 		if strings.EqualFold(clm.pmChannel, "A") {
 			response = clm.pm.SetChannelA(f)
 			if !response.Success {
 				clm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
 			response = clm.pm.GetPowerChannelA(true)
 			if !response.Success {
 				clm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
-			if response.Result["ChannelBPower"].Value < -60 {
+			if response.Result["Power"].Value < -60 {
 				clm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
+				return nil, false
 			}
-			clm.currentStatus[1][i] = fmt.Sprintf("%.2f", response.Result["Power"].Value)
+			result = append(result, response.Result["Power"].Value)
 		} else {
 			response = clm.pm.SetChannelB(f)
 			if !response.Success {
 				clm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
 			response = clm.pm.GetPowerChannelB(true)
 			if !response.Success {
 				clm.setError("Unable to communicate with PM")
-				return false
+				return nil, false
 			}
-			if response.Result["ChannelBPower"].Value < -60 {
+			if response.Result["Power"].Value < -60 {
 				clm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
+				return nil, false
 			}
-			clm.currentStatus[1][i] = fmt.Sprintf("%.2f", response.Result["Power"].Value)
+			result = append(result, response.Result["Power"].Value)
 		}
 		response = clm.sg.SetRFOff()
 		if !response.Success {
 			clm.setError("Unable to communicate with SG")
-			return false
+			return nil, false
 		}
 	}
 
-	return true
+	return result, true
 }
 
 func (clm *CableLossMeasurement) MeasurePMReference() {
@@ -226,14 +252,20 @@ func (clm *CableLossMeasurement) MeasurePMReference() {
 		offset[freq] = 0
 	}
 
-	ok := clm.measureForFrequencies(frequencies, offset, true)
+	result, ok := clm.measureForFrequencies(frequencies, offset, true)
 	if !ok {
 		return
 	}
 
-	var measurement cableLossMeasured
-	measurement.Frequency = clm.currentStatus[0]
-	measurement.Measured = clm.currentStatus[1]
+	var measurement []MeasurementPoint
+	for i, freq := range frequencies {
+		var mp MeasurementPoint
+		mp.Frequency, _ = strconv.ParseFloat(freq, 64)
+		mp.Loss = result[i]
+		if !math.IsNaN(mp.Loss) {
+			measurement = append(measurement, mp)
+		}
+	}
 	jsonData, err := json.MarshalIndent(measurement, "", " ")
 	if err != nil {
 		return
@@ -245,11 +277,11 @@ func (clm *CableLossMeasurement) MeasurePMReference() {
 		resultsDB.InsertCableLoss(clm.startDate, clm.startTime, "PM", 0, string(jsonData))
 	}
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
 	clm.statusMonitor <- measure
 	close(clm.statusMonitor)
@@ -261,17 +293,13 @@ func (clm *CableLossMeasurement) getPMReference() map[string]float64 {
 	if !ok {
 		return nil
 	}
-	var pmMeasured cableLossMeasured
+	var pmMeasured []MeasurementPoint
 	err := json.Unmarshal([]byte(ref), &pmMeasured)
 	if err != nil {
 		return nil
 	}
-	for i, freq := range pmMeasured.Frequency {
-		value, err := strconv.ParseFloat(pmMeasured.Measured[i], 64)
-		if err != nil {
-			continue
-		}
-		tbr[freq] = value
+	for _, mp := range pmMeasured {
+		tbr[fmt.Sprintf("%.2f", mp.Frequency)] = mp.Loss
 	}
 	return tbr
 }
@@ -287,28 +315,40 @@ func (clm *CableLossMeasurement) MeasureCableLoss(cableName string, cableLength 
 		return
 	}
 
-	ok := clm.measureForFrequencies(frequencies, pmReference, false)
+	result, ok := clm.measureForFrequencies(frequencies, pmReference, false)
 	if !ok {
 		return
 	}
 
-	var measurement cableLossMeasured
-	measurement.Frequency = clm.currentStatus[0]
-	measurement.Measured = clm.currentStatus[1]
+	var measurement []MeasurementPoint
+	for i, freq := range frequencies {
+		var mp MeasurementPoint
+		mp.Frequency, _ = strconv.ParseFloat(freq, 64)
+		mp.Loss = result[i]
+		if !math.IsNaN(mp.Loss) {
+			measurement = append(measurement, mp)
+		}
+	}
 	jsonData, err := json.MarshalIndent(measurement, "", " ")
 	if err != nil {
+		clm.setError("Unable to marshal data to JSON")
 		return
 	}
 
-	length, _ := strconv.Atoi(cableLength)
+	length, _ := strconv.ParseFloat(cableLength, 64)
 
-	resultsDB.InsertCableLoss(clm.startDate, clm.startTime, cableName, length, string(jsonData))
+	fmt.Println("Saving to database, ", clm.startDate, clm.startTime, cableName, length, string(jsonData))
+	ok = resultsDB.InsertCableLoss(clm.startDate, clm.startTime, cableName, length, string(jsonData))
+	if !ok {
+		clm.setError("Unable to save data to database")
+		return
+	}
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
 	clm.statusMonitor <- measure
 	close(clm.statusMonitor)
@@ -316,11 +356,11 @@ func (clm *CableLossMeasurement) MeasureCableLoss(cableName string, cableLength 
 }
 
 func (clm *CableLossMeasurement) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   false,
+		Error:     true,
+		Message:   message,
 	}
 	clm.statusMonitor <- measure
 	close(clm.statusMonitor)

@@ -24,6 +24,9 @@ Select * from "CableLosses";
 -- name: getCableNames :many
 Select distinct "CableName" from "TVACCableLosses";
 
+-- name: getCableNamesForCableLoss :many
+Select distinct "CableName" from "CableLosses";
+
 -- name: checkIfTVACCableLossPMReferenceExists :one
 Select Count("CableID") From "TVACCableLosses"
 Where "CableName" = "PM";

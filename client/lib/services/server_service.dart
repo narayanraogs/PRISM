@@ -425,12 +425,12 @@ class MeasurementPoint {
   MeasurementPoint({
     required this.frequency,
     required this.loss,
-    required this.delta,
+    this.delta = 0.0,
   });
 
   factory MeasurementPoint.fromJson(Map<String, dynamic> json) {
     return MeasurementPoint(
-      frequency: (json['frequency'] as num?)?.toDouble() ?? 0.0,
+      frequency: ((json['frequency'] as num?)?.toDouble() ?? 0.0) / 1e6,
       loss: (json['loss'] as num?)?.toDouble() ?? 0.0,
       delta: (json['delta'] as num?)?.toDouble() ?? 0.0,
     );
@@ -509,6 +509,236 @@ class TVACCableLossMetadata {
   }
 }
 
+class CableLossMetadata {
+  final List<String> frequencies;
+  final List<String> deviceProfiles;
+  final List<String> existingCables;
+  final bool isPmZeroed;
+  final bool ok;
+  final String message;
+
+  CableLossMetadata({
+    required this.frequencies,
+    required this.deviceProfiles,
+    required this.existingCables,
+    required this.isPmZeroed,
+    required this.ok,
+    required this.message,
+  });
+
+  factory CableLossMetadata.fromJson(Map<String, dynamic> json) {
+    return CableLossMetadata(
+      frequencies: List<String>.from(json['frequencies'] ?? []),
+      deviceProfiles: List<String>.from(json['deviceProfiles'] ?? []),
+      existingCables: List<String>.from(json['existingCables'] ?? []),
+      isPmZeroed: json['isPmZeroed'] ?? false,
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class AttnRange {
+  final double max;
+  final double min;
+  final double stepSize;
+
+  AttnRange({required this.max, required this.min, required this.stepSize});
+
+  factory AttnRange.fromJson(Map<String, dynamic> json) {
+    return AttnRange(
+      max: (json['Max'] as num?)?.toDouble() ?? 0.0,
+      min: (json['Min'] as num?)?.toDouble() ?? 0.0,
+      stepSize: (json['StepSize'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class AttnMetaData {
+  final List<String> deviceProfile;
+  final List<String> receiver;
+  final List<String> sprectrumProfile;
+  final List<String> tsmConfig;
+  final List<String> gtxComponents;
+  final Map<String, AttnRange> attnRanges;
+  final bool ok;
+  final String message;
+
+  AttnMetaData({
+    required this.deviceProfile,
+    required this.receiver,
+    required this.sprectrumProfile,
+    required this.tsmConfig,
+    required this.gtxComponents,
+    required this.attnRanges,
+    required this.ok,
+    required this.message,
+  });
+
+  factory AttnMetaData.fromJson(Map<String, dynamic> json) {
+    var attnRangesMap = <String, AttnRange>{};
+    if (json['AttnRanges'] != null) {
+      (json['AttnRanges'] as Map<String, dynamic>).forEach((key, value) {
+        attnRangesMap[key] = AttnRange.fromJson(value);
+      });
+    }
+
+    return AttnMetaData(
+      deviceProfile: List<String>.from(json['DeviceProfile'] ?? []),
+      receiver: List<String>.from(json['Receiver'] ?? []),
+      sprectrumProfile: List<String>.from(json['SprectrumProfile'] ?? []),
+      tsmConfig: List<String>.from(json['TSMConfig'] ?? []),
+      gtxComponents: List<String>.from(json['GTxComponents'] ?? []),
+      attnRanges: attnRangesMap,
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class AttnMeasurementStatus {
+  final int slNo;
+  final double setAttn;
+  final double measuredAttn;
+  final double deviation;
+  final bool hasData;
+  final bool completed;
+  final bool error;
+  final String message;
+  final bool plotDeviation;
+
+  AttnMeasurementStatus({
+    required this.slNo,
+    required this.setAttn,
+    required this.measuredAttn,
+    required this.deviation,
+    required this.hasData,
+    required this.completed,
+    required this.error,
+    required this.message,
+    required this.plotDeviation,
+  });
+
+  factory AttnMeasurementStatus.fromJson(Map<String, dynamic> json) {
+    return AttnMeasurementStatus(
+      slNo: json['SlNo'] ?? 0,
+      setAttn: (json['SetAttn'] as num?)?.toDouble() ?? 0.0,
+      measuredAttn: (json['MeasuredAttn'] as num?)?.toDouble() ?? 0.0,
+      deviation: (json['Deviation'] as num?)?.toDouble() ?? 0.0,
+      hasData: json['HasData'] ?? false,
+      completed: json['Completed'] ?? false,
+      error: json['Error'] ?? false,
+      message: json['Message'] ?? '',
+      plotDeviation: json['PlotDeviation'] ?? false,
+    );
+  }
+}
+
+class CorrectedDeviation {
+  final double setValue;
+  final double measuredDeviation;
+  final double correctedDeviation;
+
+  CorrectedDeviation({
+    required this.setValue,
+    required this.measuredDeviation,
+    required this.correctedDeviation,
+  });
+
+  factory CorrectedDeviation.fromJson(Map<String, dynamic> json) {
+    return CorrectedDeviation(
+      setValue: (json['SetValue'] as num?)?.toDouble() ?? 0.0,
+      measuredDeviation: (json['MeasuredDeviation'] as num?)?.toDouble() ?? 0.0,
+      correctedDeviation:
+          (json['CorrectedDeviation'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class AttnProgressResponse {
+  final AttnMeasurementStatus? measurementStatus;
+  final List<CorrectedDeviation>? deviations;
+  final bool ok;
+  final String message;
+
+  AttnProgressResponse({
+    this.measurementStatus,
+    this.deviations,
+    required this.ok,
+    required this.message,
+  });
+
+  factory AttnProgressResponse.fromJson(Map<String, dynamic> json) {
+    return AttnProgressResponse(
+      measurementStatus: json['measurementStatus'] != null
+          ? AttnMeasurementStatus.fromJson(json['measurementStatus'])
+          : null,
+      deviations: (json['deviations'] as List?)
+          ?.map((e) => CorrectedDeviation.fromJson(e))
+          .toList(),
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class CableLossRecord {
+  final int slNo;
+  final String cableName;
+  final double length;
+  final String date;
+  final String time;
+  final List<MeasurementPoint> measurements;
+
+  CableLossRecord({
+    required this.slNo,
+    required this.cableName,
+    required this.length,
+    required this.date,
+    required this.time,
+    required this.measurements,
+  });
+
+  factory CableLossRecord.fromJson(Map<String, dynamic> json) {
+    return CableLossRecord(
+      slNo: json['slNo'] ?? 0,
+      cableName: json['cableName'] ?? '',
+      length: (json['length'] as num?)?.toDouble() ?? 0.0,
+      date: json['date'] ?? '',
+      time: json['time'] ?? '',
+      measurements:
+          (json['measurements'] as List?)
+              ?.map((e) => MeasurementPoint.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class CableLossResponse {
+  final List<CableLossRecord> history;
+  final bool ok;
+  final String message;
+
+  CableLossResponse({
+    required this.history,
+    required this.ok,
+    required this.message,
+  });
+
+  factory CableLossResponse.fromJson(Map<String, dynamic> json) {
+    return CableLossResponse(
+      history:
+          (json['history'] as List?)
+              ?.map((e) => CableLossRecord.fromJson(e))
+              .toList() ??
+          [],
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
 class TVACCableLossResponse {
   final TVACCableLossRecord? latestRecord;
   final List<TVACCableLossRecord> history;
@@ -544,13 +774,82 @@ class TVACCableLossResponse {
 class MeasurementStatus {
   final String message;
   final bool error;
+  final bool completed;
+  final bool success;
 
-  MeasurementStatus({required this.message, required this.error});
+  MeasurementStatus({
+    required this.message,
+    required this.error,
+    this.completed = false,
+    this.success = false,
+  });
 
   factory MeasurementStatus.fromJson(Map<String, dynamic> json) {
     return MeasurementStatus(
       message: json['message'] ?? '',
       error: json['error'] ?? false,
+      completed: json['completed'] ?? false,
+      success: json['success'] ?? false,
+    );
+  }
+}
+
+class DatabaseMetadata {
+  final List<String> testPhases;
+  final bool ok;
+  final String message;
+
+  DatabaseMetadata({
+    required this.testPhases,
+    required this.ok,
+    required this.message,
+  });
+
+  factory DatabaseMetadata.fromJson(Map<String, dynamic> json) {
+    return DatabaseMetadata(
+      testPhases: List<String>.from(json['TestPhases'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class ConfigsForLossResponse {
+  final List<String> configs;
+  final bool ok;
+  final String message;
+
+  ConfigsForLossResponse({
+    required this.configs,
+    required this.ok,
+    required this.message,
+  });
+
+  factory ConfigsForLossResponse.fromJson(Map<String, dynamic> json) {
+    return ConfigsForLossResponse(
+      configs: List<String>.from(json['Configs'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class LossProfileResponse {
+  final String profile;
+  final bool ok;
+  final String message;
+
+  LossProfileResponse({
+    required this.profile,
+    required this.ok,
+    required this.message,
+  });
+
+  factory LossProfileResponse.fromJson(Map<String, dynamic> json) {
+    return LossProfileResponse(
+      profile: json['Profile'] ?? '',
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
     );
   }
 }
@@ -870,6 +1169,9 @@ class ReadSpectrumResponse {
 
 class ServerService extends ChangeNotifier {
   WebSocketChannel? _channel;
+  WebSocketChannel? _attnChannel;
+  WebSocketChannel? _cableLossChannel;
+  WebSocketChannel? _tvacCableLossChannel;
   ServerStatus _status = ServerStatus();
   bool _isReconnecting = false;
 
@@ -1098,6 +1400,10 @@ class ServerService extends ChangeNotifier {
     _progressChannel?.sink.add(jsonEncode({'Parameters': parameters}));
   }
 
+  void sendAbort() {
+    _progressChannel?.sink.add('abort');
+  }
+
   void closeTestProgress() {
     _progressChannel?.sink.close();
     _progressChannel = null;
@@ -1152,6 +1458,76 @@ class ServerService extends ChangeNotifier {
       debugPrint('Error fetching TVAC Cable Loss Metadata: $e');
     }
     return null;
+  }
+
+  Future<CableLossMetadata?> fetchCableLossMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getCableLossMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return CableLossMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Cable Loss Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<CableLossResponse?> fetchCableMeasuredDetails() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getCableMeasuredDetails';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return CableLossResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Cable Loss Details: $e');
+    }
+    return null;
+  }
+
+  Stream<MeasurementStatus> streamCableLossAction(
+    Map<String, dynamic> request,
+  ) {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/measureCableLoss';
+
+    _cableLossChannel = WebSocketChannel.connect(Uri.parse(url));
+    _cableLossChannel!.sink.add(jsonEncode(request));
+
+    return _cableLossChannel!.stream
+        .map((event) {
+          return MeasurementStatus.fromJson(jsonDecode(event));
+        })
+        .handleError((error) {
+          debugPrint('Cable Action Stream Error: $error');
+          return MeasurementStatus(message: error.toString(), error: true);
+        });
+  }
+
+  void abortCableLossMeasurement() {
+    if (_cableLossChannel != null) {
+      _cableLossChannel!.sink.add('abort');
+    }
   }
 
   Future<StabilityMetadata?> fetchStabilityMetadata() async {
@@ -1287,6 +1663,52 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Stream<AttnProgressResponse> streamAttnAction(Map<String, dynamic> request) {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/measureAttn';
+
+    _attnChannel = WebSocketChannel.connect(Uri.parse(url));
+    _attnChannel!.sink.add(jsonEncode(request));
+
+    return _attnChannel!.stream
+        .map((event) {
+          return AttnProgressResponse.fromJson(jsonDecode(event));
+        })
+        .handleError((error) {
+          debugPrint('Attn Action Stream Error: $error');
+          return AttnProgressResponse(ok: false, message: error.toString());
+        });
+  }
+
+  void abortAttnMeasurement() {
+    if (_attnChannel != null) {
+      _attnChannel!.sink.add('abort');
+    }
+  }
+
+  Future<AttnMetaData?> fetchAttnMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getAttnMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return AttnMetaData.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Attenuation Metadata: $e');
+    }
+    return null;
+  }
+
   Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
     final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
     final protocol = html.window.location.protocol == 'https:'
@@ -1417,10 +1839,10 @@ class ServerService extends ChangeNotifier {
     final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTVACCableLoss';
 
-    final channel = WebSocketChannel.connect(Uri.parse(url));
-    channel.sink.add(jsonEncode(request));
+    _tvacCableLossChannel = WebSocketChannel.connect(Uri.parse(url));
+    _tvacCableLossChannel!.sink.add(jsonEncode(request));
 
-    return channel.stream
+    return _tvacCableLossChannel!.stream
         .map((event) {
           return MeasurementStatus.fromJson(jsonDecode(event));
         })
@@ -1428,6 +1850,174 @@ class ServerService extends ChangeNotifier {
           debugPrint('TVAC Action Stream Error: $error');
           return MeasurementStatus(message: error.toString(), error: true);
         });
+  }
+
+  void abortTVACCableLossMeasurement() {
+    if (_tvacCableLossChannel != null) {
+      _tvacCableLossChannel!.sink.add('abort');
+    }
+  }
+
+  Future<DatabaseMetadata?> fetchDatabaseMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getDatabaseMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return DatabaseMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Database Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<ConfigsForLossResponse?> fetchConfigsForLoss(
+    String phase,
+    bool isUplink,
+  ) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final endpoint = isUplink
+        ? '/getConfigsForUplink'
+        : '/getConfigsForDownlink';
+    final url = '$protocol://$host$endpoint';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'TestPhase': phase}),
+      );
+
+      if (response.statusCode == 200) {
+        return ConfigsForLossResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Configs for Loss: $e');
+    }
+    return null;
+  }
+
+  Future<LossProfileResponse?> fetchLossProfile(
+    String phase,
+    String config,
+    bool isUplink,
+  ) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final endpoint = isUplink
+        ? '/getUplinkLossProfile'
+        : '/getDownlinkLossProfile';
+    final url = '$protocol://$host$endpoint';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'TestPhase': phase, 'Config': config}),
+      );
+
+      if (response.statusCode == 200) {
+        return LossProfileResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Loss Profile: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> saveLossProfile(
+    String phase,
+    String config,
+    String profile,
+    bool isUplink,
+  ) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final endpoint = isUplink
+        ? '/saveUplinkLossProfile'
+        : '/saveDownlinkLossProfile';
+    final url = '$protocol://$host$endpoint';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'TestPhase': phase,
+          'Config': config,
+          'Profile': profile,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error saving Loss Profile: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> selectTestPhase(String phase) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/selectTestPhase';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'TestPhase': phase}),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error selecting Test Phase: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> addNewTestPhase(String newPhase, String copyFrom) async {
+    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
+    final protocol = html.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/addNewTestPhase';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'NewPhase': newPhase, 'CopyFrom': copyFrom}),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error adding new Test Phase: $e');
+    }
+    return null;
   }
 
   @override

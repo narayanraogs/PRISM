@@ -151,9 +151,9 @@ func getSGPowerMeasurementStatus(conn *websocket.Conn, cid *client) {
 	monitor := cid.global.SGPower.GetStatusMonitor()
 	for msg := range monitor {
 		var temp = make([]string, 0)
-		for _, line := range msg.CurrentStatus {
+		/*for _, line := range msg.CurrentStatus {
 			temp = append(temp, strings.Join(line, ","))
-		}
+		}*/
 		var values = []string{strings.Join(temp, ";;;"), msg.Message}
 
 		if msg.Completed {
@@ -161,11 +161,11 @@ func getSGPowerMeasurementStatus(conn *websocket.Conn, cid *client) {
 		} else {
 			values = append(values, "In-Progress")
 		}
-		if msg.Success {
+		/*if msg.Success {
 			values = append(values, "Success")
 		} else {
 			values = append(values, "Failed")
-		}
+		}*/
 
 		var value parameterValue
 		value.Name = "SGPowerMeasurementStatus"
@@ -178,9 +178,9 @@ func getGTxPowerMeasurementStatus(conn *websocket.Conn, cid *client) {
 	monitor := cid.global.GTXAttn.GetStatusMonitor()
 	for msg := range monitor {
 		var temp = make([]string, 0)
-		for _, line := range msg.CurrentStatus {
+		/*for _, line := range msg.CurrentStatus {
 			temp = append(temp, strings.Join(line, ","))
-		}
+		}*/
 		var values = []string{strings.Join(temp, ";;;"), msg.Message}
 
 		if msg.Completed {
@@ -188,11 +188,11 @@ func getGTxPowerMeasurementStatus(conn *websocket.Conn, cid *client) {
 		} else {
 			values = append(values, "In-Progress")
 		}
-		if msg.Success {
+		/*if msg.Success {
 			values = append(values, "Success")
 		} else {
 			values = append(values, "Failed")
-		}
+		}*/
 
 		var value parameterValue
 		value.Name = "GTxPowerMeasurementStatus"
@@ -203,8 +203,8 @@ func getGTxPowerMeasurementStatus(conn *websocket.Conn, cid *client) {
 
 func getTSMAttnMeasurementStatus(conn *websocket.Conn, cid *client) {
 	monitor := cid.global.TSMAttn.GetStatusMonitor()
-	for msg := range monitor {
-		var temp = make([]string, 0)
+	for range monitor {
+		/*var temp = make([]string, 0)
 		for _, line := range msg.CurrentStatus {
 			temp = append(temp, strings.Join(line, ","))
 		}
@@ -219,11 +219,11 @@ func getTSMAttnMeasurementStatus(conn *websocket.Conn, cid *client) {
 			values = append(values, "Success")
 		} else {
 			values = append(values, "Failed")
-		}
+		}*/
 
 		var value parameterValue
 		value.Name = "TSMAttnMeasurementStatus"
-		value.Values = values
+		value.Values = make([]string, 0)
 		_ = conn.WriteJSON(value)
 	}
 }

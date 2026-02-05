@@ -10,8 +10,10 @@ import 'package:prism_client/screens/stability_screen.dart';
 import 'package:prism_client/screens/spectrum_dump_screen.dart';
 import 'package:prism_client/screens/monitor_screen.dart';
 import 'package:prism_client/screens/tvac_cable_loss_screen.dart';
+import 'package:prism_client/screens/cable_loss_screen.dart';
+import 'package:prism_client/screens/attenuation_screen.dart';
+import 'package:prism_client/screens/link_loss_screen.dart';
 import 'package:prism_client/services/server_service.dart';
-
 import 'package:prism_client/services/notification_service.dart';
 
 void main() {
@@ -63,9 +65,7 @@ class _RootPageState extends State<RootPage> {
     'TSM Internal Path Loss',
     'GTx Charecterization',
     'Up Down converter',
-    'Test Phase',
-    'Downlink Loss',
-    'Uplink Loss',
+    'Database Management',
     'View Reports',
     'Generate reports',
     'Stability reports',
@@ -87,27 +87,17 @@ class _RootPageState extends State<RootPage> {
         children: _titles.asMap().entries.map((entry) {
           final index = entry.key;
           final title = entry.value;
-          if (index == 0) {
-            return const RFUplinkScreen();
-          }
-          if (index == 1) {
-            return const TestScreen();
-          }
-          if (index == 2) {
-            return const ScheduleScreen();
-          }
-          if (index == 3) {
-            return const StabilityScreen();
-          }
-          if (index == 4) {
-            return const SpectrumDumpScreen();
-          }
-          if (index == 5) {
-            return MonitorScreen(isActive: _selectedIndex == 5);
-          }
-          if (index == 6) {
-            return const TVACCableLossScreen();
-          }
+          if (index == 0) return const RFUplinkScreen();
+          if (index == 1) return const TestScreen();
+          if (index == 2) return const ScheduleScreen();
+          if (index == 3) return const StabilityScreen();
+          if (index == 4) return const SpectrumDumpScreen();
+          if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
+          if (index == 6) return const TVACCableLossScreen();
+          if (index == 7) return const CableLossScreen();
+          if (index == 8) return const AttenuationScreen();
+          if (index == 12) return const LinkLossScreen();
+
           return GenericScreen(title: title);
         }).toList(),
       ),

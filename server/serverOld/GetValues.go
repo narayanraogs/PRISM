@@ -141,15 +141,16 @@ func handleGetCurrentTestPhase(c *client) ([]string, bool) {
 }
 
 func handleGetCableMeasurementCSV(c *client) ([]string, bool) {
-	losses, read := resultsDB.GetAllCableLosses()
-	if !read {
+	//losses, read := resultsDB.GetAllCableLosses()
+	var csv strings.Builder
+	/*if !read {
 		return nil, false
 	}
-	var csv strings.Builder
+
 	for _, loss := range losses {
 		csv.WriteString(strings.Join(loss, ","))
 		csv.WriteString("\n")
-	}
+	}*/
 	return []string{csv.String()}, true
 }
 
