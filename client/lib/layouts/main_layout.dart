@@ -85,6 +85,12 @@ class _MainLayoutState extends State<MainLayout> {
       selectedIcon: Icons.settings_ethernet,
       category: 'UTILITIES',
     ),
+    NavigationItem(
+      label: 'SCPI Commander',
+      icon: Icons.terminal_outlined,
+      selectedIcon: Icons.terminal,
+      category: 'UTILITIES',
+    ),
 
     // Category 3: T&E
     NavigationItem(

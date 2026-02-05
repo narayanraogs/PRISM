@@ -60,6 +60,7 @@ class _RootPageState extends State<RootPage> {
     'Spectrum Dump',
     'Monitor',
     'TVAC Cable Calibration',
+    'SCPI Commander',
     'Cable Loss Measurement',
     'Attenuation',
     'TSM Internal Path Loss',
@@ -94,9 +95,9 @@ class _RootPageState extends State<RootPage> {
           if (index == 4) return const SpectrumDumpScreen();
           if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
           if (index == 6) return const TVACCableLossScreen();
-          if (index == 7) return const CableLossScreen();
-          if (index == 8) return const AttenuationScreen();
-          if (index == 12) return const LinkLossScreen();
+          if (index == 8) return const CableLossScreen();
+          if (index == 9) return const AttenuationScreen();
+          if (index == 13) return const LinkLossScreen();
 
           return GenericScreen(title: title);
         }).toList(),
