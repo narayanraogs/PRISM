@@ -13,6 +13,7 @@ import 'package:prism_client/screens/tvac_cable_loss_screen.dart';
 import 'package:prism_client/screens/cable_loss_screen.dart';
 import 'package:prism_client/screens/attenuation_screen.dart';
 import 'package:prism_client/screens/tsm_internal_path_loss_screen.dart';
+import 'package:prism_client/screens/gtx_characterization_screen.dart';
 import 'package:prism_client/screens/link_loss_screen.dart';
 import 'package:prism_client/screens/view_reports_screen.dart';
 import 'package:prism_client/services/server_service.dart';
@@ -99,6 +100,7 @@ class _RootPageState extends State<RootPage> {
           if (index == 8) return const CableLossScreen();
           if (index == 9) return const AttenuationScreen();
           if (index == 10) return const TSMInternalPathLossScreen();
+          if (index == 11) return const GTxCharacterizationScreen();
           if (index == 13) return const LinkLossScreen();
           if (index == 14) return const ViewReportsScreen();
 
