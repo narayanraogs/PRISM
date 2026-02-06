@@ -140,12 +140,6 @@ class _MainLayoutState extends State<MainLayout> {
       category: 'RESULTS',
     ),
     NavigationItem(
-      label: 'Generate reports',
-      icon: Icons.note_add_outlined,
-      selectedIcon: Icons.note_add,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
       label: 'Stability reports',
       icon: Icons.assessment_outlined,
       selectedIcon: Icons.assessment,

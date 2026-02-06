@@ -6,7 +6,8 @@ import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/screens/test_progress_screen.dart';
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -133,33 +134,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     };
     final jsonContent = jsonEncode(data);
     final bytes = utf8.encode(jsonContent);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute(
-        "download",
-        "${_scheduleNameController.text.trim().replaceAll(' ', '_')}.json",
-      )
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'application/json'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
+    anchor.download =
+        "${_scheduleNameController.text.trim().replaceAll(' ', '_')}.json";
+    anchor.click();
+    web.URL.revokeObjectURL(url);
     AppNotifications.showSuccess(context, 'Schedule exported');
   }
 
   void _loadSchedule() {
-    final uploadInput = html.FileUploadInputElement();
+    final uploadInput =
+        web.document.createElement('input') as web.HTMLInputElement;
+    uploadInput.type = 'file';
     uploadInput.accept = '.json';
     uploadInput.click();
 
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
-      if (files!.isEmpty) return;
+      if (files == null || files.length == 0) return;
+      final file = files.item(0)!;
 
-      final reader = html.FileReader();
-      reader.readAsText(files[0]);
+      final reader = web.FileReader();
+      reader.readAsText(file);
       reader.onLoadEnd.listen((e) {
         try {
-          final result = reader.result as String;
-          final dynamic decoded = jsonDecode(result);
+          final result = reader.result as JSString;
+          final dynamic decoded = jsonDecode(result.toDart);
 
           setState(() {
             if (decoded is Map && decoded.containsKey('tests')) {
@@ -173,7 +179,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               );
             } else if (decoded is List) {
               // Legacy format or raw list
-              _scheduleNameController.text = files[0].name
+              _scheduleNameController.text = file.name
                   .replaceAll('.json', '')
                   .replaceAll('_', ' ');
               _scheduledTests.clear();

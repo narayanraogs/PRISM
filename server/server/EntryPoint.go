@@ -57,6 +57,12 @@ func GetRouter() *gin.Engine {
 	r.POST("/saveDownlinkLossProfile", saveDownlinkLossProfile)
 	r.POST("/selectTestPhase", selectTestPhase)
 	r.POST("/addNewTestPhase", addNewTestPhase)
-
+	//ResultRelated
+	r.POST("/getResultMetadata", getResultMetadata)
+	r.POST("/getReportPDF", getReportPDF)
+	r.POST("/regenerateReport", regenerateReport)
+	//TSMInternalLossRelated
+	r.POST("/getTSMInternalLossMetadata", getTSMInternalLossMetadata)
+	r.GET("/measureTSMInternalLoss", measureTSMInternalLoss)
 	return r
 }

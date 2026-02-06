@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 // Note: dart:html is for web only. Flutter web client specific.
 // Using conditional import would be better if multi-platform, but this is a web project.
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 class ServerStatus {
   final String satelliteName;
@@ -541,6 +541,146 @@ class CableLossMetadata {
   }
 }
 
+class InternalLossPMOrCableEntry {
+  final List<double> frequencies;
+  final List<double> losses;
+  final bool measured;
+
+  InternalLossPMOrCableEntry({
+    required this.frequencies,
+    required this.losses,
+    required this.measured,
+  });
+
+  factory InternalLossPMOrCableEntry.fromJson(Map<String, dynamic> json) {
+    return InternalLossPMOrCableEntry(
+      frequencies:
+          (json['Frequencies'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      losses:
+          (json['Losses'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      measured: json['Measured'] ?? false,
+    );
+  }
+}
+
+class InternalLossEntry {
+  final String inputPort;
+  final String outputPort;
+  final String pathMnemonic;
+  final List<double> frequencies;
+  final List<double> losses;
+  final bool measured;
+
+  InternalLossEntry({
+    required this.inputPort,
+    required this.outputPort,
+    required this.pathMnemonic,
+    required this.frequencies,
+    required this.losses,
+    required this.measured,
+  });
+
+  factory InternalLossEntry.fromJson(Map<String, dynamic> json) {
+    return InternalLossEntry(
+      inputPort: json['InputPort'] ?? '',
+      outputPort: json['OutputPort'] ?? '',
+      pathMnemonic: json['PathMnemonic'] ?? '',
+      frequencies:
+          (json['Frequencies'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      losses:
+          (json['Losses'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      measured: json['Measured'] ?? false,
+    );
+  }
+}
+
+class TSMInternalLossMeasured {
+  final InternalLossPMOrCableEntry pm;
+  final InternalLossPMOrCableEntry cable;
+  final List<InternalLossEntry> paths;
+
+  TSMInternalLossMeasured({
+    required this.pm,
+    required this.cable,
+    required this.paths,
+  });
+
+  factory TSMInternalLossMeasured.fromJson(Map<String, dynamic> json) {
+    return TSMInternalLossMeasured(
+      pm: InternalLossPMOrCableEntry.fromJson(json['PM'] ?? {}),
+      cable: InternalLossPMOrCableEntry.fromJson(json['Cable'] ?? {}),
+      paths:
+          (json['Paths'] as List?)
+              ?.map((e) => InternalLossEntry.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class TSMInternalLossMetadata {
+  final List<String> deviceProfiles;
+  final TSMInternalLossMeasured measuredLoss;
+  final bool ok;
+  final String message;
+
+  TSMInternalLossMetadata({
+    required this.deviceProfiles,
+    required this.measuredLoss,
+    required this.ok,
+    required this.message,
+  });
+
+  factory TSMInternalLossMetadata.fromJson(Map<String, dynamic> json) {
+    return TSMInternalLossMetadata(
+      deviceProfiles: List<String>.from(json['DeviceProfile'] ?? []),
+      measuredLoss: TSMInternalLossMeasured.fromJson(
+        json['MeasuredLoss'] ?? {},
+      ),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class InternalLossMeasurementRequest {
+  final String deviceProfile;
+  final String pmChannel;
+  final String mode;
+  final String inputPort;
+  final String outputPort;
+
+  InternalLossMeasurementRequest({
+    required this.deviceProfile,
+    required this.pmChannel,
+    required this.mode,
+    required this.inputPort,
+    required this.outputPort,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'DeviceProfile': deviceProfile,
+      'PMChannel': pmChannel,
+      'Mode': mode,
+      'InputPort': inputPort,
+      'OutputPort': outputPort,
+    };
+  }
+}
+
 class AttnRange {
   final double max;
   final double min;
@@ -770,6 +910,82 @@ class TVACCableLossResponse {
       isPmZeroed: json['isPmZeroed'] ?? false,
       ok: json['ok'] ?? false,
       message: json['message'] ?? '',
+    );
+  }
+}
+
+class ReportMetadata {
+  final String phase;
+  final String config;
+  final String testType;
+  final String testCategory;
+  final String date;
+  final String time;
+  final String remarks;
+  final bool vsaUsed;
+  final bool ppmUsed;
+
+  ReportMetadata({
+    required this.phase,
+    required this.config,
+    required this.testType,
+    required this.testCategory,
+    required this.date,
+    required this.time,
+    required this.remarks,
+    required this.vsaUsed,
+    required this.ppmUsed,
+  });
+
+  factory ReportMetadata.fromJson(Map<String, dynamic> json) {
+    return ReportMetadata(
+      phase: json['phase'] ?? '',
+      config: json['config'] ?? '',
+      testType: json['testType'] ?? '',
+      testCategory: json['testCategory'] ?? '',
+      date: json['date'] ?? '',
+      time: json['time'] ?? '',
+      remarks: json['remarks'] ?? '',
+      vsaUsed: json['vsaUsed'] ?? false,
+      ppmUsed: json['ppmUsed'] ?? false,
+    );
+  }
+}
+
+class ReportsResponse {
+  final bool ok;
+  final String message;
+  final List<ReportMetadata> reports;
+  final List<String> allVsaParams;
+  final List<String> selectedVsaParams;
+  final List<String> allPpmParams;
+  final List<String> selectedPpmParams;
+
+  ReportsResponse({
+    required this.ok,
+    required this.message,
+    required this.reports,
+    required this.allVsaParams,
+    required this.selectedVsaParams,
+    required this.allPpmParams,
+    required this.selectedPpmParams,
+  });
+
+  factory ReportsResponse.fromJson(Map<String, dynamic> json) {
+    return ReportsResponse(
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+      reports:
+          (json['reports'] as List?)
+              ?.map((e) => ReportMetadata.fromJson(e))
+              .toList() ??
+          [],
+      allVsaParams: (json['allVsaParams'] as List?)?.cast<String>() ?? [],
+      selectedVsaParams:
+          (json['selectedVsaParams'] as List?)?.cast<String>() ?? [],
+      allPpmParams: (json['allPpmParams'] as List?)?.cast<String>() ?? [],
+      selectedPpmParams:
+          (json['selectedPpmParams'] as List?)?.cast<String>() ?? [],
     );
   }
 }
@@ -1108,7 +1324,7 @@ class StabilityDataUpdate {
     return StabilityDataUpdate(
       description: json['Description'] ?? '',
       value: (json['Value'] as num?)?.toDouble() ?? 0.0,
-      timestamp: json['Timestamp'] != null 
+      timestamp: json['Timestamp'] != null
           ? DateTime.parse(json['Timestamp'])
           : DateTime.now(),
     );
@@ -1128,9 +1344,13 @@ class StabilityResponse {
 
   factory StabilityResponse.fromJson(Map<String, dynamic> json) {
     return StabilityResponse(
-      updates: (json['Updates'] as List?)
-          ?.map((e) => StabilityDataUpdate.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
+      updates:
+          (json['Updates'] as List?)
+              ?.map(
+                (e) => StabilityDataUpdate.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
       ok: json['OK'] ?? false,
       message: json['Message'] ?? '',
     );
@@ -1155,13 +1375,13 @@ class StabilityParameterSelection {
   });
 
   Map<String, dynamic> toJson() => {
-        'description': description,
-        'instrumentType': instrumentType,
-        'instrument': instrument,
-        'parameter': parameter,
-        'details': details,
-        'extraDetails': extraDetails,
-      };
+    'description': description,
+    'instrumentType': instrumentType,
+    'instrument': instrument,
+    'parameter': parameter,
+    'details': details,
+    'extraDetails': extraDetails,
+  };
 
   factory StabilityParameterSelection.fromJson(Map<String, dynamic> json) =>
       StabilityParameterSelection(
@@ -1272,9 +1492,9 @@ class ServerService extends ChangeNotifier {
     if (kDebugMode) {
       host = 'localhost:8080';
     } else {
-      host = html.window.location.host;
+      host = web.window.location.host;
     }
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     return '$protocol://$host/serverStatus';
   }
 
@@ -1325,8 +1545,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<RFUplinkMetaData?> fetchRFUplinkMetaData() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getRFUplinkMetaData';
@@ -1347,8 +1567,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<LinkStatus?> fetchLinkStatus(String tsmSelected) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getLinkStatus';
@@ -1370,8 +1590,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<Ack?> setTSMRoute(String tsmSelected, String mnemonic) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/setTSMRoute';
@@ -1397,8 +1617,8 @@ class ServerService extends ChangeNotifier {
     int attnNo,
     double attnValue,
   ) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/setTSMAttn';
@@ -1424,8 +1644,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<AllTests?> fetchAllTests() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getAllTests';
@@ -1465,9 +1685,9 @@ class ServerService extends ChangeNotifier {
     if (kDebugMode) {
       host = 'localhost:8080';
     } else {
-      host = html.window.location.host;
+      host = web.window.location.host;
     }
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/testProgress';
 
     _progressChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1506,9 +1726,9 @@ class ServerService extends ChangeNotifier {
     if (kDebugMode) {
       host = 'localhost:8080';
     } else {
-      host = html.window.location.host;
+      host = web.window.location.host;
     }
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/monitor';
 
     _monitorChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1529,8 +1749,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<TVACCableLossMetadata?> fetchTVACCableLossMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getTVACCableLossMetadata';
@@ -1551,8 +1771,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<CableLossMetadata?> fetchCableLossMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getCableLossMetadata';
@@ -1573,8 +1793,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<CableLossResponse?> fetchCableMeasuredDetails() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getCableMeasuredDetails';
@@ -1594,11 +1814,89 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Future<ReportsResponse?> fetchResultMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getResultMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return ReportsResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Result Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> fetchReportPDF(String date, String time) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getReportPDF';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'date': date, 'time': time}),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Report PDF: $e');
+    }
+    return null;
+  }
+
+  Future<Ack?> regenerateReport({
+    required String date,
+    required String time,
+    required List<String> ppmParameters,
+    required List<String> vsaParameters,
+  }) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/regenerateReport';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'date': date,
+          'time': time,
+          'ppmParameters': ppmParameters,
+          'vsaParameters': vsaParameters,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error regenerating report: $e');
+    }
+    return null;
+  }
+
   Stream<MeasurementStatus> streamCableLossAction(
     Map<String, dynamic> request,
   ) {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureCableLoss';
 
     _cableLossChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1621,8 +1919,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<StabilityMetadata?> fetchStabilityMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getStabilityMetadata';
@@ -1653,9 +1951,9 @@ class ServerService extends ChangeNotifier {
     if (kDebugMode) {
       host = 'localhost:8080';
     } else {
-      host = html.window.location.host;
+      host = web.window.location.host;
     }
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/stability';
 
     _stabilityChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1683,8 +1981,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<SpectrumDumpMetadata?> fetchSpectrumDumpMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getSpectrumDumpMetadata';
@@ -1706,8 +2004,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<MonitorMetadata?> fetchMonitorMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getMonitorMetadata';
@@ -1738,8 +2036,8 @@ class ServerService extends ChangeNotifier {
     required double referenceLevel,
     required String mode,
   }) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/setSpectrum';
@@ -1770,8 +2068,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<ReadSpectrumResponse?> readSpectrum(String sa) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/readSpectrum';
@@ -1793,8 +2091,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Stream<AttnProgressResponse> streamAttnAction(Map<String, dynamic> request) {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureAttn';
 
     _attnChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1817,8 +2115,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<AttnMetaData?> fetchAttnMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getAttnMetadata';
@@ -1839,8 +2137,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/dumpSpectrum';
@@ -1865,8 +2163,8 @@ class ServerService extends ChangeNotifier {
     required String sa,
     required int tracePoints,
   }) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/dumpTrace';
@@ -1891,8 +2189,8 @@ class ServerService extends ChangeNotifier {
     required String vsa,
     required String mode,
   }) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/dumpScreenshot';
@@ -1917,8 +2215,8 @@ class ServerService extends ChangeNotifier {
     required String spectrumBase64,
     required String remark,
   }) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/saveSpectrum';
@@ -1940,8 +2238,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<TVACCableLossResponse?> fetchTVACCableMeasuredDetails() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getTVACCableMeasuredDetails';
@@ -1961,11 +2259,71 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Future<TSMInternalLossMetadata?> fetchTSMInternalLossMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getTSMInternalLossMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return TSMInternalLossMetadata.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching TSM Internal Loss Metadata: $e');
+    }
+    return null;
+  }
+
+  WebSocketChannel? _tsmInternalLossChannel;
+
+  Stream<dynamic> streamTSMInternalLossAction(
+    InternalLossMeasurementRequest request,
+  ) {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final url = '$protocol://$host/measureTSMInternalLoss';
+
+    _tsmInternalLossChannel = WebSocketChannel.connect(Uri.parse(url));
+    _tsmInternalLossChannel!.sink.add(jsonEncode(request.toJson()));
+
+    return _tsmInternalLossChannel!.stream
+        .map((event) {
+          final data = jsonDecode(event);
+          if (data['PM'] != null ||
+              data['Cable'] != null ||
+              data['Paths'] != null) {
+            return TSMInternalLossMeasured.fromJson(data);
+          }
+          return MeasurementStatus.fromJson(data);
+        })
+        .handleError((error) {
+          debugPrint('TSM Internal Loss Stream Error: $error');
+          return MeasurementStatus(
+            message: error.toString(),
+            error: true,
+            completed: true,
+          );
+        });
+  }
+
+  void abortTSMInternalLossMeasurement() {
+    if (_tsmInternalLossChannel != null) {
+      _tsmInternalLossChannel!.sink.add('abort');
+    }
+  }
+
   Stream<MeasurementStatus> streamTVACCableLossAction(
     Map<String, dynamic> request,
   ) {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTVACCableLoss';
 
     _tvacCableLossChannel = WebSocketChannel.connect(Uri.parse(url));
@@ -1988,8 +2346,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<DatabaseMetadata?> fetchDatabaseMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/getDatabaseMetadata';
@@ -2013,8 +2371,8 @@ class ServerService extends ChangeNotifier {
     String phase,
     bool isUplink,
   ) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final endpoint = isUplink
@@ -2043,8 +2401,8 @@ class ServerService extends ChangeNotifier {
     String config,
     bool isUplink,
   ) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final endpoint = isUplink
@@ -2074,8 +2432,8 @@ class ServerService extends ChangeNotifier {
     String profile,
     bool isUplink,
   ) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final endpoint = isUplink
@@ -2104,8 +2462,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<Ack?> selectTestPhase(String phase) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/selectTestPhase';
@@ -2127,8 +2485,8 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<Ack?> addNewTestPhase(String newPhase, String copyFrom) async {
-    final host = kDebugMode ? 'localhost:8080' : html.window.location.host;
-    final protocol = html.window.location.protocol == 'https:'
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
     final url = '$protocol://$host/addNewTestPhase';

@@ -8,7 +8,8 @@ import 'package:prism_client/services/notification_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class PathLossEntry {
   final int id;
@@ -279,12 +280,16 @@ class _LinkLossScreenState extends State<LinkLossScreen>
     }
 
     final bytes = utf8.encode(csv);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "${_selectedConfig}-loss.csv")
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/csv'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
+    anchor.download = "${_selectedConfig}-loss.csv";
+    anchor.click();
+    web.URL.revokeObjectURL(url);
 
     AppNotifications.show(
       context,

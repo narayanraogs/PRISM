@@ -31,6 +31,12 @@ func CreateNewTSMInternalLoss(table [][]string) bool {
 	return err == nil
 }
 
+func GetTSMInternalLossStructure() ([]TSMInternalLoss, error) {
+	ctx := context.Background()
+	tsm, err := dbObject.getAllTSMInternalLoss(ctx)
+	return tsm, err
+}
+
 func GetTSMInternalLossTable() ([][]string, bool) {
 	ctx := context.Background()
 	tsm, err := dbObject.getAllTSMInternalLoss(ctx)

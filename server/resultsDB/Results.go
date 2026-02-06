@@ -76,6 +76,20 @@ func GetResultsTable(tp string, config string, testName string, testCategory str
 	}
 	return values, nil
 }
+func GetAllResults() ([]Result, error) {
+	ctx := context.Background()
+	var args getResultsParams
+
+	args.TestPhase = "%"
+	args.TestType = "%"
+	args.TestCategory.String = "%"
+	args.TestCategory.Valid = true
+	args.ConfigName = "%"
+	args.Date = "%"
+
+	res, err := dbObject.getResults(ctx, args)
+	return res, err
+}
 
 func GetReportPDF(date string, time string) (string, error) {
 	ctx := context.Background()

@@ -346,3 +346,73 @@ type StabilityResponse struct {
 type StabilityAction struct {
 	Action string `json:"Action"`
 }
+
+type ReportMetadata struct {
+	Phase        string `json:"phase"`
+	Config       string `json:"config"`
+	TestType     string `json:"testType"`
+	TestCategory string `json:"testCategory"`
+	Date         string `json:"date"`
+	Time         string `json:"time"`
+	Remarks      string `json:"remarks"`
+	VSAUsed      bool   `json:"vsaUsed"`
+	PPMUsed      bool   `json:"ppmUsed"`
+}
+
+type ReportsResponse struct {
+	OK                bool             `json:"ok"`
+	Message           string           `json:"message"`
+	Reports           []ReportMetadata `json:"reports"`
+	AllVSAParams      []string         `json:"allVsaParams"`
+	SelectedVSAParams []string         `json:"selectedVsaParams"`
+	AllPPMParams      []string         `json:"allPpmParams"`
+	SelectedPPMParams []string         `json:"selectedPpmParams"`
+}
+
+type ReportPDFRequest struct {
+	Date string `json:"date"`
+	Time string `json:"time"`
+}
+
+type RegenerateReportRequest struct {
+	Date          string   `json:"date"`
+	Time          string   `json:"time"`
+	PPMParameters []string `json:"ppmParameters"`
+	VSAParameters []string `json:"vsaParameters"`
+}
+
+type TSMInternalLossMetadata struct {
+	DeviceProfile []string
+	MeasuredLoss  TSMInternalLossMeasured
+	OK            bool
+	Message       string
+}
+
+type TSMInternalLossMeasured struct {
+	PM    InternalLossPMOrCableEntry
+	Cable InternalLossPMOrCableEntry
+	Paths []InternalLossEntry
+}
+
+type InternalLossEntry struct {
+	InputPort    string
+	OutputPort   string
+	PathMnemonic string
+	Frequencies  []float64
+	Losses       []float64
+	Measured     bool
+}
+
+type InternalLossPMOrCableEntry struct {
+	Frequencies []float64
+	Losses      []float64
+	Measured    bool
+}
+
+type InternalLossMeasurementRequest struct {
+	DeviceProfile string
+	PMChannel     string
+	Mode          string
+	InputPort     string
+	OutputPort    string
+}

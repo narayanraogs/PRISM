@@ -17,14 +17,14 @@ type TSMInternalLoss struct {
 	pm                 driver.PM
 	sg                 driver.SG
 	tsm                driver.TSM
-	statusMonitor      chan MeasurementStatus
+	statusMonitor      chan RTStatus
 	pmChannel          string
 	stop               bool
 	currentMeasurement map[string]float64
 }
 
 func (tsm *TSMInternalLoss) Initialize(deviceProfile string, pmChannel string) bool {
-	tsm.statusMonitor = make(chan MeasurementStatus, 20)
+	tsm.statusMonitor = make(chan RTStatus, 20)
 	tsm.pmChannel = pmChannel
 	tsm.currentMeasurement = make(map[string]float64)
 	tsm.stop = false
@@ -238,11 +238,11 @@ func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset m
 			return false
 		}
 
-		var measure = MeasurementStatus{
-			Completed:     false,
-			Success:       true,
-			Message:       "Measuring Loss for " + freq + " Hz",
-			CurrentStatus: make([][]string, 0),
+		var measure = RTStatus{
+			Completed: false,
+			Success:   true,
+			Error:     false,
+			Message:   "Measuring Loss for " + freq + " Hz",
 		}
 		tsm.statusMonitor <- measure
 
@@ -328,12 +328,13 @@ func (tsm *TSMInternalLoss) measurePMReference(frequencies []string) {
 	}
 	resultsDB.UpdateTSMInternalLossPMOffset(string(jsonData))
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
+
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
 }
@@ -359,11 +360,11 @@ func (tsm *TSMInternalLoss) measureCableLoss(pmOffset cableLossMeasured) {
 	}
 	resultsDB.UpdateTSMInternalLossCableLoss(string(jsonData))
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
@@ -448,11 +449,11 @@ func (tsm *TSMInternalLoss) measurePathLoss(inputPort string, outputPort string)
 	}
 	resultsDB.UpdateTSMInternalLoss(inputPort, outputPort, string(jsonData))
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Measurement Completed",
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Completed",
 	}
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
@@ -493,11 +494,11 @@ func (tsm *TSMInternalLoss) MeasureForConfig(mode string, inputPort string, outp
 }
 
 func (tsm *TSMInternalLoss) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: make([][]string, 0),
+	var measure = RTStatus{
+		Completed: true,
+		Success:   false,
+		Error:     true,
+		Message:   message,
 	}
 	tsm.statusMonitor <- measure
 	close(tsm.statusMonitor)
@@ -507,6 +508,6 @@ func (tsm *TSMInternalLoss) Stop() {
 	tsm.stop = true
 }
 
-func (tsm *TSMInternalLoss) GetStatusMonitor() chan MeasurementStatus {
+func (tsm *TSMInternalLoss) GetStatusMonitor() chan RTStatus {
 	return tsm.statusMonitor
 }

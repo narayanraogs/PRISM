@@ -7,7 +7,8 @@ import 'package:prism_client/screens/stability_screen.dart';
 import 'package:prism_client/utils/lttb.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 import 'dart:convert';
 
 class StabilityMonitoringScreen extends StatefulWidget {
@@ -40,11 +41,16 @@ class ParameterBuffer {
 
   void add(StabilityDataUpdate update, DateTime sessionStartTime) {
     rawData.add(update);
-    final x = update.timestamp.difference(sessionStartTime).inMilliseconds.toDouble() / 1000.0;
+    final x =
+        update.timestamp
+            .difference(sessionStartTime)
+            .inMilliseconds
+            .toDouble() /
+        1000.0;
     final y = update.value;
-    
+
     points.add(DataPoint(x, y));
-    
+
     if (y < min) min = y;
     if (y > max) max = y;
     sum += y;
@@ -69,7 +75,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
     super.initState();
     _startTime = DateTime.now();
     for (var p in widget.parameters) {
-      _buffers[p.description] = ParameterBuffer(p.description, p.instrument, p.parameter);
+      _buffers[p.description] = ParameterBuffer(
+        p.description,
+        p.instrument,
+        p.parameter,
+      );
     }
 
     final serverService = Provider.of<ServerService>(context, listen: false);
@@ -130,8 +140,10 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               setState(() {
                 _isAborting = true;
               });
-              final serverService =
-                  Provider.of<ServerService>(context, listen: false);
+              final serverService = Provider.of<ServerService>(
+                context,
+                listen: false,
+              );
               serverService.sendAbortStability();
               // In a real app, we wait for the stream to close or a final response
               Future.delayed(const Duration(seconds: 1), () {
@@ -316,12 +328,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
     int index,
   ) {
     // Generate downsampled points for display
-    final displayPoints =
-        buffer.points.length > 1000 ? lttb(buffer.points, 1000) : buffer.points;
+    final displayPoints = buffer.points.length > 1000
+        ? lttb(buffer.points, 1000)
+        : buffer.points;
 
-    final spots = displayPoints
-        .map((p) => FlSpot(p.x, p.y))
-        .toList();
+    final spots = displayPoints.map((p) => FlSpot(p.x, p.y)).toList();
 
     // Use distinct colors for each parameter
     final List<Color> chartColors = [
@@ -409,14 +420,10 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                   drawVerticalLine: true,
                   horizontalInterval: 1,
                   verticalInterval: 60, // Grid every minute
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade100,
-                    strokeWidth: 1,
-                  ),
-                  getDrawingVerticalLine: (value) => FlLine(
-                    color: Colors.grey.shade100,
-                    strokeWidth: 1,
-                  ),
+                  getDrawingHorizontalLine: (value) =>
+                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                  getDrawingVerticalLine: (value) =>
+                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
                   show: true,
@@ -532,22 +539,27 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
 
   void _exportCSV() {
     final List<String> csvRows = [];
-    
+
     // Header
-    csvRows.add('ISO Timestamp,Elapsed (s),Instrument,Parameter,Description,Value');
+    csvRows.add(
+      'ISO Timestamp,Elapsed (s),Instrument,Parameter,Description,Value',
+    );
 
     // Collect all samples from all buffers
     final List<_ExportSample> allSamples = [];
     for (var buffer in _buffers.values) {
       for (var update in buffer.rawData) {
-        allSamples.add(_ExportSample(
-          timestamp: update.timestamp,
-          elapsed: update.timestamp.difference(_startTime).inMilliseconds / 1000.0,
-          instrument: buffer.instrument,
-          parameter: buffer.parameter,
-          description: buffer.description,
-          value: update.value,
-        ));
+        allSamples.add(
+          _ExportSample(
+            timestamp: update.timestamp,
+            elapsed:
+                update.timestamp.difference(_startTime).inMilliseconds / 1000.0,
+            instrument: buffer.instrument,
+            parameter: buffer.parameter,
+            description: buffer.description,
+            value: update.value,
+          ),
+        );
       }
     }
 
@@ -556,20 +568,27 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
 
     // Convert to CSV strings
     for (var sample in allSamples) {
-      csvRows.add('${sample.timestamp.toIso8601String()},${sample.elapsed.toStringAsFixed(3)},'
-          '"${sample.instrument}","${sample.parameter}","${sample.description}",${sample.value}');
+      csvRows.add(
+        '${sample.timestamp.toIso8601String()},${sample.elapsed.toStringAsFixed(3)},'
+        '"${sample.instrument}","${sample.parameter}","${sample.description}",${sample.value}',
+      );
     }
 
     final csvString = csvRows.join('\n');
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', 'Stability_${widget.profileName.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv')
-      ..click();
-      
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/csv'),
+    );
+    final url = web.URL.createObjectURL(blob);
+
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
+    anchor.download =
+        'Stability_${widget.profileName.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+    anchor.click();
+
+    web.URL.revokeObjectURL(url);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Stability data exported successfully.')),
@@ -588,7 +607,9 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
           const Icon(Icons.info_outline, size: 18, color: Colors.blue),
           const SizedBox(width: 12),
           Text(
-            _isAborting ? 'Stopping monitoring...' : 'System running normally. All instruments responding.',
+            _isAborting
+                ? 'Stopping monitoring...'
+                : 'System running normally. All instruments responding.',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -614,8 +635,13 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               icon: const Icon(Icons.arrow_back),
               label: const Text('RETURN TO CONFIG'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             )
           else
@@ -626,8 +652,13 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
         ],

@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class StabilityScreen extends StatefulWidget {
   const StabilityScreen({super.key});
@@ -157,9 +158,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
           break;
       }
 
-      extraDetails = {
-        'frequencyHz': freq * multiplier,
-      };
+      extraDetails = {'frequencyHz': freq * multiplier};
     } else if (_selectedType == 'PPM') {
       if (_selectedPpmPLConfig == null ||
           _selectedPpmPulseProfile == null ||
@@ -235,35 +234,36 @@ class _StabilityScreenState extends State<StabilityScreen> {
     };
     final jsonContent = jsonEncode(data);
     final bytes = utf8.encode(jsonContent);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute(
-        "download",
-        "${_profileNameController.text.trim().replaceAll(' ', '_')}.json",
-      )
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    final blob = web.Blob([bytes.toJS].toJS);
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
+    anchor.download =
+        "${_profileNameController.text.trim().replaceAll(' ', '_')}.json";
+    anchor.click();
+    web.URL.revokeObjectURL(url);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Stability profile exported')));
   }
 
   void _loadProfile() {
-    final uploadInput = html.FileUploadInputElement();
+    final uploadInput =
+        web.document.createElement('input') as web.HTMLInputElement;
+    uploadInput.type = 'file';
     uploadInput.accept = '.json';
     uploadInput.click();
 
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
-      if (files!.isEmpty) return;
+      if (files == null || files.length == 0) return;
 
-      final reader = html.FileReader();
-      reader.readAsText(files[0]);
+      final reader = web.FileReader();
+      reader.readAsText(files.item(0)!);
       reader.onLoadEnd.listen((e) {
         try {
-          final result = reader.result as String;
-          final dynamic decoded = jsonDecode(result);
+          final result = reader.result as JSString;
+          final dynamic decoded = jsonDecode(result.toDart);
 
           setState(() {
             if (decoded is Map && decoded.containsKey('parameters')) {
