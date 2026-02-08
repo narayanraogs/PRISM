@@ -224,6 +224,10 @@ where "TxName" like ?;
 -- name: getAllConverterNames :many
 Select "Name" from "UpDownConverter";
 
+-- name: getConverterDetails :one
+Select * from "UpDownConverter"
+where "Name" like ?;
+
 -- name: getTxsubCarriers :one
 Select * from "SpecTxSubCarriers"
 where "TxName" like ? and "SubCarrierName" like ?;

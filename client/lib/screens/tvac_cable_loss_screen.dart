@@ -39,12 +39,13 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
     _loadMetadata();
   }
 
-  Future<void> _loadMetadata() async {
+  void _loadMetadata() {
     setState(() => _isLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    final metadata = await serverService.fetchTVACCableLossMetadata();
+    final metadata = serverService.status.bootstrapData?.tvacCableLossData;
 
-    if (metadata != null && metadata.ok) {
+    if (metadata != null) {
+      debugPrint('TVACCableLossScreen: Using Bootstrapped Metadata');
       setState(() {
         _frequencies = metadata.frequencies;
         _deviceProfiles = metadata.deviceProfiles;
@@ -54,9 +55,10 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
           _selectedDeviceProfile = _deviceProfiles.first;
         }
       });
-      await _loadHistory();
+      _loadHistory();
       setState(() => _isLoading = false);
     } else {
+      debugPrint('TVACCableLossScreen: Bootstrapped Metadata NOT FOUND');
       setState(() => _isLoading = false);
       if (mounted) {
         Provider.of<NotificationService>(
@@ -64,7 +66,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
           listen: false,
         ).addNotification(
           title: 'Error',
-          message: metadata?.message ?? 'Failed to load metadata',
+          message: 'Failed to load metadata',
           type: NotificationType.error,
         );
       }

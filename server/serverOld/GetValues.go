@@ -286,7 +286,8 @@ func handleGetOfflineReport(c *client) ([]string, bool) {
 }
 
 func handleGetConverterNames(c *client) ([]string, bool) {
-	return database.GetAllConverterNames()
+	conv, err := database.GetAllConverterNames()
+	return conv, err != nil
 }
 
 func handleGetConfigsForUplink(c *client) ([]string, bool) {

@@ -13,6 +13,23 @@ type ServerStatus struct {
 	CPUUsed       float64
 }
 
+type BootstrapData struct {
+	RFUplinkData         RFUplinkMetaData
+	TestData             AllTests
+	StabilityData        StabilityMetadata
+	StabilityReportsData StabilityReportsMetadata
+	SpectrumDumpData     SpectrumDumpMetadata
+	MonitorData          MonitorMetadata
+	TVACCableLossData    TVACCableLossMetadata
+	CableLossData        CableLossMetadata
+	DatabaseData         DatabaseMetadata
+	ReportsData          ReportsResponse
+	TSMInternalLossData  TSMInternalLossMetadata
+	UCDCData             UCDCMetadata
+	AttnData             AttnMetaData
+	GTxData              GTxMeasurementMetadata
+}
+
 type RFUplinkRequest struct {
 	TSMSelected string
 }
@@ -418,7 +435,7 @@ type InternalLossMeasurementRequest struct {
 	OutputPort    string
 }
 
-type StabiltiyReportsMetadata struct {
+type StabilityReportsMetadata struct {
 	ID         []int64    `json:"id"`
 	Date       []string   `json:"date"`
 	Time       []string   `json:"time"`
@@ -436,4 +453,58 @@ type StabilityPointsResponse struct {
 	Points  []resultsDB.StabilityPoint `json:"points"`
 	OK      bool                       `json:"ok"`
 	Message string                     `json:"message"`
+}
+
+type GTxMeasurementMetadata struct {
+	DeviceProfile []string
+	DeviceMapping map[string]DeviceProfileDetails
+	OK            bool
+	Message       string
+}
+
+type DeviceProfileDetails struct {
+	GTxName string
+	SAName  string
+	VSAName string
+	PMName  string
+	PPMName string
+	SGName  string
+	TSMName string
+}
+
+type GTxTneRequest struct {
+	DeviceProfile         string
+	Component             string
+	IntermediateFrequency float64
+	CableLoss             float64
+	ModulationScheme      string
+	SubCarrierFrequency   float64
+	ModIndex              float64
+	FrequencyDeviation    float64
+	FrequencySpectrum     GTxSpectrum
+	PowerSpectrum         GTxSpectrum
+	InBandSpectrum        GTxSpectrum
+	OutBandSpectrum       GTxSpectrum
+}
+
+type GTxSpectrum struct {
+	Span float64
+	RBW  float64
+	VBW  float64
+}
+
+type UCDCMetadata struct {
+	Converters       []string
+	ConverterDetails map[string]UCDCDetails
+	DeviceProfiles   []string
+	DeviceMapping    map[string]DeviceProfileDetails
+	SignalGenerators []string
+	OK               bool
+	Message          string
+}
+
+type UCDCDetails struct {
+	InputFrequency  float64
+	OutputFrequency float64
+	LOFrequency     float64
 }

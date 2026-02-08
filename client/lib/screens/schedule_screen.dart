@@ -36,12 +36,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _fetchData();
   }
 
-  Future<void> _fetchData() async {
-    if (!mounted) return;
+  void _fetchData() {
     setState(() => _isLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    final tests = await serverService.fetchAllTests();
-    if (tests != null && mounted) {
+    
+    // Use bootstrapped data
+    final tests = serverService.status.bootstrapData?.testData;
+    
+    if (tests != null) {
+      debugPrint('ScheduleScreen: Using Bootstrapped Metadata');
       setState(() {
         _allTests = tests;
         if (tests.categories.isNotEmpty) {
@@ -53,7 +56,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         }
         _isLoading = false;
       });
-    } else if (mounted) {
+    } else {
+      debugPrint('ScheduleScreen: Bootstrapped Metadata NOT FOUND');
       setState(() => _isLoading = false);
     }
   }

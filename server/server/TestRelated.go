@@ -1,12 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
-	"prismServer/database"
 	"prismServer/executeTest"
 	"prismServer/logger"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,69 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func getAllTests(c *gin.Context) {
-	tp, _ := database.GetSelectedTestPhase()
-	var resp AllTests
-	resp.Categories = make([]string, 0)
-	resp.Configurations = make(map[string][]string)
-	resp.Tests = make(map[string][]TestDescription)
-	resp.Losses = make(map[string]string)
-	configs, ok := database.GetAllConfigsForTests()
-	var configNames = make([]string, 0)
-	if !ok {
-		resp.OK = false
-		resp.Message = "Not able to get Details from Database"
-		c.IndentedJSON(http.StatusOK, resp)
-		return
-	}
-
-	for _, config := range configs {
-		temp := strings.Split(config, ";")
-		if slices.Index(resp.Categories, temp[0]) == -1 {
-			resp.Categories = append(resp.Categories, temp[0])
-			resp.Configurations[temp[0]] = make([]string, 0)
-		}
-		configNames = append(configNames, temp[1])
-		resp.Configurations[temp[0]] = append(resp.Configurations[temp[0]], temp[1])
-		if strings.EqualFold(temp[0], "rx") {
-			_, sa, _, sc, ok := database.GetCurrentUplinkLoss(temp[1], tp)
-			if ok {
-				resp.Losses[temp[1]] = fmt.Sprintf("SA: %.2f, SC: %.2f", sa, sc)
-			} else {
-				resp.Losses[temp[1]] = ""
-			}
-		} else {
-			_, sa, pm, ok := database.GetCurrentDownlinkLoss(temp[1], tp)
-			if ok {
-				resp.Losses[temp[1]] = fmt.Sprintf("SA: %.2f, PM: %.2f", sa, pm)
-			} else {
-				resp.Losses[temp[1]] = ""
-			}
-		}
-	}
-
-	for _, config := range configNames {
-		resp.Tests[config] = make([]TestDescription, 0)
-		tests, ok := database.GetTestsForConfig(config)
-		if !ok {
-			continue
-		}
-		for _, test := range tests {
-			temp := strings.Split(test, ";")
-			var t TestDescription
-			if len(temp) == 2 {
-				t.TestName = temp[0]
-				t.TestCategory = temp[1]
-			} else {
-				t.TestName = temp[0]
-				t.TestCategory = ""
-			}
-			resp.Tests[config] = append(resp.Tests[config], t)
-		}
-	}
-	c.IndentedJSON(http.StatusOK, resp)
-}
 
 func startTests(c *gin.Context) {
 	var req StartTestsRequest

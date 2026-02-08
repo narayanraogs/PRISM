@@ -7,18 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getDatabaseMetadata(c *gin.Context) {
-	tp, ok := database.GetAllTestPhases()
-	if !ok {
-		c.IndentedJSON(http.StatusOK, DatabaseMetadata{OK: false, Message: "Failed to fetch test phases"})
-		return
-	}
-	c.IndentedJSON(http.StatusOK, DatabaseMetadata{
-		TestPhases: tp,
-		OK:         true,
-	})
-}
-
 func getConfigsForUplink(c *gin.Context) {
 	var req ConfigsForLossRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

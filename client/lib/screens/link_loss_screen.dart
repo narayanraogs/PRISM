@@ -77,23 +77,47 @@ class _LinkLossScreenState extends State<LinkLossScreen>
     super.dispose();
   }
 
-  Future<void> _loadMetadata() async {
-    setState(() => _isLoading = true);
-    final service = context.read<ServerService>();
-    final metadata = await service.fetchDatabaseMetadata();
+  bool _hasSyncedMetadata = false;
 
-    if (metadata != null && metadata.ok) {
-      setState(() {
-        _testPhases = metadata.testPhases;
-        if (_testPhases.isNotEmpty) {
-          _selectedTestPhase = _testPhases.first;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMetadata();
+  }
+
+  void _syncMetadata([ServerService? service]) {
+    final serverService = service ?? Provider.of<ServerService>(context);
+    final metadata = serverService.status.bootstrapData?.databaseData;
+
+    if (metadata != null) {
+      if (metadata.ok && !_hasSyncedMetadata) {
+        debugPrint('LinkLossScreen: Syncing ${metadata.testPhases.length} test phases');
+        setState(() {
+          _testPhases = metadata.testPhases;
+          if (_testPhases.isNotEmpty && _selectedTestPhase.isEmpty) {
+            _selectedTestPhase = _testPhases.first;
+          }
+          _hasSyncedMetadata = true;
+          _isLoading = false;
+        });
+        if (_selectedTestPhase.isNotEmpty) {
+           _loadConfigs();
         }
-      });
-      if (_selectedTestPhase.isNotEmpty) {
-        await _loadConfigs();
+      } else if (!metadata.ok) {
+        setState(() => _isLoading = false);
       }
     }
-    setState(() => _isLoading = false);
+  }
+
+  void _loadMetadata() {
+    setState(() => _isLoading = true);
+    _hasSyncedMetadata = false; 
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    if (serverService.status.bootstrapData?.databaseData != null) {
+      _syncMetadata(serverService);
+    } else {
+      serverService.fetchBootstrapData();
+    }
   }
 
   Future<void> _loadConfigs() async {

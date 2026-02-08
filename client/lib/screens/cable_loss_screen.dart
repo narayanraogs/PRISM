@@ -48,14 +48,14 @@ class _CableLossScreenState extends State<CableLossScreen> {
     _loadInitialData();
   }
 
-  Future<void> _loadInitialData() async {
+  void _loadInitialData() {
     setState(() => _isLoading = true);
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final metadata = serverService.status.bootstrapData?.cableLossData;
 
     try {
-      final serverService = Provider.of<ServerService>(context, listen: false);
-      final metadata = await serverService.fetchCableLossMetadata();
-
-      if (metadata != null && metadata.ok) {
+      if (metadata != null) {
+        debugPrint('CableLossScreen: Using Bootstrapped Metadata');
         setState(() {
           _cableSuggestions = metadata.existingCables;
           _deviceProfiles = metadata.deviceProfiles;
@@ -80,29 +80,33 @@ class _CableLossScreenState extends State<CableLossScreen> {
               .toSet();
         });
       } else {
+        debugPrint('CableLossScreen: Bootstrapped Metadata NOT FOUND');
         // Fallback to mock frequencies if metadata fails
         _initMockFrequencies();
       }
 
       // Load history
-      final historyResp = await serverService.fetchCableMeasuredDetails();
-      if (historyResp != null && historyResp.ok) {
-        setState(() {
-          _history = historyResp.history;
-          // Set latest record as default for plot
-          if (_history.isNotEmpty) {
-            _selectedPlotRecord = _history.last;
-          }
-        });
-      } else {
-        await _loadMockHistory();
-      }
+      _loadMeasuredHistory();
     } catch (e) {
       debugPrint('Error loading initial data: $e');
       _initMockFrequencies(); // Fallback
-      await _loadMockHistory(); // Fallback
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadMeasuredHistory() async {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final historyResp = await serverService.fetchCableMeasuredDetails();
+    if (historyResp != null && historyResp.ok) {
+      setState(() {
+        _history = historyResp.history;
+        if (_history.isNotEmpty) {
+          _selectedPlotRecord = _history.last;
+        }
+      });
+    } else {
+      await _loadMockHistory();
     }
   }
 

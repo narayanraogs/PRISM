@@ -9,6 +9,7 @@ import (
 	"prismServer/driver"
 	"prismServer/reports"
 	"prismServer/utils"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -37,46 +38,123 @@ type GroundTransmitterMeasurement struct {
 	order                   []string
 	images                  []reports.Images
 	success                 bool
+	result                  GTxResult
 
 	sa            driver.SA
 	gtx           driver.GTX
 	currentStatus [][]string
-	statusMonitor chan MeasurementStatus
+	statusMonitor chan RTStatus
+	resultMonitor chan GTxResult
 	stop          bool
+}
+
+type GTxResult struct {
+	PowerSpec                              float64
+	PowerMeasured                          float64
+	PowerDeviation                         float64
+	PowerMeasurementCompleted              bool
+	FreqSpecMHz                            float64
+	FreqMeasuredMHz                        float64
+	FreqDeviationkHz                       float64
+	FreqMeasurementCompleted               bool
+	InBandSpuriousFreqOffsetskHz           []float64
+	InBandPowerOffsets                     []float64
+	InBandSpuriousMeasurementCompleted     bool
+	OutBandSpuriousFreqOffsetskHz          []float64
+	OutBandPowerOffsets                    []float64
+	OutBandSpuriousMeasurementCompleted    bool
+	HarmonicsFreqMHz                       []float64
+	HarmonicsMeasureddBm                   []float64
+	HarmonicsPresent                       []bool
+	HarmonicsNoiseFloor                    []float64
+	HarmonicsMeasurementCompleted          bool
+	ModIndexApplicable                     bool
+	ModIndexSet                            float64
+	ModIndexMeasured                       float64
+	ModIndexDeviation                      float64
+	ModIndexMeasurementCompleted           bool
+	FrequencyDeviationApplicable           bool
+	FrequencyDeviationSet                  float64
+	FrequencyDeviationMeasured             float64
+	FrequencyDeviationDeviation            float64
+	FrequencyDeviationMeasurementCompleted bool
+	PhaseNoiseAt1Khz                       float64
+	PhaseNoiseAt10Khz                      float64
+	PhaseNoiseAt100Khz                     float64
+	PhaseNoiseAt1Mhz                       float64
+	PhaseNoiseMeasurementCompleted         bool
+}
+
+func (res *GTxResult) Copy(gtxResult GTxResult) {
+	res.PowerSpec = gtxResult.PowerSpec
+	res.PowerMeasured = gtxResult.PowerMeasured
+	res.PowerDeviation = gtxResult.PowerDeviation
+	res.PowerMeasurementCompleted = gtxResult.PowerMeasurementCompleted
+	res.FreqSpecMHz = gtxResult.FreqSpecMHz
+	res.FreqMeasuredMHz = gtxResult.FreqMeasuredMHz
+	res.FreqDeviationkHz = gtxResult.FreqDeviationkHz
+	res.FreqMeasurementCompleted = gtxResult.FreqMeasurementCompleted
+	res.InBandSpuriousFreqOffsetskHz = gtxResult.InBandSpuriousFreqOffsetskHz
+	res.InBandPowerOffsets = gtxResult.InBandPowerOffsets
+	res.InBandSpuriousMeasurementCompleted = gtxResult.InBandSpuriousMeasurementCompleted
+	res.OutBandSpuriousFreqOffsetskHz = gtxResult.OutBandSpuriousFreqOffsetskHz
+	res.OutBandPowerOffsets = gtxResult.OutBandPowerOffsets
+	res.OutBandSpuriousMeasurementCompleted = gtxResult.OutBandSpuriousMeasurementCompleted
+	res.HarmonicsFreqMHz = gtxResult.HarmonicsFreqMHz
+	res.HarmonicsMeasureddBm = gtxResult.HarmonicsMeasureddBm
+	res.HarmonicsPresent = gtxResult.HarmonicsPresent
+	res.HarmonicsNoiseFloor = gtxResult.HarmonicsNoiseFloor
+	res.HarmonicsMeasurementCompleted = gtxResult.HarmonicsMeasurementCompleted
+	res.ModIndexApplicable = gtxResult.ModIndexApplicable
+	res.ModIndexSet = gtxResult.ModIndexSet
+	res.ModIndexMeasured = gtxResult.ModIndexMeasured
+	res.ModIndexDeviation = gtxResult.ModIndexDeviation
+	res.ModIndexMeasurementCompleted = gtxResult.ModIndexMeasurementCompleted
+	res.FrequencyDeviationApplicable = gtxResult.FrequencyDeviationApplicable
+	res.FrequencyDeviationSet = gtxResult.FrequencyDeviationSet
+	res.FrequencyDeviationMeasured = gtxResult.FrequencyDeviationMeasured
+	res.FrequencyDeviationDeviation = gtxResult.FrequencyDeviationDeviation
+	res.FrequencyDeviationMeasurementCompleted = gtxResult.FrequencyDeviationMeasurementCompleted
+	res.PhaseNoiseAt1Khz = gtxResult.PhaseNoiseAt1Khz
+	res.PhaseNoiseAt10Khz = gtxResult.PhaseNoiseAt10Khz
+	res.PhaseNoiseAt100Khz = gtxResult.PhaseNoiseAt100Khz
+	res.PhaseNoiseAt1Mhz = gtxResult.PhaseNoiseAt1Mhz
+	res.PhaseNoiseMeasurementCompleted = gtxResult.PhaseNoiseMeasurementCompleted
 }
 
 func NewGTxGroundTransmitterMeasurement() *GroundTransmitterMeasurement {
 	return &GroundTransmitterMeasurement{}
 }
 
-func (gtm *GroundTransmitterMeasurement) GetStatusMonitor() chan MeasurementStatus {
-	return gtm.statusMonitor
+func (gtm *GroundTransmitterMeasurement) GetStatusMonitor() (chan RTStatus, chan GTxResult) {
+	return gtm.statusMonitor, gtm.resultMonitor
 }
 
 func (gtm *GroundTransmitterMeasurement) SetDevices(deviceProfile string, component string, intermediateFrequency float64, outputCableLoss float64) bool {
 	gtm.images = make([]reports.Images, 0)
-	gtm.statusMonitor = make(chan MeasurementStatus, 10)
+	gtm.statusMonitor = make(chan RTStatus, 10)
+	gtm.resultMonitor = make(chan GTxResult, 10)
 	gtm.noOfHarmonics = 3
 	gtm.deviceProfile = deviceProfile
 	gtxName, ok := database.GetGTxFromDeviceProfile(gtm.deviceProfile)
 	if !ok {
-		fmt.Println("Unable to get GTx")
+		gtm.setError("Unable to Load GTx from Database")
 		return false
 	}
 	gtm.gtxName = gtxName
 	saName, ok := database.GetSAFromDeviceProfile(gtm.deviceProfile)
 	if !ok {
-		fmt.Println("Unable to get SA")
+		gtm.setError("Unable to Load SA from Database")
 		return false
 	}
 	ok = gtm.gtx.LoadDevice(gtxName)
 	if !ok {
-		fmt.Println("Cannot load GTx")
+		gtm.setError("Unable to Load GTx from Database")
 		return false
 	}
 	ok = gtm.sa.LoadDevice(saName)
 	if !ok {
-		fmt.Println("Cannot load SA")
+		gtm.setError("Unable to Load SA from Database")
 		return false
 	}
 	gtm.component = component
@@ -99,7 +177,20 @@ func (gtm *GroundTransmitterMeasurement) SetModulationParameters(modScheme strin
 	gtm.subCarrierFreq = subCarrierFrequency
 	gtm.freqdeviation = frequencyDeviation
 	gtm.modIndex = modIndex
-
+	switch modScheme {
+	case "FM":
+		gtm.result.FrequencyDeviationApplicable = true
+		gtm.result.ModIndexApplicable = false
+	case "PM":
+		gtm.result.FrequencyDeviationApplicable = false
+		gtm.result.ModIndexApplicable = true
+	default:
+		gtm.result.FrequencyDeviationApplicable = false
+		gtm.result.ModIndexApplicable = false
+	}
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 }
 
 func (gtm *GroundTransmitterMeasurement) SetPowerSpectrum(span float64, rbw float64, vbw float64) {
@@ -131,22 +222,23 @@ func (gtm *GroundTransmitterMeasurement) Stop() {
 }
 
 func (gtm *GroundTransmitterMeasurement) setError(message string) {
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       false,
-		Message:       message,
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: true,
+		Success:   false,
+		Error:     true,
+		Message:   message,
 	}
 	gtm.statusMonitor <- measure
+	close(gtm.resultMonitor)
 	close(gtm.statusMonitor)
 }
 
 func (gtm *GroundTransmitterMeasurement) startMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	response := gtm.sa.SetAlignmentOff()
@@ -164,7 +256,13 @@ func (gtm *GroundTransmitterMeasurement) startMeasurement() error {
 		gtm.setError("Unable to communicate with GTx")
 		return fmt.Errorf("unable to communicate with GTx")
 	}
-	fmt.Println("GTx Frequency Set")
+	measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "GTx Frequency Set",
+	}
+	gtm.statusMonitor <- measure
 	response = gtm.gtx.SetPower(gtm.component, 0)
 	if !response.Success {
 		gtm.setError("Unable to communicate with GTx")
@@ -181,11 +279,11 @@ func (gtm *GroundTransmitterMeasurement) stopMeasurement() {
 }
 
 func (gtm *GroundTransmitterMeasurement) powerMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Power Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Power Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	response := gtm.gtx.SetModulationOff(gtm.component)
@@ -244,22 +342,29 @@ func (gtm *GroundTransmitterMeasurement) powerMeasurement() error {
 
 	gtm.currentStatus = append(gtm.currentStatus, []string{"Power", "Specification", "Measured", "Deviation"})
 	gtm.currentStatus = append(gtm.currentStatus, []string{"", "0", fmt.Sprintf("%.2f", power), fmt.Sprintf("%.2f", -power)})
-	var status = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Power Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	gtm.result.PowerMeasurementCompleted = true
+	gtm.result.PowerSpec = 0
+	gtm.result.PowerMeasured = power
+	gtm.result.PowerDeviation = -power
+	var status = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Power Measurement Completed",
 	}
 	gtm.statusMonitor <- status
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) frequencyMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Frequency Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Frequency Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	response := gtm.sa.SetSpectrum(gtm.intermediateFrequency, gtm.frequencySpectrum.span,
@@ -310,24 +415,29 @@ func (gtm *GroundTransmitterMeasurement) frequencyMeasurement() error {
 	gtm.currentStatus = append(gtm.currentStatus, []string{"Frequency", "Specification", "Measured", "Deviation kHz"})
 	gtm.currentStatus = append(gtm.currentStatus, []string{"", fmt.Sprintf("%.6f", gtm.intermediateFrequency/1e6),
 		fmt.Sprintf("%.6f", frequency/1e6), fmt.Sprintf("%.3f", deviation/1e3)})
-
-	var status = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Power Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	gtm.result.FreqMeasurementCompleted = true
+	gtm.result.FreqSpecMHz = gtm.intermediateFrequency / 1e6
+	gtm.result.FreqMeasuredMHz = frequency / 1e6
+	gtm.result.FreqDeviationkHz = deviation / 1e3
+	var status = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Frequency Measurement Completed",
 	}
 	gtm.statusMonitor <- status
-
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) spuriousMeasurement(inband bool) error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Spurious Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Spurious Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	spurType := ""
@@ -387,6 +497,13 @@ func (gtm *GroundTransmitterMeasurement) spuriousMeasurement(inband bool) error 
 	header := make([]string, 0)
 	header = append(header, "Frequency Offset [kHz]", "Power Level [dBc]")
 	rows := make([][]reports.DataCell, 0)
+	if inband {
+		gtm.result.InBandSpuriousFreqOffsetskHz = make([]float64, 0)
+		gtm.result.InBandPowerOffsets = make([]float64, 0)
+	} else {
+		gtm.result.OutBandSpuriousFreqOffsetskHz = make([]float64, 0)
+		gtm.result.OutBandPowerOffsets = make([]float64, 0)
+	}
 
 	for {
 		response = gtm.sa.SetMarkerNextPeak(1)
@@ -414,13 +531,6 @@ func (gtm *GroundTransmitterMeasurement) spuriousMeasurement(inband bool) error 
 			rows = append(rows, row)
 			gtm.currentStatus = append(gtm.currentStatus, []string{spurType, fmt.Sprintf("%.6f", spuriousFreq),
 				fmt.Sprintf("%.3f", frequencyOffset), fmt.Sprintf("%.2f", spuriousValue-powerOut)})
-			var sts = MeasurementStatus{
-				Completed:     false,
-				Success:       true,
-				Message:       "Spurious Measurement in progress",
-				CurrentStatus: gtm.currentStatus,
-			}
-			gtm.statusMonitor <- sts
 		} else {
 			response = gtm.sa.GetSpectrumDump()
 			if !response.Success {
@@ -440,27 +550,47 @@ func (gtm *GroundTransmitterMeasurement) spuriousMeasurement(inband bool) error 
 		rows = append(rows, row)
 		gtm.currentStatus = append(gtm.currentStatus, []string{"-", "-", "-", "-"})
 	}
+	if inband {
+		for _, freq := range frequencyOffset {
+			gtm.result.InBandSpuriousFreqOffsetskHz = append(gtm.result.InBandSpuriousFreqOffsetskHz, freq/1000)
+		}
+		gtm.result.InBandPowerOffsets = powerOffsets
+		gtm.result.InBandSpuriousMeasurementCompleted = true
+	} else {
+		for _, freq := range frequencyOffset {
+			gtm.result.OutBandSpuriousFreqOffsetskHz = append(gtm.result.OutBandSpuriousFreqOffsetskHz, freq/1000)
+		}
+		gtm.result.OutBandPowerOffsets = powerOffsets
+		gtm.result.OutBandSpuriousMeasurementCompleted = true
+	}
 	gtm.report.SetResults("Spurious "+spurType, header, rows)
 	gtm.order = append(gtm.order, "Spurious "+spurType)
 
-	var sts = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Spurious Measurement in progress",
-		CurrentStatus: gtm.currentStatus,
+	var sts = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Spurious Measurement Completed",
 	}
 	gtm.statusMonitor <- sts
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) harmonicsMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Harmonics Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Harmonics Measurement Started",
 	}
 	gtm.statusMonitor <- measure
+	gtm.result.HarmonicsFreqMHz = make([]float64, 0)
+	gtm.result.HarmonicsMeasureddBm = make([]float64, 0)
+	gtm.result.HarmonicsPresent = make([]bool, 0)
+	gtm.result.HarmonicsNoiseFloor = make([]float64, 0)
 	gtm.currentStatus = append(gtm.currentStatus, []string{"Harmonics", "Frequency", "Level", "Noise Floor"})
 	header := []string{"Frequency [MHz]", "Level [dBm]", "Noise Floor [dBm]"}
 	rows := make([][]reports.DataCell, 0)
@@ -507,6 +637,10 @@ func (gtm *GroundTransmitterMeasurement) harmonicsMeasurement() error {
 			row = append(row, reports.GetDataCell("Nil"))
 			row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", noiseFloor)))
 			rows = append(rows, row)
+			gtm.result.HarmonicsFreqMHz = append(gtm.result.HarmonicsFreqMHz, harmonicFreq)
+			gtm.result.HarmonicsMeasureddBm = append(gtm.result.HarmonicsMeasureddBm, 0)
+			gtm.result.HarmonicsPresent = append(gtm.result.HarmonicsPresent, false)
+			gtm.result.HarmonicsNoiseFloor = append(gtm.result.HarmonicsNoiseFloor, noiseFloor)
 		} else {
 			gtm.currentStatus = append(gtm.currentStatus,
 				[]string{"", fmt.Sprintf("%.6f", harmonicFreq), fmt.Sprintf("%.2f", power), fmt.Sprintf("%.2f", noiseFloor)})
@@ -515,6 +649,10 @@ func (gtm *GroundTransmitterMeasurement) harmonicsMeasurement() error {
 			row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", power)))
 			row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", noiseFloor)))
 			rows = append(rows, row)
+			gtm.result.HarmonicsFreqMHz = append(gtm.result.HarmonicsFreqMHz, harmonicFreq)
+			gtm.result.HarmonicsMeasureddBm = append(gtm.result.HarmonicsMeasureddBm, power)
+			gtm.result.HarmonicsPresent = append(gtm.result.HarmonicsPresent, true)
+			gtm.result.HarmonicsNoiseFloor = append(gtm.result.HarmonicsNoiseFloor, noiseFloor)
 		}
 		response = gtm.sa.WaitForSweeps(2)
 		if !response.Success {
@@ -531,34 +669,38 @@ func (gtm *GroundTransmitterMeasurement) harmonicsMeasurement() error {
 			Caption:  "Harmonics Measuremet - " + fmt.Sprintf("%.2f MHz", harmonicFreq/1e6),
 		}
 		gtm.images = append(gtm.images, image)
-		var sts = MeasurementStatus{
-			Completed:     false,
-			Success:       true,
-			Message:       "Harmonics Measurement in progress",
-			CurrentStatus: gtm.currentStatus,
+		var sts = RTStatus{
+			Completed: false,
+			Success:   true,
+			Error:     false,
+			Message:   "Harmonics Measurement in progress",
 		}
 		gtm.statusMonitor <- sts
 	}
 
 	gtm.report.SetResults("Harmonics", header, rows)
 	gtm.order = append(gtm.order, "Harmonics")
+	gtm.result.HarmonicsMeasurementCompleted = true
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 
-	var sts = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Harmonics Measurement Completed",
-		CurrentStatus: gtm.currentStatus,
+	var sts = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Harmonics Measurement Completed",
 	}
 	gtm.statusMonitor <- sts
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) modIndexMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Mod Index Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Mod Index Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	gtm.currentStatus = append(gtm.currentStatus, []string{"Carrier", "Set MI", "Measured MI", "Deviation"})
@@ -617,6 +759,14 @@ func (gtm *GroundTransmitterMeasurement) modIndexMeasurement() error {
 		reports.GetDataCell(fmt.Sprintf("%.2f", mod2)), reports.GetDataCell(fmt.Sprintf("%.2f", dev2)))
 	rows = append(rows, row1, row2)
 
+	gtm.result.ModIndexSet = gtm.modIndex
+	gtm.result.ModIndexMeasured = (mod1 + mod2) / 2
+	gtm.result.ModIndexDeviation = (dev1 + dev2) / 2
+	gtm.result.ModIndexMeasurementCompleted = true
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
+
 	response = gtm.sa.GetSpectrumDump()
 	if !response.Success {
 		gtm.setError("cannot take spectrum dump")
@@ -636,22 +786,22 @@ func (gtm *GroundTransmitterMeasurement) modIndexMeasurement() error {
 	gtm.report.SetResults("Phase Modulation", header, rows)
 	gtm.order = append(gtm.order, "Phase Modulation")
 
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Completed Measurement for PM",
-		CurrentStatus: gtm.currentStatus,
+	measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Completed Measurement for PM",
 	}
 	gtm.statusMonitor <- measure
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Frequency Deviation Measurement Started",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Frequency Deviation Measurement Started",
 	}
 	gtm.statusMonitor <- measure
 	gtm.currentStatus = append(gtm.currentStatus, []string{"Modulation", "Set Frequency Deviation", "Measured Frequency Deviation", "Deviation"})
@@ -709,6 +859,14 @@ func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
 
 	rows = append(rows, row)
 
+	gtm.result.FrequencyDeviationSet = gtm.freqdeviation
+	gtm.result.FrequencyDeviationMeasured = freqDev
+	gtm.result.FrequencyDeviationDeviation = dev
+	gtm.result.FrequencyDeviationMeasurementCompleted = true
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
+
 	response = gtm.sa.GetSpectrumDump()
 	if !response.Success {
 		gtm.setError("cannot take spectrum dump")
@@ -728,11 +886,11 @@ func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
 	gtm.report.SetResults("Frequency Deviation", header, rows)
 	gtm.order = append(gtm.order, "Frequency Deviation")
 
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Completed Measurement for Frequency Deviation",
-		CurrentStatus: gtm.currentStatus,
+	measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Completed Measurement for Frequency Deviation",
 	}
 	gtm.statusMonitor <- measure
 
@@ -741,11 +899,11 @@ func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
 
 func (gtm *GroundTransmitterMeasurement) phaseNoiseMeasurement() error {
 	gtm.currentStatus = append(gtm.currentStatus, []string{"1 kHz", "10 kHz", "100 kHz", "1 MHz"})
-	var measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Phase Noise Measurement In Progress",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Phase Noise Measurement In Progress",
 	}
 	gtm.statusMonitor <- measure
 
@@ -841,13 +999,22 @@ func (gtm *GroundTransmitterMeasurement) phaseNoiseMeasurement() error {
 	gtm.order = append(gtm.order, "Phase Noise")
 
 	gtm.currentStatus = append(gtm.currentStatus, status)
-	measure = MeasurementStatus{
-		Completed:     false,
-		Success:       true,
-		Message:       "Completed Measurement for phaseNoise",
-		CurrentStatus: gtm.currentStatus,
+	measure = RTStatus{
+		Completed: false,
+		Success:   true,
+		Error:     false,
+		Message:   "Completed Measurement for phaseNoise",
 	}
 	gtm.statusMonitor <- measure
+	gtm.result.PhaseNoiseMeasurementCompleted = true
+	gtm.result.PhaseNoiseAt1Khz, _ = strconv.ParseFloat(status[0], 64)
+	gtm.result.PhaseNoiseAt10Khz, _ = strconv.ParseFloat(status[1], 64)
+	gtm.result.PhaseNoiseAt100Khz, _ = strconv.ParseFloat(status[2], 64)
+	gtm.result.PhaseNoiseAt1Mhz, _ = strconv.ParseFloat(status[3], 64)
+
+	var result GTxResult
+	result.Copy(gtm.result)
+	gtm.resultMonitor <- result
 
 	return nil
 }
@@ -857,7 +1024,6 @@ func (gtm *GroundTransmitterMeasurement) StartMeasurement() {
 
 	err := gtm.startMeasurement()
 	if err != nil {
-		fmt.Println("Start measurement failed with ", err.Error())
 		return
 	}
 
@@ -924,12 +1090,13 @@ func (gtm *GroundTransmitterMeasurement) StartMeasurement() {
 		return
 	}
 
-	var measure = MeasurementStatus{
-		Completed:     true,
-		Success:       true,
-		Message:       "Report Saved",
-		CurrentStatus: gtm.currentStatus,
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Report Saved",
 	}
-	gtm.success = true
 	gtm.statusMonitor <- measure
+	close(gtm.statusMonitor)
+	close(gtm.resultMonitor)
 }

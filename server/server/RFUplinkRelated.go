@@ -11,61 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getRFUplinkMetaData(c *gin.Context) {
-	var rfm RFUplinkMetaData
-	var ok bool
-	tp, _ := database.GetSelectedTestPhase()
-
-	rfm.TSMs, ok = database.GetTSMList()
-	if !ok {
-		rfm.TSMs = []string{}
-	}
-
-	rfm.AllConfigs, ok = database.GetAllConfigurations()
-	if !ok {
-		rfm.AllConfigs = []string{}
-	}
-	rfm.ConfigPathInformation = make(map[string][]ConfigPathInformation)
-	for _, config := range rfm.AllConfigs {
-		rfm.ConfigPathInformation[config] = []ConfigPathInformation{}
-		paths, ok := database.GetTSMPathsForConfig(config)
-		if !ok {
-			continue
-		}
-		for _, path := range paths {
-			temp := strings.Split(path, ";")
-			if strings.EqualFold(strings.TrimSpace(temp[1]), "") {
-				continue
-			}
-			rfm.ConfigPathInformation[config] = append(rfm.ConfigPathInformation[config], ConfigPathInformation{
-				Path:     temp[0],
-				Mnemonic: temp[1],
-			})
-		}
-	}
-	rfm.UplinkConfigs, ok = database.GetConfigsForUplink()
-	if !ok {
-		rfm.UplinkConfigs = []string{}
-	}
-	rfm.UplinkConfigInformation = make(map[string]UplinkConfigInformation)
-	for _, config := range rfm.UplinkConfigs {
-		_, sa, _, sc, ok := database.GetCurrentUplinkLoss(config, tp)
-		if !ok {
-			continue
-		}
-		var ul = UplinkConfigInformation{
-			SALoss:    sa,
-			SCLoss:    sc,
-			PowerAtSC: -90,
-		}
-
-		rfm.UplinkConfigInformation[config] = ul
-	}
-	rfm.OK = true
-	rfm.Message = "Success"
-	c.IndentedJSON(http.StatusOK, rfm)
-}
-
 func getLinkStatus(c *gin.Context) {
 	var request RFUplinkRequest
 	var rfu LinkStatus

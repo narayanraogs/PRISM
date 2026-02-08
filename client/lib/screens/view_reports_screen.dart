@@ -62,74 +62,79 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
 
   DateTime _parseDateTime(String date, String time) {
     try {
-      // Input: "12-SEP-2025" "15:10:33"
-      // Normalize month to Title Case (e.g., SEP -> Sep) because DateFormat is picky
+      // Input can be: "12-SEP-2025" "15:10:33" OR "12-09-2025" "15:10:33"
       final parts = date.split('-');
-      if (parts.length == 3 && parts[1].length == 3) {
-        final month = parts[1].toLowerCase();
-        parts[1] = month[0].toUpperCase() + month.substring(1);
+      if (parts.length == 3) {
+        // Check if it's a numeric month (like 09) or named month (like SEP)
+        final monthItem = parts[1];
+        if (int.tryParse(monthItem) == null) {
+          // It's a named month, normalize it for DateFormat
+          final month = monthItem.toLowerCase();
+          parts[1] = month[0].toUpperCase() + month.substring(1);
+          final normalizedDate = parts.join('-');
+          return DateFormat("dd-MMM-yyyy HH:mm:ss").parse("$normalizedDate $time");
+        } else {
+          // It's a numeric month
+          final normalizedDate = parts.join('-');
+          return DateFormat("dd-MM-yyyy HH:mm:ss").parse("$normalizedDate $time");
+        }
       }
-      final normalizedDate = parts.join('-');
-      return DateFormat("dd-MMM-yyyy HH:mm:ss").parse("$normalizedDate $time");
+      return DateTime.now();
     } catch (e) {
       debugPrint('Error parsing date: $date $time -> $e');
       return DateTime.now();
     }
   }
 
-  Future<void> _fetchData() async {
+  void _fetchData() {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    try {
-      final service = Provider.of<ServerService>(context, listen: false);
-      final response = await service.fetchResultMetadata();
+    final service = Provider.of<ServerService>(context, listen: false);
+    final response = service.status.bootstrapData?.reportsData;
 
-      if (response != null && response.ok) {
-        _allEntries.clear();
-        for (var meta in response.reports) {
-          _allEntries.add(
-            _ReportEntry(
-              metadata: meta,
-              dateTime: _parseDateTime(meta.date, meta.time),
-            ),
-          );
-        }
-
-        // Derive unique filters
-        _phases = ['All'];
-        _types = ['All'];
-        for (var entry in _allEntries) {
-          if (!_phases.contains(entry.metadata.phase)) {
-            _phases.add(entry.metadata.phase);
-          }
-          if (!_types.contains(entry.metadata.testType)) {
-            _types.add(entry.metadata.testType);
-          }
-        }
-
-        _allEntries.sort((a, b) => b.dateTime.compareTo(a.dateTime));
-
-        // Store global parameter lists
-        _allVsaParams = response.allVsaParams;
-        _selectedVsaParams = List.from(response.selectedVsaParams);
-        _allPpmParams = response.allPpmParams;
-        _selectedPpmParams = List.from(response.selectedPpmParams);
-
-        _applyFilters();
-      } else {
-        setState(() {
-          _errorMessage = response?.message ?? 'Failed to fetch results';
-        });
+    if (response != null && response.ok) {
+      debugPrint('ViewReportsScreen: Using Bootstrapped Metadata');
+      _allEntries.clear();
+      for (var meta in response.reports) {
+        _allEntries.add(
+          _ReportEntry(
+            metadata: meta,
+            dateTime: _parseDateTime(meta.date, meta.time),
+          ),
+        );
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'An error occurred: $e';
-      });
-    } finally {
+
+      // Derive unique filters
+      _phases = ['All'];
+      _types = ['All'];
+      for (var entry in _allEntries) {
+        if (!_phases.contains(entry.metadata.phase)) {
+          _phases.add(entry.metadata.phase);
+        }
+        if (!_types.contains(entry.metadata.testType)) {
+          _types.add(entry.metadata.testType);
+        }
+      }
+
+      _allEntries.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+      // Store global parameter lists
+      _allVsaParams = response.allVsaParams;
+      _selectedVsaParams = List.from(response.selectedVsaParams);
+      _allPpmParams = response.allPpmParams;
+      _selectedPpmParams = List.from(response.selectedPpmParams);
+
+      _applyFilters();
       setState(() => _isLoading = false);
+    } else {
+      debugPrint('ViewReportsScreen: Bootstrapped Metadata NOT FOUND');
+      setState(() {
+        _errorMessage = 'Failed to fetch results';
+        _isLoading = false;
+      });
     }
   }
 

@@ -2,8 +2,6 @@ package server
 
 import (
 	"fmt"
-	"net/http"
-	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/logger"
 	"strings"
@@ -11,41 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func getMonitorMetadata(c *gin.Context) {
-	var mmd MonitorMetadata
-	mmd.InstrumentTypes = []string{"SA", "VSA", "PM", "PPM"}
-	mmd.Instruments = make(map[string][]string)
-	sa, ok := database.GetSAAndVSAList()
-	if !ok {
-		mmd.OK = false
-		mmd.Message = "SA's not present in Database"
-		c.IndentedJSON(http.StatusOK, mmd)
-		return
-	}
-	mmd.Instruments["SA"] = sa
-	pm, ok := database.GetPMAndPPMList()
-	if !ok {
-		mmd.OK = false
-		mmd.Message = "PM's not present in Database"
-		c.IndentedJSON(http.StatusOK, mmd)
-		return
-	}
-	mmd.Instruments["PM"] = pm
-	ppm, ok := database.GetPPMList()
-	if ok {
-		//PPM is optional
-		mmd.Instruments["PPM"] = ppm
-	}
-	vsa, ok := database.GetVSAList()
-	if ok {
-		//VSA is optional
-		mmd.Instruments["VSA"] = vsa
-	}
-	mmd.OK = true
-	mmd.Message = "Success"
-	c.IndentedJSON(http.StatusOK, mmd)
-}
 
 func monitor(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)

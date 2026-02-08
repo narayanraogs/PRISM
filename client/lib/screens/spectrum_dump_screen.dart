@@ -43,28 +43,28 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
     _loadMetadata();
   }
 
-  Future<void> _loadMetadata() async {
+  void _loadMetadata() {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     final service = Provider.of<ServerService>(context, listen: false);
-    final metadata = await service.fetchSpectrumDumpMetadata();
+    final metadata = service.status.bootstrapData?.spectrumDumpData;
 
-    if (mounted) {
-      if (metadata != null && metadata.ok) {
-        setState(() {
-          _metadata = metadata;
-          _spectrumProfiles = metadata.spectrumProfiles;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = metadata?.message ?? 'Failed to load metadata';
-          _isLoading = false;
-        });
-      }
+    if (metadata != null) {
+      debugPrint('SpectrumDumpScreen: Using Bootstrapped Metadata');
+      setState(() {
+        _metadata = metadata;
+        _spectrumProfiles = metadata.spectrumProfiles;
+        _isLoading = false;
+      });
+    } else {
+      debugPrint('SpectrumDumpScreen: Bootstrapped Metadata NOT FOUND');
+      setState(() {
+        _errorMessage = 'Failed to load metadata';
+        _isLoading = false;
+      });
     }
   }
 

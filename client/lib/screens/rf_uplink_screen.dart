@@ -34,11 +34,15 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchInitialData() async {
+  void _fetchInitialData() {
     setState(() => _isMetaLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    final meta = await serverService.fetchRFUplinkMetaData();
-    if (meta != null && mounted) {
+    
+    // Use bootstrapped data instead of fetching
+    final meta = serverService.status.bootstrapData?.rfuData;
+    
+    if (meta != null) {
+      debugPrint('RFUplinkScreen: Using Bootstrapped Metadata');
       setState(() {
         _metaData = meta;
         if (_selectedTSM == "" && meta.tsms.isNotEmpty) {
@@ -46,9 +50,9 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
         }
         _isMetaLoading = false;
       });
-      // Fetch hardware status in background/parallel
       _fetchHardwareStatus();
-    } else if (mounted) {
+    } else {
+      debugPrint('RFUplinkScreen: Bootstrapped Metadata NOT FOUND');
       setState(() => _isMetaLoading = false);
     }
   }
@@ -840,7 +844,7 @@ class _RFUplinkFormState extends State<RFUplinkForm> {
             ),
           ],
         ),
-        const Spacer(),
+        const SizedBox(height: 32),
         SizedBox(
           width: double.infinity,
           height: 56,

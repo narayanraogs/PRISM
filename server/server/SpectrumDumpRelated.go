@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/reports"
 	"prismServer/resultsDB"
@@ -13,57 +12,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func getSpectrumDumpMetadata(c *gin.Context) {
-	var stb SpectrumDumpMetadata
-	stb.SpectrumDumpMode = []string{"Spectrum Dump", "Screenshot"}
-	stb.Instruments = make(map[string][]string)
-	stb.SpectrumProfiles = make([]SpectrumProfile, 0)
-	sa, ok := database.GetSAAndVSAList()
-	if !ok {
-		stb.OK = false
-		stb.Message = "SA's not present in Database"
-		c.IndentedJSON(http.StatusOK, stb)
-		return
-	}
-	stb.Instruments["SA"] = sa
-	vsa, ok := database.GetVSAList()
-	if !ok {
-		stb.OK = false
-		stb.Message = "VSA's not present in Database"
-		c.IndentedJSON(http.StatusOK, stb)
-		return
-	}
-	stb.Instruments["VSA"] = vsa
-
-	sps, ok := database.GetAllSpectrumProfiles()
-	if !ok {
-		stb.OK = false
-		stb.Message = "Cannot get Spectrum Profiles from Database"
-		c.IndentedJSON(http.StatusOK, stb)
-		return
-	}
-	for _, profile := range sps {
-		spec, ok := database.GetSpectrumProfile(profile)
-		if !ok {
-			continue
-		}
-		var prof SpectrumProfile
-		prof.ProfileName = spec.Name
-		prof.CenterFrequency = spec.CenterFrequency
-		prof.Span = spec.Span
-		prof.RBW = float64(spec.RBW)
-		prof.VBW = float64(spec.VBW)
-		stb.SpectrumProfiles = append(stb.SpectrumProfiles, prof)
-	}
-
-	stb.ScreenshotProfiles = []string{"Screenshot", "Magniture", "Pulse Magniture",
-		"Pulse Frequency", "Pulse Phase", "Spectrogram"}
-
-	stb.OK = true
-	stb.Message = "Success"
-	c.IndentedJSON(http.StatusOK, stb)
-}
 
 func setSpectrum(c *gin.Context) {
 	var req SetSpectrumRequest

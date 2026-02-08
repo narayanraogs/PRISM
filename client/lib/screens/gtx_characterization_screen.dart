@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:prism_client/services/server_service.dart';
 
 class GTxCharacterizationScreen extends StatefulWidget {
   const GTxCharacterizationScreen({super.key});
@@ -10,15 +13,12 @@ class GTxCharacterizationScreen extends StatefulWidget {
 }
 
 class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
-  // Mock Data
-  final List<String> _profiles = [
-    'GTx-Profile-A',
-    'GTx-Profile-B',
-    'Dual-Source-X',
-  ];
-  String _selectedProfile = 'GTx-Profile-A';
+  // Data from Server
+  GTxMeasurementMetadata? _metadata;
+  List<String> _profiles = [];
+  String? _selectedProfile;
 
-  final List<String> _components = ['IFM-1', 'IFM-2', 'Direct-Connect'];
+  final List<String> _components = ['IFM-1', 'IFM-2'];
   String _selectedComponent = 'IFM-1';
 
   final List<String> _modulations = ["PM", "FM", "CDMA", "PSK", "FSK"];
@@ -32,26 +32,166 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
   final _ifController = TextEditingController(text: "70,000,000");
   final _subCarFreqController = TextEditingController(text: "8,000");
   final _modIndexController = TextEditingController(text: "1.0");
+  final _freqDevController = TextEditingController(text: "200,000");
 
-  // Mock Measurement Results
-  final List<Map<String, String>> _mockResults = [
-    {"Parameter": "Power Level", "Measured": "-12.4 dBm", "Status": "PASS"},
-    {
-      "Parameter": "Center Frequency",
-      "Measured": "70.0001 MHz",
-      "Status": "PASS",
-    },
-    {
-      "Parameter": "In-Band Spurious",
-      "Measured": "-65.0 dBc",
-      "Status": "PASS",
-    },
-    {
-      "Parameter": "Out-of-Band Spurious",
-      "Measured": "-72.1 dBc",
-      "Status": "PASS",
-    },
-  ];
+  final _powerSpanController = TextEditingController(text: "1,000,000");
+  final _powerRBWController = TextEditingController(text: "3,000");
+  final _powerVBWController = TextEditingController(text: "1,000");
+
+  final _freqSpanController = TextEditingController(text: "1,000,000");
+  final _freqRBWController = TextEditingController(text: "3,000");
+  final _freqVBWController = TextEditingController(text: "1,000");
+
+  final _inBandSpanController = TextEditingController(text: "1,000,000");
+  final _inBandRBWController = TextEditingController(text: "3,000");
+  final _inBandVBWController = TextEditingController(text: "1,000");
+
+  final _outBandSpanController = TextEditingController(text: "1,000,000");
+  final _outBandRBWController = TextEditingController(text: "3,000");
+  final _outBandVBWController = TextEditingController(text: "1,000");
+
+  // Live Data
+  GTxResult? _latestResult;
+  final List<String> _logs = [];
+  StreamSubscription? _subscription;
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _cableLossController.dispose();
+    _ifController.dispose();
+    _subCarFreqController.dispose();
+    _modIndexController.dispose();
+    _freqDevController.dispose();
+    _powerSpanController.dispose();
+    _powerRBWController.dispose();
+    _powerVBWController.dispose();
+    _freqSpanController.dispose();
+    _freqRBWController.dispose();
+    _freqVBWController.dispose();
+    _inBandSpanController.dispose();
+    _inBandRBWController.dispose();
+    _inBandVBWController.dispose();
+    _outBandSpanController.dispose();
+    _outBandRBWController.dispose();
+    _outBandVBWController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMetadata();
+    });
+  }
+
+  void _fetchMetadata() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final metadata = serverService.status.bootstrapData?.gtxData;
+
+    if (metadata != null && metadata.ok) {
+      debugPrint('GTxCharacterizationScreen: Using Bootstrapped Metadata');
+      setState(() {
+        _metadata = metadata;
+        _profiles = metadata.deviceProfile;
+        if (_profiles.isNotEmpty && (_selectedProfile == null || !_profiles.contains(_selectedProfile))) {
+          _selectedProfile = _profiles.first;
+        }
+      });
+    } else {
+      debugPrint('GTxCharacterizationScreen: Bootstrapped Metadata NOT FOUND');
+    }
+  }
+
+  void _startCharacterization() {
+    if (_selectedProfile == null) return;
+
+    setState(() {
+      _isMeasuring = true;
+      _logs.clear();
+      _latestResult = null;
+      _logs.add("Characterization Protocol Initiated...");
+    });
+
+    final serverService = Provider.of<ServerService>(context, listen: false);
+
+    final request = GTxTneRequest(
+      deviceProfile: _selectedProfile!,
+      component: _selectedComponent,
+      intermediateFrequency:
+          double.tryParse(_ifController.text.replaceAll(',', '')) ?? 0.0,
+      cableLoss: double.tryParse(_cableLossController.text) ?? 0.0,
+      modulationScheme: _selectedModulation,
+      subCarrierFrequency:
+          double.tryParse(_subCarFreqController.text.replaceAll(',', '')) ?? 0.0,
+      modIndex: double.tryParse(_modIndexController.text) ?? 0.0,
+      frequencyDeviation:
+          double.tryParse(_freqDevController.text.replaceAll(',', '')) ?? 0.0,
+      frequencySpectrum: GTxSpectrum(
+        span: double.tryParse(_freqSpanController.text.replaceAll(',', '')) ??
+            1000000,
+        rbw:
+            double.tryParse(_freqRBWController.text.replaceAll(',', '')) ?? 3000,
+        vbw:
+            double.tryParse(_freqVBWController.text.replaceAll(',', '')) ?? 1000,
+      ),
+      powerSpectrum: GTxSpectrum(
+        span: double.tryParse(_powerSpanController.text.replaceAll(',', '')) ??
+            1000000,
+        rbw: double.tryParse(_powerRBWController.text.replaceAll(',', '')) ??
+            3000,
+        vbw: double.tryParse(_powerVBWController.text.replaceAll(',', '')) ??
+            1000,
+      ),
+      inBandSpectrum: GTxSpectrum(
+        span: double.tryParse(_inBandSpanController.text.replaceAll(',', '')) ??
+            1000000,
+        rbw: double.tryParse(_inBandRBWController.text.replaceAll(',', '')) ??
+            3000,
+        vbw: double.tryParse(_inBandVBWController.text.replaceAll(',', '')) ??
+            1000,
+      ),
+      outBandSpectrum: GTxSpectrum(
+        span:
+            double.tryParse(_outBandSpanController.text.replaceAll(',', '')) ??
+            1000000,
+        rbw: double.tryParse(_outBandRBWController.text.replaceAll(',', '')) ??
+            3000,
+        vbw: double.tryParse(_outBandVBWController.text.replaceAll(',', '')) ??
+            1000,
+      ),
+    );
+
+    _subscription = serverService.connectGTxTne(request).listen((data) {
+      if (data is RTStatus) {
+        setState(() {
+          _logs.add(data.message);
+          if (data.completed) {
+            _isMeasuring = false;
+          }
+        });
+      } else if (data is GTxResult) {
+        setState(() {
+          _latestResult = data;
+        });
+      }
+    }, onError: (e) {
+      setState(() {
+        _logs.add("Critical Error: $e");
+        _isMeasuring = false;
+      });
+    }, onDone: () {
+      setState(() {
+        _isMeasuring = false;
+      });
+    });
+  }
+
+  void _stopCharacterization() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.abortGTxTne();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,9 +276,29 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           ],
         ),
         const Spacer(),
-        _buildInstrumentStatus(theme, "GTx-GEN-01", true),
-        const SizedBox(width: 16),
-        _buildInstrumentStatus(theme, "SA-SPEC-04", true),
+        if (_metadata != null &&
+            _selectedProfile != null &&
+            _metadata!.deviceMapping.containsKey(_selectedProfile))
+          Row(
+            children: [
+              _buildInstrumentStatus(
+                theme,
+                _metadata!.deviceMapping[_selectedProfile!]!.gtxName,
+                true,
+              ),
+              const SizedBox(width: 16),
+              _buildInstrumentStatus(
+                theme,
+                _metadata!.deviceMapping[_selectedProfile!]!.saName,
+                true,
+              ),
+            ],
+          )
+        else ...[
+          _buildInstrumentStatus(theme, "GTx-GEN-01", true),
+          const SizedBox(width: 16),
+          _buildInstrumentStatus(theme, "SA-SPEC-04", true),
+        ],
         const SizedBox(width: 24),
         IconButton(
           onPressed: () => setState(() => _isHelpOpen = !_isHelpOpen),
@@ -227,12 +387,12 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: _profiles.length,
               itemBuilder: (context, index) {
-                final isSelected = _selectedProfile == _profiles[index];
+                final profile = _profiles[index];
+                final isSelected = _selectedProfile == profile;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: InkWell(
-                    onTap: () =>
-                        setState(() => _selectedProfile = _profiles[index]),
+                    onTap: () => setState(() => _selectedProfile = profile),
                     borderRadius: BorderRadius.circular(16),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -258,16 +418,19 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                                 : Colors.grey.shade400,
                           ),
                           const SizedBox(width: 16),
-                          Text(
-                            _profiles[index],
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : Colors.black87,
+                          Expanded(
+                            child: Text(
+                              profile,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : Colors.black87,
+                              ),
                             ),
                           ),
                         ],
@@ -357,22 +520,26 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   width: 300,
                   height: 56,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() => _isMeasuring = !_isMeasuring);
-                    },
-                    icon: _isMeasuring
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.play_arrow_rounded, size: 28),
-                    label: Text(
-                      _isMeasuring ? 'STOPPING...' : 'START CHARACTERIZATION',
-                    ),
+                  onPressed: () {
+                    if (_isMeasuring) {
+                      _stopCharacterization();
+                    } else {
+                      _startCharacterization();
+                    }
+                  },
+                  icon: _isMeasuring
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.play_arrow_rounded, size: 28),
+                  label: Text(
+                    _isMeasuring ? 'STOPPING...' : 'START CHARACTERIZATION',
+                  ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isMeasuring
                           ? Colors.red
@@ -411,7 +578,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'LIVE SPECTRUM RESULTS',
+                      'RESULTS',
                       style: GoogleFonts.inter(
                         color: Colors.white.withOpacity(0.6),
                         fontSize: 11,
@@ -427,7 +594,86 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                ..._mockResults.map((res) => _buildResultRow(res)),
+                if (_latestResult == null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Text(
+                        'Awaiting Measurement Data...',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...[
+                    _buildResultRow(
+                      "Power Level",
+                      _latestResult!.powerMeasurementCompleted
+                          ? "${_latestResult!.powerMeasured.toStringAsFixed(2)} dBm"
+                          : "Measuring...",
+                      _latestResult!.powerMeasurementCompleted
+                          ? "COMPLETE"
+                          : "PENDING",
+                    ),
+                    _buildResultRow(
+                      "Center Freq",
+                      _latestResult!.freqMeasurementCompleted
+                          ? "${_latestResult!.freqMeasuredMHz.toStringAsFixed(6)} MHz"
+                          : "Measuring...",
+                      _latestResult!.freqMeasurementCompleted
+                          ? "COMPLETE"
+                          : "PENDING",
+                    ),
+                    if (_latestResult!.inBandSpuriousMeasurementCompleted)
+                      _buildResultRow(
+                        "In-Band Spurious",
+                        _latestResult!.inBandSpuriousFreqOffsetskHz.isEmpty
+                            ? "NIL"
+                            : "${_latestResult!.inBandPowerOffsets.first.toStringAsFixed(1)} dBc",
+                        "COMPLETE",
+                      ),
+                    if (_latestResult!.outBandSpuriousMeasurementCompleted)
+                      _buildResultRow(
+                        "Out-Band Spurious",
+                        _latestResult!.outBandSpuriousFreqOffsetskHz.isEmpty
+                            ? "NIL"
+                            : "${_latestResult!.outBandPowerOffsets.first.toStringAsFixed(1)} dBc",
+                        "COMPLETE",
+                      ),
+                    if (_latestResult!.modIndexApplicable)
+                      _buildResultRow(
+                        "Mod Index",
+                        _latestResult!.modIndexMeasurementCompleted
+                            ? _latestResult!.modIndexMeasured.toStringAsFixed(2)
+                            : "Measuring...",
+                        _latestResult!.modIndexMeasurementCompleted
+                            ? "COMPLETE"
+                            : "PENDING",
+                      ),
+                    if (_latestResult!.frequencyDeviationApplicable)
+                      _buildResultRow(
+                        "Freq Dev",
+                        _latestResult!.frequencyDeviationMeasurementCompleted
+                            ? "${(_latestResult!.frequencyDeviationMeasured / 1000).toStringAsFixed(1)} kHz"
+                            : "Measuring...",
+                        _latestResult!.frequencyDeviationMeasurementCompleted
+                            ? "COMPLETE"
+                            : "PENDING",
+                      ),
+                    if (_latestResult!.harmonicsMeasurementCompleted)
+                      _buildResultRow(
+                        "2nd Harmonic",
+                        _latestResult!.harmonicsFreqMHz.length > 1
+                            ? (_latestResult!.harmonicsPresent[1]
+                                ? "${_latestResult!.harmonicsMeasureddBm[1].toStringAsFixed(1)} dBm"
+                                : "NIL")
+                            : "-",
+                        "COMPLETE",
+                      ),
+                  ],
               ],
             ),
           ),
@@ -452,9 +698,16 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildLogEntry("Initializing GTx Source..."),
-                  _buildLogEntry("Applying IF offset 70.0 MHz..."),
-                  _buildLogEntry("Calibrating Cable Loss...", isPending: true),
+                  _buildLogEntry("Measurement Session Ready"),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: _logs.length,
+                      itemBuilder: (context, index) {
+                        return _buildLogEntry(_logs[index]);
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -464,7 +717,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
     );
   }
 
-  Widget _buildResultRow(Map<String, String> res) {
+  Widget _buildResultRow(String parameter, String value, String status) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -474,12 +727,12 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                res["Parameter"]!,
+                parameter,
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
-                res["Measured"]!,
+                value,
                 style: GoogleFonts.robotoMono(
                   color: Colors.blue.shade300,
                   fontSize: 16,
@@ -491,14 +744,20 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: status == "COMPLETE"
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.orange.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+              border: Border.all(
+                color: status == "COMPLETE"
+                    ? Colors.green.withOpacity(0.3)
+                    : Colors.orange.withOpacity(0.3),
+              ),
             ),
             child: Text(
-              res["Status"]!,
-              style: const TextStyle(
-                color: Colors.green,
+              status,
+              style: TextStyle(
+                color: status == "COMPLETE" ? Colors.green : Colors.orange,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -572,7 +831,13 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             Expanded(
               child: _buildTextField(
                 label: "Span (Hz)",
-                controller: TextEditingController(text: "1,000,000"),
+                controller: _selectedSpectrumTab == 0
+                    ? _powerSpanController
+                    : _selectedSpectrumTab == 1
+                        ? _freqSpanController
+                        : _selectedSpectrumTab == 2
+                            ? _inBandSpanController
+                            : _outBandSpanController,
                 icon: Icons.unfold_more,
               ),
             ),
@@ -580,7 +845,13 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             Expanded(
               child: _buildTextField(
                 label: "RBW (Hz)",
-                controller: TextEditingController(text: "3,000"),
+                controller: _selectedSpectrumTab == 0
+                    ? _powerRBWController
+                    : _selectedSpectrumTab == 1
+                        ? _freqRBWController
+                        : _selectedSpectrumTab == 2
+                            ? _inBandRBWController
+                            : _outBandRBWController,
                 icon: Icons.grid_view,
               ),
             ),
@@ -588,7 +859,13 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             Expanded(
               child: _buildTextField(
                 label: "VBW (Hz)",
-                controller: TextEditingController(text: "1,000"),
+                controller: _selectedSpectrumTab == 0
+                    ? _powerVBWController
+                    : _selectedSpectrumTab == 1
+                        ? _freqVBWController
+                        : _selectedSpectrumTab == 2
+                            ? _inBandVBWController
+                            : _outBandVBWController,
                 icon: Icons.blur_on,
               ),
             ),
@@ -674,7 +951,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   )
                 : _buildTextField(
                     label: "Freq Deviation (Hz)",
-                    controller: TextEditingController(text: "200,000"),
+                    controller: _freqDevController,
                     icon: Icons.compare_arrows,
                   ),
           ),

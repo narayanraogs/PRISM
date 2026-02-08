@@ -952,6 +952,27 @@ func (q *Queries) getConfigurationNamesForTSMConfig(ctx context.Context, tsmconf
 	return items, nil
 }
 
+const getConverterDetails = `-- name: getConverterDetails :one
+Select ID, Name, InputFrequency, OutputFrequency, MaxPowerCable, MinPowerCable, MaxPowerRadiated, MinPowerRadiated from "UpDownConverter"
+where "Name" like ?
+`
+
+func (q *Queries) getConverterDetails(ctx context.Context, name string) (UpDownConverter, error) {
+	row := q.db.QueryRowContext(ctx, getConverterDetails, name)
+	var i UpDownConverter
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.InputFrequency,
+		&i.OutputFrequency,
+		&i.MaxPowerCable,
+		&i.MinPowerCable,
+		&i.MaxPowerRadiated,
+		&i.MinPowerRadiated,
+	)
+	return i, err
+}
+
 const getDeviceDetails = `-- name: getDeviceDetails :one
 Select ID, DeviceName, DeviceMake, DeviceType, IPAddress, ControlPort, AlternateControlPort, ReadPort, DopplerPort, TimeoutInMillisecs from "Devices"
 Where "DeviceName" like ?

@@ -251,13 +251,13 @@ func getTSMInternalMeasurementStatus(conn *websocket.Conn, cid *client) {
 }
 
 func getGTxMeasurementStatus(conn *websocket.Conn, cid *client) {
-	monitor := cid.gtxMeasurement.GetStatusMonitor()
+	monitor, _ := cid.gtxMeasurement.GetStatusMonitor()
 	go cid.gtxMeasurement.StartMeasurement()
 	for msg := range monitor {
 		var temp = make([]string, 0)
-		for _, line := range msg.CurrentStatus {
+		/*for _, line := range msg.CurrentStatus {
 			temp = append(temp, strings.Join(line, ","))
-		}
+		}*/
 		var values = []string{strings.Join(temp, ";;;"), msg.Message}
 
 		if msg.Completed {

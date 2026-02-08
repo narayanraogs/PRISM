@@ -39,12 +39,13 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     });
   }
 
-  Future<void> _fetchMetadata() async {
+  void _fetchMetadata() {
     setState(() => _isLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    final metadata = await serverService.fetchTSMInternalLossMetadata();
+    final metadata = serverService.status.bootstrapData?.tsmInternalLossData;
 
-    if (metadata != null && metadata.ok) {
+    if (metadata != null) {
+      debugPrint('TSMInternalPathLossScreen: Using Bootstrapped Metadata');
       setState(() {
         _profiles = metadata.deviceProfiles;
         if (_profiles.isNotEmpty && _selectedProfile.isEmpty) {
@@ -68,11 +69,12 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
         _isLoading = false;
       });
     } else {
+      debugPrint('TSMInternalPathLossScreen: Bootstrapped Metadata NOT FOUND');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(metadata?.message ?? "Failed to fetch metadata"),
+          const SnackBar(
+            content: Text("Failed to fetch metadata"),
             backgroundColor: Colors.red,
           ),
         );

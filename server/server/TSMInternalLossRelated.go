@@ -3,8 +3,6 @@ package server
 import (
 	"encoding/json"
 	"log/slog"
-	"net/http"
-	"prismServer/database"
 	"prismServer/resultsDB"
 	"prismServer/tne"
 	"strconv"
@@ -16,28 +14,6 @@ import (
 type lossMeasured struct {
 	Frequency []string
 	Measured  []string
-}
-
-func getTSMInternalLossMetadata(c *gin.Context) {
-	var resp TSMInternalLossMetadata
-	var ok bool
-	resp.DeviceProfile, ok = database.GetDeviceProfileNames()
-	if !ok {
-		resp.OK = false
-		resp.Message = "Failed to get device profile names"
-		c.JSON(http.StatusOK, resp)
-		return
-	}
-	resp.MeasuredLoss, ok = getTSMLossTable()
-	if !ok {
-		resp.OK = false
-		resp.Message = "Failed to get read Loss table from database"
-		c.JSON(http.StatusOK, resp)
-		return
-	}
-	resp.OK = true
-	resp.Message = "Success"
-	c.JSON(http.StatusOK, resp)
 }
 
 func getTSMLossTable() (TSMInternalLossMeasured, bool) {

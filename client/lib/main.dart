@@ -15,8 +15,10 @@ import 'package:prism_client/screens/attenuation_screen.dart';
 import 'package:prism_client/screens/tsm_internal_path_loss_screen.dart';
 import 'package:prism_client/screens/gtx_characterization_screen.dart';
 import 'package:prism_client/screens/link_loss_screen.dart';
+import 'package:prism_client/screens/up_down_converter_measurement_screen.dart';
 import 'package:prism_client/screens/view_reports_screen.dart';
 import 'package:prism_client/screens/stability_reports_screen.dart';
+import 'package:prism_client/screens/splash_screen.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
 
@@ -55,6 +57,7 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   int _selectedIndex = 0;
+  bool _isInitialized = false;
 
   final List<String> _titles = [
     'RF Uplink',
@@ -68,7 +71,7 @@ class _RootPageState extends State<RootPage> {
     'Cable Loss Measurement',
     'Attenuation',
     'TSM Internal Path Loss',
-    'GTx Charecterization',
+    'GTx Characterization',
     'Up Down converter',
     'Database Management',
     'View Reports',
@@ -79,6 +82,15 @@ class _RootPageState extends State<RootPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return SplashScreen(
+        onLoaded: () {
+          setState(() {
+            _isInitialized = true;
+          });
+        },
+      );
+    }
     return MainLayout(
       selectedIndex: _selectedIndex,
       onDestinationSelected: (index) {
@@ -102,6 +114,7 @@ class _RootPageState extends State<RootPage> {
           if (index == 9) return const AttenuationScreen();
           if (index == 10) return const TSMInternalPathLossScreen();
           if (index == 11) return const GTxCharacterizationScreen();
+          if (index == 12) return const UpDownConverterScreen();
           if (index == 13) return const LinkLossScreen();
           if (index == 14) return const ViewReportsScreen();
           if (index == 15) return const StabilityReportsScreen();

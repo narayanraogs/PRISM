@@ -54,38 +54,47 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   final TextEditingController _y2MaxController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _fetchMetadata();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMetadata();
   }
 
-  Future<void> _fetchMetadata() async {
-    final serverService = Provider.of<ServerService>(context, listen: false);
-    final response = await serverService.fetchStabilityReportsMetadata();
-    
-    if (mounted) {
-      if (response != null && response.ok) {
+  void _syncMetadata() {
+    final serverService = Provider.of<ServerService>(context);
+    final metadata = serverService.status.bootstrapData?.stabilityReportsData;
+
+    if (metadata != null && metadata.ok) {
+      final newSessions = List.generate(metadata.id.length, (i) {
+        return StabilityReportModel(
+          id: metadata.id[i],
+          date: metadata.date[i],
+          time: metadata.time[i],
+          parameters: metadata.parameters[i],
+        );
+      });
+
+      // Update sessions if length changed or they were empty
+      if (newSessions.length != _sessions.length || _sessions.isEmpty) {
+        debugPrint('StabilityReportsScreen: Syncing ${newSessions.length} sessions');
         setState(() {
-          _sessions = List.generate(response.id.length, (i) {
-            return StabilityReportModel(
-              id: response.id[i],
-              date: response.date[i],
-              time: response.time[i],
-              parameters: response.parameters[i],
-            );
-          });
+          _sessions = newSessions;
           _isLoadingMetadata = false;
-          if (_sessions.isNotEmpty) {
+          if (_sessions.isNotEmpty && (_selectedSession == null || !_sessions.any((s) => s.id == _selectedSession!.id))) {
             _selectedSession = _sessions.first;
           }
         });
       } else {
         setState(() => _isLoadingMetadata = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response?.message ?? 'Failed to load metadata')),
-        );
       }
+    } else {
+      setState(() => _isLoadingMetadata = false);
     }
+  }
+
+  void _fetchMetadata() {
+    // Manually trigger a bootstrap refresh if needed
+    setState(() => _isLoadingMetadata = true);
+    Provider.of<ServerService>(context, listen: false).fetchBootstrapData();
   }
 
   Future<void> _fetchParamData(String param) async {

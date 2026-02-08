@@ -61,31 +61,31 @@ class _StabilityScreenState extends State<StabilityScreen> {
     _loadMetadata();
   }
 
-  Future<void> _loadMetadata() async {
+  void _loadMetadata() {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     final service = Provider.of<ServerService>(context, listen: false);
-    final metadata = await service.fetchStabilityMetadata();
+    final metadata = service.status.bootstrapData?.stabilityData;
 
-    if (mounted) {
-      if (metadata != null && metadata.ok) {
-        setState(() {
-          _metadata = metadata;
-          _spectrumProfiles = metadata.profiles;
-          _ppmPLConfigs = metadata.plConfigs;
-          _ppmPulseProfiles = metadata.pulseProfiles;
-          _ppmChannels = metadata.ppmChannels;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = metadata?.message ?? 'Failed to load metadata';
-          _isLoading = false;
-        });
-      }
+    if (metadata != null) {
+      debugPrint('StabilityScreen: Using Bootstrapped Metadata');
+      setState(() {
+        _metadata = metadata;
+        _spectrumProfiles = metadata.profiles;
+        _ppmPLConfigs = metadata.plConfigs;
+        _ppmPulseProfiles = metadata.pulseProfiles;
+        _ppmChannels = metadata.ppmChannels;
+        _isLoading = false;
+      });
+    } else {
+      debugPrint('StabilityScreen: Bootstrapped Metadata NOT FOUND');
+      setState(() {
+        _errorMessage = 'Failed to load metadata';
+        _isLoading = false;
+      });
     }
   }
 

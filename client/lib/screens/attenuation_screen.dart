@@ -61,38 +61,44 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
     _fetchMetadata();
   }
 
-  Future<void> _fetchMetadata() async {
+  void _fetchMetadata() {
     setState(() => _isLoading = true);
-    try {
-      final serverService = Provider.of<ServerService>(context, listen: false);
-      final metadata = await serverService.fetchAttnMetadata();
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final metadata = serverService.status.bootstrapData?.attnData;
 
-      if (metadata != null && metadata.ok) {
-        setState(() {
-          _deviceProfiles = metadata.deviceProfile;
-          _receivers = metadata.receiver;
-          _spectrumProfiles = metadata.sprectrumProfile;
-          _tsmConfigs = metadata.tsmConfig;
-          _gtxComponents = metadata.gtxComponents;
-          _serverRanges = metadata.attnRanges;
+    if (metadata != null) {
+      debugPrint('AttenuationScreen: Using Bootstrapped Metadata');
+      setState(() {
+        _deviceProfiles = metadata.deviceProfile;
+        _receivers = metadata.receiver;
+        _spectrumProfiles = metadata.sprectrumProfile;
+        _tsmConfigs = metadata.tsmConfig;
+        _gtxComponents = metadata.gtxComponents;
+        _serverRanges = metadata.attnRanges;
 
-          // Set initial selections if available
-          if (_deviceProfiles.isNotEmpty)
-            _selectedDeviceProfile = _deviceProfiles.first;
-          if (_receivers.isNotEmpty) _selectedReceiver = _receivers.first;
-          if (_spectrumProfiles.isNotEmpty)
-            _selectedSpectrum = _spectrumProfiles.first;
-          if (_tsmConfigs.isNotEmpty) _selectedTSMConfig = _tsmConfigs.first;
-          if (_gtxComponents.isNotEmpty)
-            _selectedComponent = _gtxComponents.first;
+        // Set initial selections if available
+        if (_deviceProfiles.isNotEmpty && (_selectedDeviceProfile == 'Profile 1' || !_deviceProfiles.contains(_selectedDeviceProfile))) {
+          _selectedDeviceProfile = _deviceProfiles.first;
+        }
+        if (_receivers.isNotEmpty && (_selectedReceiver == 'Receiver 1' || !_receivers.contains(_selectedReceiver))) {
+          _selectedReceiver = _receivers.first;
+        }
+        if (_spectrumProfiles.isNotEmpty && (_selectedSpectrum == 'Spectrum 1' || !_spectrumProfiles.contains(_selectedSpectrum))) {
+          _selectedSpectrum = _spectrumProfiles.first;
+        }
+        if (_tsmConfigs.isNotEmpty && (_selectedTSMConfig == 'Path A' || !_tsmConfigs.contains(_selectedTSMConfig))) {
+          _selectedTSMConfig = _tsmConfigs.first;
+        }
+        if (_gtxComponents.isNotEmpty && (_selectedComponent == 'IFM-1' || !_gtxComponents.contains(_selectedComponent))) {
+          _selectedComponent = _gtxComponents.first;
+        }
 
-          // Apply initial ranges based on default instrument (TSM)
-          _applyServerRange('TSM');
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching attenuation metadata: $e');
-    } finally {
+        // Apply initial ranges based on current instrument
+        _applyServerRange(_selectedInstrument);
+        _isLoading = false;
+      });
+    } else {
+      debugPrint('AttenuationScreen: Bootstrapped Metadata NOT FOUND');
       setState(() => _isLoading = false);
     }
   }

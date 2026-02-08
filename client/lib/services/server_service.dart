@@ -12,6 +12,7 @@ class ServerStatus {
   final double memoryUsed;
   final double cpuUsed;
   final bool isConnected;
+  final BootstrapData? bootstrapData;
 
   ServerStatus({
     this.satelliteName = 'Unknown',
@@ -19,15 +20,71 @@ class ServerStatus {
     this.memoryUsed = 0.0,
     this.cpuUsed = 0.0,
     this.isConnected = false,
+    this.bootstrapData,
   });
 
-  factory ServerStatus.fromJson(Map<String, dynamic> json, bool connected) {
+  factory ServerStatus.fromJson(Map<String, dynamic> json, bool connected, {BootstrapData? bootstrap}) {
     return ServerStatus(
       satelliteName: json['SatelliteName'] ?? 'Unknown',
       testPhase: json['TestPhase'] ?? 'Unknown',
       memoryUsed: (json['MemoryUsed'] as num?)?.toDouble() ?? 0.0,
       cpuUsed: (json['CPUUsed'] as num?)?.toDouble() ?? 0.0,
       isConnected: connected,
+      bootstrapData: bootstrap,
+    );
+  }
+}
+
+class BootstrapData {
+  final RFUplinkMetaData rfuData;
+  final AllTests testData;
+  final StabilityMetadata stabilityData;
+  final StabilityReportMetadataResponse stabilityReportsData;
+  final SpectrumDumpMetadata spectrumDumpData;
+  final MonitorMetadata monitorData;
+  final TVACCableLossMetadata tvacCableLossData;
+  final CableLossMetadata cableLossData;
+  final DatabaseMetadata databaseData;
+  final ReportsResponse reportsData;
+  final TSMInternalLossMetadata tsmInternalLossData;
+  final UCDCMetadata ucdcData;
+  final AttnMetaData attnData;
+  final GTxMeasurementMetadata gtxData;
+
+  BootstrapData({
+    required this.rfuData,
+    required this.testData,
+    required this.stabilityData,
+    required this.stabilityReportsData,
+    required this.spectrumDumpData,
+    required this.monitorData,
+    required this.tvacCableLossData,
+    required this.cableLossData,
+    required this.databaseData,
+    required this.reportsData,
+    required this.tsmInternalLossData,
+    required this.ucdcData,
+    required this.attnData,
+    required this.gtxData,
+  });
+
+  factory BootstrapData.fromJson(Map<String, dynamic> json) {
+    return BootstrapData(
+      rfuData: RFUplinkMetaData.fromJson(json['RFUplinkData'] ?? {}),
+      testData: AllTests.fromJson(json['TestData'] ?? {}),
+      stabilityData: StabilityMetadata.fromJson(json['StabilityData'] ?? {}),
+      stabilityReportsData:
+          StabilityReportMetadataResponse.fromJson(json['StabilityReportsData'] ?? {}),
+      spectrumDumpData: SpectrumDumpMetadata.fromJson(json['SpectrumDumpData'] ?? {}),
+      monitorData: MonitorMetadata.fromJson(json['MonitorData'] ?? {}),
+      tvacCableLossData: TVACCableLossMetadata.fromJson(json['TVACCableLossData'] ?? {}),
+      cableLossData: CableLossMetadata.fromJson(json['CableLossData'] ?? {}),
+      databaseData: DatabaseMetadata.fromJson(json['DatabaseData'] ?? {}),
+      reportsData: ReportsResponse.fromJson(json['ReportsData'] ?? {}),
+      tsmInternalLossData: TSMInternalLossMetadata.fromJson(json['TSMInternalLossData'] ?? {}),
+      ucdcData: UCDCMetadata.fromJson(json['UCDCData'] ?? {}),
+      attnData: AttnMetaData.fromJson(json['AttnData'] ?? {}),
+      gtxData: GTxMeasurementMetadata.fromJson(json['GTxData'] ?? {}),
     );
   }
 }
@@ -282,6 +339,134 @@ class StabilityMetadata {
       plConfigs: List<String>.from(json['PLConfigs'] ?? []),
       pulseProfiles: List<String>.from(json['PulseProfiles'] ?? []),
       ppmChannels: List<String>.from(json['PPMChannels'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class DeviceProfileDetails {
+  final String gtxName;
+  final String saName;
+  final String vsaName;
+  final String pmName;
+  final String ppmName;
+  final String sgName;
+  final String tsmName;
+
+  DeviceProfileDetails({
+    required this.gtxName,
+    required this.saName,
+    required this.vsaName,
+    required this.pmName,
+    required this.ppmName,
+    required this.sgName,
+    required this.tsmName,
+  });
+
+  factory DeviceProfileDetails.fromJson(Map<String, dynamic> json) {
+    return DeviceProfileDetails(
+      gtxName: json['GTxName'] ?? '',
+      saName: json['SAName'] ?? '',
+      vsaName: json['VSAName'] ?? '',
+      pmName: json['PMName'] ?? '',
+      ppmName: json['PPMName'] ?? '',
+      sgName: json['SGName'] ?? '',
+      tsmName: json['TSMName'] ?? '',
+    );
+  }
+}
+
+class UCDCDetails {
+  final double inputFrequency;
+  final double outputFrequency;
+  final double loFrequency;
+
+  UCDCDetails({
+    required this.inputFrequency,
+    required this.outputFrequency,
+    required this.loFrequency,
+  });
+
+  factory UCDCDetails.fromJson(Map<String, dynamic> json) {
+    return UCDCDetails(
+      inputFrequency: (json['InputFrequency'] as num?)?.toDouble() ?? 0.0,
+      outputFrequency: (json['OutputFrequency'] as num?)?.toDouble() ?? 0.0,
+      loFrequency: (json['LOFrequency'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class UCDCMetadata {
+  final List<String> converters;
+  final Map<String, UCDCDetails> converterDetails;
+  final List<String> deviceProfiles;
+  final Map<String, DeviceProfileDetails> deviceMapping;
+  final List<String> signalGenerators;
+  final bool ok;
+  final String message;
+
+  UCDCMetadata({
+    required this.converters,
+    required this.converterDetails,
+    required this.deviceProfiles,
+    required this.deviceMapping,
+    required this.signalGenerators,
+    required this.ok,
+    required this.message,
+  });
+
+  factory UCDCMetadata.fromJson(Map<String, dynamic> json) {
+    var converterDetailsMap = <String, UCDCDetails>{};
+    if (json['ConverterDetails'] != null) {
+      (json['ConverterDetails'] as Map<String, dynamic>).forEach((key, value) {
+        converterDetailsMap[key] = UCDCDetails.fromJson(value);
+      });
+    }
+
+    var deviceMappingMap = <String, DeviceProfileDetails>{};
+    if (json['DeviceMapping'] != null) {
+      (json['DeviceMapping'] as Map<String, dynamic>).forEach((key, value) {
+        deviceMappingMap[key] = DeviceProfileDetails.fromJson(value);
+      });
+    }
+
+    return UCDCMetadata(
+      converters: List<String>.from(json['Converters'] ?? []),
+      converterDetails: converterDetailsMap,
+      deviceProfiles: List<String>.from(json['DeviceProfiles'] ?? []),
+      deviceMapping: deviceMappingMap,
+      signalGenerators: List<String>.from(json['SignalGenerators'] ?? []),
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
+class GTxMeasurementMetadata {
+  final List<String> deviceProfile;
+  final Map<String, DeviceProfileDetails> deviceMapping;
+  final bool ok;
+  final String message;
+
+  GTxMeasurementMetadata({
+    required this.deviceProfile,
+    required this.deviceMapping,
+    required this.ok,
+    required this.message,
+  });
+
+  factory GTxMeasurementMetadata.fromJson(Map<String, dynamic> json) {
+    var deviceMappingMap = <String, DeviceProfileDetails>{};
+    if (json['DeviceMapping'] != null) {
+      (json['DeviceMapping'] as Map<String, dynamic>).forEach((key, value) {
+        deviceMappingMap[key] = DeviceProfileDetails.fromJson(value);
+      });
+    }
+
+    return GTxMeasurementMetadata(
+      deviceProfile: List<String>.from(json['DeviceProfile'] ?? []),
+      deviceMapping: deviceMappingMap,
       ok: json['OK'] ?? false,
       message: json['Message'] ?? '',
     );
@@ -1013,6 +1198,237 @@ class MeasurementStatus {
   }
 }
 
+class RTStatus {
+  final String message;
+  final bool completed;
+  final bool success;
+  final bool error;
+
+  RTStatus({
+    required this.message,
+    required this.completed,
+    required this.success,
+    required this.error,
+  });
+
+  factory RTStatus.fromJson(Map<String, dynamic> json) {
+    return RTStatus(
+      message: json['message'] ?? '',
+      completed: json['completed'] ?? false,
+      success: json['success'] ?? false,
+      error: json['error'] ?? false,
+    );
+  }
+}
+
+class GTxSpectrum {
+  final double span;
+  final double rbw;
+  final double vbw;
+
+  GTxSpectrum({required this.span, required this.rbw, required this.vbw});
+
+  Map<String, dynamic> toJson() => {'Span': span, 'RBW': rbw, 'VBW': vbw};
+}
+
+class GTxTneRequest {
+  final String deviceProfile;
+  final String component;
+  final double intermediateFrequency;
+  final double cableLoss;
+  final String modulationScheme;
+  final double subCarrierFrequency;
+  final double modIndex;
+  final double frequencyDeviation;
+  final GTxSpectrum frequencySpectrum;
+  final GTxSpectrum powerSpectrum;
+  final GTxSpectrum inBandSpectrum;
+  final GTxSpectrum outBandSpectrum;
+
+  GTxTneRequest({
+    required this.deviceProfile,
+    required this.component,
+    required this.intermediateFrequency,
+    required this.cableLoss,
+    required this.modulationScheme,
+    required this.subCarrierFrequency,
+    required this.modIndex,
+    required this.frequencyDeviation,
+    required this.frequencySpectrum,
+    required this.powerSpectrum,
+    required this.inBandSpectrum,
+    required this.outBandSpectrum,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'DeviceProfile': deviceProfile,
+    'Component': component,
+    'IntermediateFrequency': intermediateFrequency,
+    'CableLoss': cableLoss,
+    'ModulationScheme': modulationScheme,
+    'SubCarrierFrequency': subCarrierFrequency,
+    'ModIndex': modIndex,
+    'FrequencyDeviation': frequencyDeviation,
+    'FrequencySpectrum': frequencySpectrum.toJson(),
+    'PowerSpectrum': powerSpectrum.toJson(),
+    'InBandSpectrum': inBandSpectrum.toJson(),
+    'OutBandSpectrum': outBandSpectrum.toJson(),
+  };
+}
+
+class GTxResult {
+  final double powerSpec;
+  final double powerMeasured;
+  final double powerDeviation;
+  final bool powerMeasurementCompleted;
+  final double freqSpecMHz;
+  final double freqMeasuredMHz;
+  final double freqDeviationkHz;
+  final bool freqMeasurementCompleted;
+  final List<double> inBandSpuriousFreqOffsetskHz;
+  final List<double> inBandPowerOffsets;
+  final bool inBandSpuriousMeasurementCompleted;
+  final List<double> outBandSpuriousFreqOffsetskHz;
+  final List<double> outBandPowerOffsets;
+  final bool outBandSpuriousMeasurementCompleted;
+  final List<double> harmonicsFreqMHz;
+  final List<double> harmonicsMeasureddBm;
+  final List<bool> harmonicsPresent;
+  final List<double> harmonicsNoiseFloor;
+  final bool harmonicsMeasurementCompleted;
+  final bool modIndexApplicable;
+  final double modIndexSet;
+  final double modIndexMeasured;
+  final double modIndexDeviation;
+  final bool modIndexMeasurementCompleted;
+  final bool frequencyDeviationApplicable;
+  final double frequencyDeviationSet;
+  final double frequencyDeviationMeasured;
+  final double frequencyDeviationDeviation;
+  final bool frequencyDeviationMeasurementCompleted;
+  final double phaseNoiseAt1Khz;
+  final double phaseNoiseAt10Khz;
+  final double phaseNoiseAt100Khz;
+  final double phaseNoiseAt1Mhz;
+  final bool phaseNoiseMeasurementCompleted;
+
+  GTxResult({
+    required this.powerSpec,
+    required this.powerMeasured,
+    required this.powerDeviation,
+    required this.powerMeasurementCompleted,
+    required this.freqSpecMHz,
+    required this.freqMeasuredMHz,
+    required this.freqDeviationkHz,
+    required this.freqMeasurementCompleted,
+    required this.inBandSpuriousFreqOffsetskHz,
+    required this.inBandPowerOffsets,
+    required this.inBandSpuriousMeasurementCompleted,
+    required this.outBandSpuriousFreqOffsetskHz,
+    required this.outBandPowerOffsets,
+    required this.outBandSpuriousMeasurementCompleted,
+    required this.harmonicsFreqMHz,
+    required this.harmonicsMeasureddBm,
+    required this.harmonicsPresent,
+    required this.harmonicsNoiseFloor,
+    required this.harmonicsMeasurementCompleted,
+    required this.modIndexApplicable,
+    required this.modIndexSet,
+    required this.modIndexMeasured,
+    required this.modIndexDeviation,
+    required this.modIndexMeasurementCompleted,
+    required this.frequencyDeviationApplicable,
+    required this.frequencyDeviationSet,
+    required this.frequencyDeviationMeasured,
+    required this.frequencyDeviationDeviation,
+    required this.frequencyDeviationMeasurementCompleted,
+    required this.phaseNoiseAt1Khz,
+    required this.phaseNoiseAt10Khz,
+    required this.phaseNoiseAt100Khz,
+    required this.phaseNoiseAt1Mhz,
+    required this.phaseNoiseMeasurementCompleted,
+  });
+
+  factory GTxResult.fromJson(Map<String, dynamic> json) {
+    return GTxResult(
+      powerSpec: (json['PowerSpec'] as num?)?.toDouble() ?? 0.0,
+      powerMeasured: (json['PowerMeasured'] as num?)?.toDouble() ?? 0.0,
+      powerDeviation: (json['PowerDeviation'] as num?)?.toDouble() ?? 0.0,
+      powerMeasurementCompleted: json['PowerMeasurementCompleted'] ?? false,
+      freqSpecMHz: (json['FreqSpecMHz'] as num?)?.toDouble() ?? 0.0,
+      freqMeasuredMHz: (json['FreqMeasuredMHz'] as num?)?.toDouble() ?? 0.0,
+      freqDeviationkHz: (json['FreqDeviationkHz'] as num?)?.toDouble() ?? 0.0,
+      freqMeasurementCompleted: json['FreqMeasurementCompleted'] ?? false,
+      inBandSpuriousFreqOffsetskHz:
+          (json['InBandSpuriousFreqOffsetskHz'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      inBandPowerOffsets:
+          (json['InBandPowerOffsets'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      inBandSpuriousMeasurementCompleted:
+          json['InBandSpuriousMeasurementCompleted'] ?? false,
+      outBandSpuriousFreqOffsetskHz:
+          (json['OutBandSpuriousFreqOffsetskHz'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      outBandPowerOffsets:
+          (json['OutBandPowerOffsets'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      outBandSpuriousMeasurementCompleted:
+          json['OutBandSpuriousMeasurementCompleted'] ?? false,
+      harmonicsFreqMHz:
+          (json['HarmonicsFreqMHz'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      harmonicsMeasureddBm:
+          (json['HarmonicsMeasureddBm'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      harmonicsPresent:
+          (json['HarmonicsPresent'] as List?)?.cast<bool>() ?? [],
+      harmonicsNoiseFloor:
+          (json['HarmonicsNoiseFloor'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      harmonicsMeasurementCompleted:
+          json['HarmonicsMeasurementCompleted'] ?? false,
+      modIndexApplicable: json['ModIndexApplicable'] ?? false,
+      modIndexSet: (json['ModIndexSet'] as num?)?.toDouble() ?? 0.0,
+      modIndexMeasured: (json['ModIndexMeasured'] as num?)?.toDouble() ?? 0.0,
+      modIndexDeviation: (json['ModIndexDeviation'] as num?)?.toDouble() ?? 0.0,
+      modIndexMeasurementCompleted:
+          json['ModIndexMeasurementCompleted'] ?? false,
+      frequencyDeviationApplicable:
+          json['FrequencyDeviationApplicable'] ?? false,
+      frequencyDeviationSet:
+          (json['FrequencyDeviationSet'] as num?)?.toDouble() ?? 0.0,
+      frequencyDeviationMeasured:
+          (json['FrequencyDeviationMeasured'] as num?)?.toDouble() ?? 0.0,
+      frequencyDeviationDeviation:
+          (json['FrequencyDeviationDeviation'] as num?)?.toDouble() ?? 0.0,
+      frequencyDeviationMeasurementCompleted:
+          json['FrequencyDeviationMeasurementCompleted'] ?? false,
+      phaseNoiseAt1Khz: (json['PhaseNoiseAt1Khz'] as num?)?.toDouble() ?? 0.0,
+      phaseNoiseAt10Khz: (json['PhaseNoiseAt10Khz'] as num?)?.toDouble() ?? 0.0,
+      phaseNoiseAt100Khz:
+          (json['PhaseNoiseAt100Khz'] as num?)?.toDouble() ?? 0.0,
+      phaseNoiseAt1Mhz: (json['PhaseNoiseAt1Mhz'] as num?)?.toDouble() ?? 0.0,
+      phaseNoiseMeasurementCompleted:
+          json['PhaseNoiseMeasurementCompleted'] ?? false,
+    );
+  }
+}
+
 class DatabaseMetadata {
   final List<String> testPhases;
   final bool ok;
@@ -1620,27 +2036,35 @@ class ServerService extends ChangeNotifier {
     _connect();
   }
 
-  Future<RFUplinkMetaData?> fetchRFUplinkMetaData() async {
+  Future<BootstrapData?> fetchBootstrapData() async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     final protocol = web.window.location.protocol == 'https:'
         ? 'https'
         : 'http';
-    final url = '$protocol://$host/getRFUplinkMetaData';
+    final url = '$protocol://$host/bootstrapData';
 
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        return RFUplinkMetaData.fromJson(jsonDecode(response.body));
+        final data = BootstrapData.fromJson(jsonDecode(response.body));
+        _status = ServerStatus(
+          satelliteName: _status.satelliteName,
+          testPhase: _status.testPhase,
+          memoryUsed: _status.memoryUsed,
+          cpuUsed: _status.cpuUsed,
+          isConnected: _status.isConnected,
+          bootstrapData: data,
+        );
+        notifyListeners();
+        return data;
       }
     } catch (e) {
-      debugPrint('Error fetching RF Uplink MetaData: $e');
+      debugPrint('Error fetching Bootstrap Data: $e');
     }
     return null;
   }
+
 
   Future<LinkStatus?> fetchLinkStatus(String tsmSelected) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -1719,27 +2143,6 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-  Future<AllTests?> fetchAllTests() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getAllTests';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({}),
-      );
-      if (response.statusCode == 200) {
-        return AllTests.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching All Tests: $e');
-    }
-    return null;
-  }
 
   Future<Ack?> startTests(List<TestDescription> tests, String remark) async {
     // Note: The user replaced startTests with testProgress endpoint.
@@ -1824,49 +2227,7 @@ class ServerService extends ChangeNotifier {
     _monitorChannel = null;
   }
 
-  Future<TVACCableLossMetadata?> fetchTVACCableLossMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getTVACCableLossMetadata';
 
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return TVACCableLossMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching TVAC Cable Loss Metadata: $e');
-    }
-    return null;
-  }
-
-  Future<CableLossMetadata?> fetchCableLossMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getCableLossMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return CableLossMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Cable Loss Metadata: $e');
-    }
-    return null;
-  }
 
   Future<CableLossResponse?> fetchCableMeasuredDetails() async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -1890,27 +2251,6 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-  Future<ReportsResponse?> fetchResultMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getResultMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return ReportsResponse.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Result Metadata: $e');
-    }
-    return null;
-  }
 
   Future<Ack?> fetchReportPDF(String date, String time) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -1994,28 +2334,6 @@ class ServerService extends ChangeNotifier {
     }
   }
 
-  Future<StabilityMetadata?> fetchStabilityMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getStabilityMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({}),
-      );
-
-      if (response.statusCode == 200) {
-        return StabilityMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Stability Metadata: $e');
-    }
-    return null;
-  }
 
   WebSocketChannel? _stabilityChannel;
 
@@ -2056,51 +2374,7 @@ class ServerService extends ChangeNotifier {
     _stabilityChannel?.sink.add(jsonEncode({'Action': 'abort'}));
   }
 
-  Future<SpectrumDumpMetadata?> fetchSpectrumDumpMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getSpectrumDumpMetadata';
 
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({}),
-      );
-
-      if (response.statusCode == 200) {
-        return SpectrumDumpMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Spectrum Dump Metadata: $e');
-    }
-    return null;
-  }
-
-  Future<MonitorMetadata?> fetchMonitorMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getMonitorMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({}),
-      );
-
-      if (response.statusCode == 200) {
-        return MonitorMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Monitor Metadata: $e');
-    }
-    return null;
-  }
 
   Future<Ack?> setSpectrum({
     required String sa,
@@ -2190,27 +2464,6 @@ class ServerService extends ChangeNotifier {
     }
   }
 
-  Future<AttnMetaData?> fetchAttnMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getAttnMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return AttnMetaData.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Attenuation Metadata: $e');
-    }
-    return null;
-  }
 
   Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -2335,27 +2588,6 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-  Future<TSMInternalLossMetadata?> fetchTSMInternalLossMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getTSMInternalLossMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return TSMInternalLossMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching TSM Internal Loss Metadata: $e');
-    }
-    return null;
-  }
 
   WebSocketChannel? _tsmInternalLossChannel;
 
@@ -2421,27 +2653,6 @@ class ServerService extends ChangeNotifier {
     }
   }
 
-  Future<DatabaseMetadata?> fetchDatabaseMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:'
-        ? 'https'
-        : 'http';
-    final url = '$protocol://$host/getDatabaseMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return DatabaseMetadata.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Database Metadata: $e');
-    }
-    return null;
-  }
 
   Future<ConfigsForLossResponse?> fetchConfigsForLoss(
     String phase,
@@ -2583,25 +2794,6 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-  Future<StabilityReportMetadataResponse?> fetchStabilityReportsMetadata() async {
-    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:' ? 'https' : 'http';
-    final url = '$protocol://$host/getStabilityReportsMetadata';
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return StabilityReportMetadataResponse.fromJson(jsonDecode(response.body));
-      }
-    } catch (e) {
-      debugPrint('Error fetching Stability Reports Metadata: $e');
-    }
-    return null;
-  }
 
   Future<StabilityPointsResponse?> fetchStabilityPoints(int id, String parameter) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -2626,6 +2818,37 @@ class ServerService extends ChangeNotifier {
     }
     return null;
   }
+
+  WebSocketChannel? _gtxTneChannel;
+
+  Stream<dynamic> connectGTxTne(GTxTneRequest request) {
+    String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    String url = '$protocol://$host/conductGTxTne';
+
+    _gtxTneChannel = WebSocketChannel.connect(Uri.parse(url));
+    _gtxTneChannel!.sink.add(jsonEncode(request.toJson()));
+
+    return _gtxTneChannel!.stream.map((data) {
+      final decoded = jsonDecode(data);
+      if (decoded.containsKey('message')) {
+        return RTStatus.fromJson(decoded);
+      } else {
+        return GTxResult.fromJson(decoded);
+      }
+    });
+  }
+
+  void abortGTxTne() {
+    _gtxTneChannel?.sink.add('abort');
+  }
+
+  void closeGTxTne() {
+    _gtxTneChannel?.sink.close();
+    _gtxTneChannel = null;
+  }
+
+
 
   @override
   void dispose() {
