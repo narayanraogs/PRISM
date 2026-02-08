@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"prismServer/database"
 	"prismServer/logger"
+	"prismServer/resultsDB"
 	"prismServer/utilities"
 	"time"
 
@@ -81,33 +82,6 @@ func getStatbilityMetadata(c *gin.Context) {
 	stb.Message = "Success"
 	c.IndentedJSON(http.StatusOK, stb)
 }
-
-/*
-{
-    "centerFrequency": float64, // In MHz
-    "span":            float64, // In MHz
-    "rbw":             float64, // In MHz
-    "vbw":             float64, // In MHz
-    "autoRef":         bool,
-    "refLevel":        float64, // In dBm
-    "profile":         string,  // e.g., "CW Capture"
-}
-
-{
-    "frequency": float64,
-    "unit":      string, // "MHz", "GHz", or "kHz"
-}
-
-{
-    "plConfig":     string, // The Payload Config name
-    "pulseProfile": string, // The Pulse Profile name
-}
-
-{
-    "mnemonic": string, // e.g., "BAT_VOLT_1"
-}
-
-*/
 
 func stability(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -190,30 +164,96 @@ func stability(c *gin.Context) {
 	}()
 
 	go stab.StartStability()
+	id, _ := resultsDB.StartNewStability()
 	resp.Updates = make([]utilities.StabilityUpdate, 0)
 	resp.OK = true
 	resp.Message = "Success"
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+	var points = make([]resultsDB.StabilityPoint, 0, 100)
+outerFor:
 	for {
 		select {
 		case update := <-inputChan:
+			now := time.Now()
+			tsInt := now.UnixMilli()
+			tsStr := now.Format("02-01-2006_15:04:05.000")
+			point := resultsDB.StabilityPoint{
+				TimeStampInt: tsInt,
+				TimeStamp:    tsStr,
+				Description:  update.Description,
+				Value:        update.Value,
+			}
+			points = append(points, point)
+			if len(points) >= 100 {
+				go resultsDB.InsertPoints(id, points)
+				points = make([]resultsDB.StabilityPoint, 0, 100)
+			}
 			resp.Updates = append(resp.Updates, update)
 		case <-ticker.C:
-
 			if len(resp.Updates) > 0 {
 				err := conn.WriteJSON(resp)
 				if err != nil {
 					logger.Log.Error("Error writing to client:", "error", err)
 					stab.StopStability()
-					return
+					break outerFor
 				}
 				resp.Updates = make([]utilities.StabilityUpdate, 0)
 			}
 		case <-c.Done():
 			stab.StopStability()
-			return
+			break outerFor
 		}
 	}
+	if len(points) > 0 {
+		go resultsDB.InsertPoints(id, points)
+	}
+}
 
+func getStabilityReportsMetadata(c *gin.Context) {
+	rows, err := resultsDB.GetStabilitySessions()
+	var resp StabiltiyReportsMetadata
+	if err != nil {
+		resp.OK = false
+		resp.Message = "Error getting stability reports metadata"
+		c.IndentedJSON(http.StatusOK, resp)
+		return
+	}
+	resp.ID = make([]int64, len(rows))
+	resp.Date = make([]string, len(rows))
+	resp.Time = make([]string, len(rows))
+	resp.Parameters = make([][]string, len(rows))
+	for i, row := range rows {
+		resp.ID[i] = row.ID
+		resp.Date[i] = row.Date
+		resp.Time[i] = row.Time
+		params, _ := resultsDB.GetStabilityParameters(row.ID)
+		resp.Parameters[i] = params
+	}
+	resp.OK = true
+	resp.Message = "Success"
+	c.IndentedJSON(http.StatusOK, resp)
+}
+
+func getStabilityPoints(c *gin.Context) {
+	var req StabilityPointsRequest
+	var resp StabilityPointsResponse
+	err := c.BindJSON(&req)
+	if err != nil {
+		resp.OK = false
+		resp.Message = "Invalid Request"
+		c.IndentedJSON(http.StatusOK, resp)
+		return
+	}
+	rows, err := resultsDB.GetStabilityPoints(req.ID, req.Parameter)
+	if err != nil {
+		resp.OK = false
+		resp.Message = "Error getting stability points"
+		c.IndentedJSON(http.StatusOK, resp)
+		return
+	}
+	resp.Points = rows
+	resp.OK = true
+	resp.Message = "Success"
+	c.IndentedJSON(http.StatusOK, resp)
 }

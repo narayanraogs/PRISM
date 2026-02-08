@@ -92,9 +92,20 @@ where "PathMnemonic" like "Cable-Measurement";
 Insert into "Stability" ("Date", "Time")
 Values (?, ?) Returning "ID";
 
+-- name: getStabilitySessions :many
+Select "ID", "Date", "Time" from "Stability";
+
 -- name: insertStabilityPoints :exec
 Insert into "StabilityValues" ("StabilityID", "TimeStampInteger", "TimeStamp", "Description", "Value")
 Values (?, ?, ?, ?, ?);
+
+-- name: getStabilityPoints :many
+Select * from "StabilityValues"
+where "StabilityID" = ? and "Description" = ?;
+
+-- name: getStabilityParameters :many
+Select Distinct "Description" from "StabilityValues"
+where "StabilityID" = ?;
 
 -- name: insertResults :exec
 Insert into "Results" ("SatName", "TestPhase", "TestType", "TestCategory", "ConfigName", "Date", "Time", "Remark", "Report", "FilePath", "CSVFilePath")

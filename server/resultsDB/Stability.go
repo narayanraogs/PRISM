@@ -53,3 +53,33 @@ func InsertPoints(id int64, points []StabilityPoint) bool {
 	}
 	return true
 }
+
+func GetStabilitySessions() ([]Stability, error) {
+	ctx := context.Background()
+	rows, err := dbObject.getStabilitySessions(ctx)
+	return rows, err
+}
+
+func GetStabilityPoints(id int64, parameter string) ([]StabilityPoint, error) {
+	ctx := context.Background()
+	var arg getStabilityPointsParams
+	arg.StabilityID = id
+	arg.Description = parameter
+	rows, err := dbObject.getStabilityPoints(ctx, arg)
+	var points []StabilityPoint
+	for _, row := range rows {
+		points = append(points, StabilityPoint{
+			TimeStampInt: row.TimeStampInteger,
+			TimeStamp:    row.TimeStamp,
+			Description:  row.Description,
+			Value:        row.Value,
+		})
+	}
+	return points, err
+}
+
+func GetStabilityParameters(id int64) ([]string, error) {
+	ctx := context.Background()
+	params, err := dbObject.getStabilityParameters(ctx, id)
+	return params, err
+}

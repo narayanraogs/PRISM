@@ -1396,6 +1396,82 @@ class StabilityParameterSelection {
       );
 }
 
+class StabilityReportMetadataResponse {
+  final List<int> id;
+  final List<String> date;
+  final List<String> time;
+  final List<List<String>> parameters;
+  final bool ok;
+  final String message;
+
+  StabilityReportMetadataResponse({
+    required this.id,
+    required this.date,
+    required this.time,
+    required this.parameters,
+    required this.ok,
+    required this.message,
+  });
+
+  factory StabilityReportMetadataResponse.fromJson(Map<String, dynamic> json) {
+    return StabilityReportMetadataResponse(
+      id: List<int>.from(json['id'] ?? []),
+      date: List<String>.from(json['date'] ?? []),
+      time: List<String>.from(json['time'] ?? []),
+      parameters: (json['parameters'] as List?)
+          ?.map((e) => List<String>.from(e))
+          .toList() ?? [],
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class StabilityPointsResponse {
+  final List<StabilityPointData> points;
+  final bool ok;
+  final String message;
+
+  StabilityPointsResponse({
+    required this.points,
+    required this.ok,
+    required this.message,
+  });
+
+  factory StabilityPointsResponse.fromJson(Map<String, dynamic> json) {
+    return StabilityPointsResponse(
+      points: (json['points'] as List?)
+          ?.map((e) => StabilityPointData.fromJson(e))
+          .toList() ?? [],
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}
+
+class StabilityPointData {
+  final int tsInt;
+  final String timeStamp;
+  final String description;
+  final double value;
+
+  StabilityPointData({
+    required this.tsInt,
+    required this.timeStamp,
+    required this.description,
+    required this.value,
+  });
+
+  factory StabilityPointData.fromJson(Map<String, dynamic> json) {
+    return StabilityPointData(
+      tsInt: json['TimeStampInt'] ?? 0,
+      timeStamp: json['TimeStamp'] ?? '',
+      description: json['Description'] ?? '',
+      value: (json['Value'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 class AllTests {
   final List<String> categories;
   final Map<String, List<String>> configurations;
@@ -2503,6 +2579,50 @@ class ServerService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error adding new Test Phase: $e');
+    }
+    return null;
+  }
+
+  Future<StabilityReportMetadataResponse?> fetchStabilityReportsMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'https' : 'http';
+    final url = '$protocol://$host/getStabilityReportsMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return StabilityReportMetadataResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Stability Reports Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<StabilityPointsResponse?> fetchStabilityPoints(int id, String parameter) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'https' : 'http';
+    final url = '$protocol://$host/getStabilityPoints';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id': id,
+          'parameter': parameter,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return StabilityPointsResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Stability Points: $e');
     }
     return null;
   }

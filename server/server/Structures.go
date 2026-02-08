@@ -1,6 +1,7 @@
 package server
 
 import (
+	"prismServer/resultsDB"
 	"prismServer/tne"
 	"prismServer/utilities"
 )
@@ -415,4 +416,24 @@ type InternalLossMeasurementRequest struct {
 	Mode          string
 	InputPort     string
 	OutputPort    string
+}
+
+type StabiltiyReportsMetadata struct {
+	ID         []int64    `json:"id"`
+	Date       []string   `json:"date"`
+	Time       []string   `json:"time"`
+	Parameters [][]string `json:"parameters"`
+	OK         bool       `json:"ok"`
+	Message    string     `json:"message"`
+}
+
+type StabilityPointsRequest struct {
+	ID        int64  `json:"id"`
+	Parameter string `json:"parameter"`
+}
+
+type StabilityPointsResponse struct {
+	Points  []resultsDB.StabilityPoint `json:"points"`
+	OK      bool                       `json:"ok"`
+	Message string                     `json:"message"`
 }

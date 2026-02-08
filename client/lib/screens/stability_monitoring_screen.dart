@@ -34,7 +34,7 @@ class ParameterBuffer {
   final List<DataPoint> points = [];
   double min = double.infinity;
   double max = double.negativeInfinity;
-  double sum = 0;
+  double maxJump = 0;
   int count = 0;
 
   ParameterBuffer(this.description, this.instrument, this.parameter);
@@ -49,15 +49,19 @@ class ParameterBuffer {
         1000.0;
     final y = update.value;
 
+    if (points.isNotEmpty) {
+      final jump = (y - points.last.y).abs();
+      if (jump > maxJump) maxJump = jump;
+    }
+
     points.add(DataPoint(x, y));
 
     if (y < min) min = y;
     if (y > max) max = y;
-    sum += y;
     count++;
   }
 
-  double get avg => count == 0 ? 0 : sum / count;
+  double get delta => (count < 2) ? 0 : (max - min);
   double get latest => points.isEmpty ? 0 : points.last.y;
 }
 
@@ -66,9 +70,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
   StreamSubscription? _subscription;
   final Map<String, ParameterBuffer> _buffers = {};
   late DateTime _startTime;
+  DateTime? _endTime;
   Timer? _uiTimer;
   bool _isAborting = false;
   bool _isCompleted = false;
+  String? _focusedParameter; // Expanded chart label
 
   @override
   void initState() {
@@ -90,14 +96,12 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
 
     _subscription = _stabilityStream.listen((response) {
       if (mounted) {
-        setState(() {
-          for (var update in response.updates) {
-            final buffer = _buffers[update.description];
-            if (buffer != null) {
-              buffer.add(update, _startTime);
-            }
+        for (var update in response.updates) {
+          final buffer = _buffers[update.description];
+          if (buffer != null) {
+            buffer.add(update, _startTime);
           }
-        });
+        }
       }
     });
 
@@ -149,7 +153,9 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               Future.delayed(const Duration(seconds: 1), () {
                 if (mounted) {
                   setState(() {
+                    _endTime = DateTime.now();
                     _isCompleted = true;
+                    _uiTimer?.cancel();
                   });
                 }
               });
@@ -166,7 +172,8 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
   }
 
   String _getElapsedTime() {
-    final diff = DateTime.now().difference(_startTime);
+    final now = _endTime ?? DateTime.now();
+    final diff = now.difference(_startTime);
     final hours = diff.inHours.toString().padLeft(2, '0');
     final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
     final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
@@ -243,14 +250,14 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
+                    decoration: BoxDecoration(
+                      color: _isCompleted ? Colors.orange : Colors.green,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Live Monitoring',
+                    _isCompleted ? 'Monitoring Stopped' : 'Live Monitoring',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -300,6 +307,46 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
   }
 
   Widget _buildDynamicGrid(ThemeData theme) {
+    if (_focusedParameter != null) {
+      final param = widget.parameters.firstWhere((p) => p.description == _focusedParameter);
+      final index = widget.parameters.indexOf(param);
+      final buffer = _buffers[param.description]!;
+      
+      return Column(
+        children: [
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () => setState(() => _focusedParameter = null),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('BACK TO GRID'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'FOCUS MODE',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: theme.colorScheme.primary,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: _buildChartCard(theme, param, buffer, index, isFocused: true),
+          ),
+        ],
+      );
+    }
+
     int count = widget.parameters.length;
     int crossAxisCount = 1;
     if (count > 1 && count <= 4) crossAxisCount = 2;
@@ -325,8 +372,9 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
     ThemeData theme,
     StabilityParameterSelection param,
     ParameterBuffer buffer,
-    int index,
-  ) {
+    int index, {
+    bool isFocused = false,
+  }) {
     // Generate downsampled points for display
     final displayPoints = buffer.points.length > 1000
         ? lttb(buffer.points, 1000)
@@ -391,13 +439,38 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    buffer.latest.toStringAsFixed(3),
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: color,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        buffer.latest.toStringAsFixed(3),
+                        style: GoogleFonts.robotoMono(
+                          fontSize: isFocused ? 32 : 22,
+                          fontWeight: FontWeight.w900,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            if (isFocused) {
+                              _focusedParameter = null;
+                            } else {
+                              _focusedParameter = param.description;
+                            }
+                          });
+                        },
+                        icon: Icon(
+                          isFocused ? Icons.close_fullscreen_rounded : Icons.open_in_full_rounded,
+                          size: 20,
+                          color: Colors.grey.shade400,
+                        ),
+                        style: IconButton.styleFrom(
+                          hoverColor: theme.colorScheme.primary.withOpacity(0.05),
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     'LATEST',
@@ -505,7 +578,8 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
             children: [
               _buildMiniMetric('MIN', buffer.min.toStringAsFixed(3), theme),
               _buildMiniMetric('MAX', buffer.max.toStringAsFixed(3), theme),
-              _buildMiniMetric('AVG', buffer.avg.toStringAsFixed(3), theme),
+              _buildMiniMetric('ΔMAX', buffer.delta.toStringAsFixed(3), theme),
+              _buildMiniMetric('δMAX', buffer.maxJump.toStringAsFixed(3), theme),
             ],
           ),
         ],

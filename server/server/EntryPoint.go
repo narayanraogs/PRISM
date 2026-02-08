@@ -25,6 +25,8 @@ func GetRouter() *gin.Engine {
 	//StabilityRelated
 	r.POST("/getStabilityMetadata", getStatbilityMetadata)
 	r.GET("/stability", stability)
+	r.POST("/getStabilityReportsMetadata", getStabilityReportsMetadata)
+	r.POST("/getStabilityPoints", getStabilityPoints)
 	//SpectrumDumpRelated
 	r.POST("/getSpectrumDumpMetadata", getSpectrumDumpMetadata)
 	r.POST("/setSpectrum", setSpectrum)

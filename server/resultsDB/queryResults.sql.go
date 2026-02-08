@@ -368,6 +368,101 @@ func (q *Queries) getStabilityID(ctx context.Context, arg getStabilityIDParams) 
 	return ID, err
 }
 
+const getStabilityParameters = `-- name: getStabilityParameters :many
+Select Distinct "Description" from "StabilityValues"
+where "StabilityID" = ?
+`
+
+func (q *Queries) getStabilityParameters(ctx context.Context, stabilityid int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getStabilityParameters, stabilityid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var Description string
+		if err := rows.Scan(&Description); err != nil {
+			return nil, err
+		}
+		items = append(items, Description)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStabilityPoints = `-- name: getStabilityPoints :many
+Select ID, StabilityID, TimeStampInteger, TimeStamp, Description, Value from "StabilityValues"
+where "StabilityID" = ? and "Description" = ?
+`
+
+type getStabilityPointsParams struct {
+	StabilityID int64
+	Description string
+}
+
+func (q *Queries) getStabilityPoints(ctx context.Context, arg getStabilityPointsParams) ([]StabilityValue, error) {
+	rows, err := q.db.QueryContext(ctx, getStabilityPoints, arg.StabilityID, arg.Description)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StabilityValue
+	for rows.Next() {
+		var i StabilityValue
+		if err := rows.Scan(
+			&i.ID,
+			&i.StabilityID,
+			&i.TimeStampInteger,
+			&i.TimeStamp,
+			&i.Description,
+			&i.Value,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStabilitySessions = `-- name: getStabilitySessions :many
+Select "ID", "Date", "Time" from "Stability"
+`
+
+func (q *Queries) getStabilitySessions(ctx context.Context) ([]Stability, error) {
+	rows, err := q.db.QueryContext(ctx, getStabilitySessions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Stability
+	for rows.Next() {
+		var i Stability
+		if err := rows.Scan(&i.ID, &i.Date, &i.Time); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTVACCableLosses = `-- name: getTVACCableLosses :many
 Select CableID, Date, Time, CableName, TestPhase, Reference, Loss from "TVACCableLosses"
 `
