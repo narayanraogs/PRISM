@@ -63,3 +63,7 @@ server/server.out
 *.db
 *.sqlite
 server/data/
+
+# --- Build Artifacts ---
+server/web/
+prism-server

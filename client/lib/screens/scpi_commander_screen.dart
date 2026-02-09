@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import 'package:prism_client/services/server_service.dart';
 import 'package:provider/provider.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class ScpiLogEntry {
   final DateTime timestamp;
@@ -272,22 +274,10 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SCPI Commander',
-          style: GoogleFonts.outfit(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1A237E),
-          ),
-        ),
-        Text(
-          'Send direct SCPI commands to networked instruments',
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600),
-        ),
-      ],
+    return const ScreenHeader(
+      title: 'SCPI Commander',
+      subtitle: 'Send direct SCPI commands to networked instruments',
+      icon: Icons.terminal_rounded,
     );
   }
 
@@ -299,19 +289,8 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
       opacity: isSequenceActive ? 0.5 : 1.0,
       child: IgnorePointer(
         ignoring: isSequenceActive,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary.withOpacity(0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
+        child: ContentCard(
+          isSidebar: true, // Radius 24
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -363,19 +342,8 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
       availableCommands.sort((a, b) => a.mnemonic.compareTo(b.mnemonic));
     }
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    return ContentCard(
+      isSidebar: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

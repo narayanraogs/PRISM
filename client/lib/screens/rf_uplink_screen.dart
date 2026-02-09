@@ -6,6 +6,8 @@ import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:prism_client/screens/test_progress_screen.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class RFUplinkScreen extends StatefulWidget {
   const RFUplinkScreen({super.key});
@@ -37,10 +39,10 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
   void _fetchInitialData() {
     setState(() => _isMetaLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    
+
     // Use bootstrapped data instead of fetching
     final meta = serverService.status.bootstrapData?.rfuData;
-    
+
     if (meta != null) {
       debugPrint('RFUplinkScreen: Using Bootstrapped Metadata');
       setState(() {
@@ -101,51 +103,18 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Persistent Header with Compact Visualization
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        _operations[_selectedOperation]['selectedIcon']
-                            as IconData,
-                        color: theme.colorScheme.primary,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'RF Operations',
-                          style: GoogleFonts.outfit(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          'Configure and manage RF uplink paths',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    // Compact Persistent Visualization
-                    _buildCompactStatusPanel(theme),
-                    const SizedBox(width: 16),
-                    // Contextual Help Trigger
-                    _buildHelpTrigger(theme),
-                  ],
+                ScreenHeader(
+                  title: 'RF Operations',
+                  subtitle: 'Configure and manage RF uplink paths',
+                  icon: Icons.settings_input_antenna,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildCompactStatusPanel(theme),
+                      const SizedBox(width: 16),
+                      _buildHelpTrigger(theme),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
                 Expanded(
@@ -153,21 +122,10 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Master Pane (Sidebar)
-                      Container(
+                      ContentCard(
                         width: 280,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(
-                                0.05,
-                              ),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
+                        isSidebar: true,
+                        padding: EdgeInsets.zero,
                         child: Column(
                           children: [
                             const SizedBox(height: 8),
@@ -252,21 +210,8 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                       const SizedBox(width: 32),
                       // Detail Pane
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(40),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(32),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(
-                                  0.03,
-                                ),
-                                blurRadius: 30,
-                                offset: const Offset(0, 15),
-                              ),
-                            ],
-                          ),
+                        child: ContentCard(
+                          isSidebar: false,
                           child: _isMetaLoading
                               ? Center(
                                   child: Column(

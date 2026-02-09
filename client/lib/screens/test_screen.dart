@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/screens/test_progress_screen.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
@@ -32,10 +34,10 @@ class _TestScreenState extends State<TestScreen> {
   void _fetchData() {
     setState(() => _isLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    
+
     // Use bootstrapped data
     final tests = serverService.status.bootstrapData?.testData;
-    
+
     if (tests != null) {
       debugPrint('TestScreen: Using Bootstrapped Metadata');
       setState(() {
@@ -145,46 +147,11 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            Icons.assignment_outlined,
-            color: theme.colorScheme.primary,
-            size: 32,
-          ),
-        ),
-        const SizedBox(width: 20),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Test Executive',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
-            ),
-            Text(
-              'Select category, configuration and tests to begin',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        _buildHelpTrigger(theme),
-      ],
+    return ScreenHeader(
+      title: 'Test Executive',
+      subtitle: 'Select category, configuration and tests to begin',
+      icon: Icons.assignment_outlined,
+      trailing: _buildHelpTrigger(theme),
     );
   }
 
@@ -192,19 +159,10 @@ class _TestScreenState extends State<TestScreen> {
     if (_isLoading) return const SizedBox(width: 280);
     final categories = _allTests?.categories ?? [];
 
-    return Container(
+    return ContentCard(
       width: 280,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      isSidebar: true,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Padding(
@@ -344,18 +302,9 @@ class _TestScreenState extends State<TestScreen> {
     final configs = _allTests!.configurations[category] ?? [];
 
     return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.03),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
-        ),
+      child: ContentCard(
+        isSidebar: false,
+        padding: EdgeInsets.zero,
         child: Column(
           children: [
             // Top Bar: Config Selection

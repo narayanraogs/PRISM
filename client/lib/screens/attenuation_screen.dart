@@ -5,6 +5,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/utils/notifications.dart';
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 
 class AttenuationScreen extends StatefulWidget {
   const AttenuationScreen({super.key});
@@ -77,19 +79,29 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
         _serverRanges = metadata.attnRanges;
 
         // Set initial selections if available
-        if (_deviceProfiles.isNotEmpty && (_selectedDeviceProfile == 'Profile 1' || !_deviceProfiles.contains(_selectedDeviceProfile))) {
+        if (_deviceProfiles.isNotEmpty &&
+            (_selectedDeviceProfile == 'Profile 1' ||
+                !_deviceProfiles.contains(_selectedDeviceProfile))) {
           _selectedDeviceProfile = _deviceProfiles.first;
         }
-        if (_receivers.isNotEmpty && (_selectedReceiver == 'Receiver 1' || !_receivers.contains(_selectedReceiver))) {
+        if (_receivers.isNotEmpty &&
+            (_selectedReceiver == 'Receiver 1' ||
+                !_receivers.contains(_selectedReceiver))) {
           _selectedReceiver = _receivers.first;
         }
-        if (_spectrumProfiles.isNotEmpty && (_selectedSpectrum == 'Spectrum 1' || !_spectrumProfiles.contains(_selectedSpectrum))) {
+        if (_spectrumProfiles.isNotEmpty &&
+            (_selectedSpectrum == 'Spectrum 1' ||
+                !_spectrumProfiles.contains(_selectedSpectrum))) {
           _selectedSpectrum = _spectrumProfiles.first;
         }
-        if (_tsmConfigs.isNotEmpty && (_selectedTSMConfig == 'Path A' || !_tsmConfigs.contains(_selectedTSMConfig))) {
+        if (_tsmConfigs.isNotEmpty &&
+            (_selectedTSMConfig == 'Path A' ||
+                !_tsmConfigs.contains(_selectedTSMConfig))) {
           _selectedTSMConfig = _tsmConfigs.first;
         }
-        if (_gtxComponents.isNotEmpty && (_selectedComponent == 'IFM-1' || !_gtxComponents.contains(_selectedComponent))) {
+        if (_gtxComponents.isNotEmpty &&
+            (_selectedComponent == 'IFM-1' ||
+                !_gtxComponents.contains(_selectedComponent))) {
           _selectedComponent = _gtxComponents.first;
         }
 
@@ -251,35 +263,42 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left Sidebar: Instrument Selection
-                _buildInstrumentSidebar(theme),
+      body: Column(
+        children: [
+          const ScreenHeader(
+            title: 'Attenuation Measurement',
+            subtitle:
+                'Configure and measure attenuation across different instruments',
+            icon: Icons.graphic_eq, // Audio wave / signal icon
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left Sidebar: Instrument Selection
+                      _buildInstrumentSidebar(theme),
 
-                // Center: Configuration
-                _buildConfigurationPanel(theme),
+                      // Center: Configuration
+                      _buildConfigurationPanel(theme),
 
-                // Right: Results & Analytics
-                Expanded(flex: 5, child: _buildResultsPanel(theme)),
-              ],
-            ),
+                      // Right: Results & Analytics
+                      Expanded(flex: 5, child: _buildResultsPanel(theme)),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildInstrumentSidebar(ThemeData theme) {
-    return Container(
+    return ContentCard(
+      isSidebar: true,
       width: 200,
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
+      margin: const EdgeInsets.only(left: 24, top: 12, bottom: 24),
+      padding: EdgeInsets.zero, // Sidebar content has own padding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -365,17 +384,12 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
   }
 
   Widget _buildConfigurationPanel(ThemeData theme) {
-    return Container(
+    return ContentCard(
       width: 320,
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
+      margin: const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 12,
+      ).copyWith(bottom: 24),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,24 +632,13 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
 
   Widget _buildResultsPanel(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.only(right: 24, top: 12, bottom: 24),
       child: Column(
         children: [
           // Top: Chart
           Expanded(
             flex: 4,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
+            child: ContentCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -701,19 +704,8 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
           // Bottom: Table
           Expanded(
             flex: 4,
-            child: Container(
+            child: ContentCard(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

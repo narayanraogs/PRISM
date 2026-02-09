@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 
 class TVACCableLossScreen extends StatefulWidget {
   const TVACCableLossScreen({super.key});
@@ -236,180 +238,128 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        theme.colorScheme.background,
-                        theme.colorScheme.primary.withOpacity(0.02),
-                        theme.colorScheme.background,
-                      ],
-                    ),
-                  ),
-                  child: CustomScrollView(
-                    slivers: [
-                      _buildAppBar(theme),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (_showConnections)
-                                _buildConnectionsOverlay(theme),
-                              _buildTopStatusCards(theme),
-                              const SizedBox(height: 24),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+          ScreenHeader(
+            title: 'TVAC Cable Loss Measurement',
+            subtitle: 'Measure and record cable loss in TVAC environment',
+            icon: Icons.thermostat,
+            trailing: IconButton.filledTonal(
+              onPressed: () =>
+                  setState(() => _showConnections = !_showConnections),
+              icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
+              tooltip: 'Show Connection Diagrams',
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Stack(
+                    children: [
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_showConnections)
+                              _buildConnectionsOverlay(theme),
+                            _buildTopStatusCards(theme),
+                            const SizedBox(height: 24),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: _buildConfigCard(theme),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  flex: 3,
+                                  child: _buildLatestResultCard(theme),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 32),
+                            _buildHistorySection(theme),
+                          ],
+                        ),
+                      ),
+                      if (_isMeasuring)
+                        Container(
+                          color: Colors.black.withOpacity(0.3),
+                          child: Center(
+                            child: ContentCard(
+                              width: 400,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 24,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: _buildConfigCard(theme),
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    _measuringStatus,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    flex: 3,
-                                    child: _buildLatestResultCard(theme),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'This may take a few minutes...',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      context
+                                          .read<ServerService>()
+                                          .abortTVACCableLossMeasurement();
+                                      setState(() {
+                                        _isMeasuring = false;
+                                        _measuringStatus = '';
+                                      });
+                                    },
+                                    icon: const Icon(Icons.stop, size: 18),
+                                    label: const Text('Abort Measurement'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade50,
+                                      foregroundColor: Colors.red,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: Colors.red.shade100,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 32),
-                              _buildHistorySection(theme),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
-                ),
-          if (_isMeasuring)
-            Container(
-              color: Colors.black.withOpacity(0.3),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 24,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 24),
-                      Text(
-                        _measuringStatus,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'This may take a few minutes...',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          context
-                              .read<ServerService>()
-                              .abortTVACCableLossMeasurement();
-                          setState(() {
-                            _isMeasuring = false;
-                            _measuringStatus = '';
-                          });
-                          _showAppNotification(
-                            title: 'Measurement Aborted',
-                            message:
-                                'The measurement process was stopped by user.',
-                            type: NotificationType.warning,
-                          );
-                        },
-                        icon: const Icon(Icons.stop, size: 18),
-                        label: const Text('Abort Measurement'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade50,
-                          foregroundColor: Colors.red,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.red.shade100),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAppBar(ThemeData theme) {
-    return SliverAppBar(
-      expandedHeight: 120.0,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        title: Text(
-          'TVAC Cable Loss Measurement',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-            fontSize: 20,
-          ),
-        ),
-        background: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withOpacity(0.8),
-          ),
-        ),
-      ),
-      actions: [
-        IconButton.filledTonal(
-          onPressed: () => setState(() => _showConnections = !_showConnections),
-          icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
-          tooltip: 'Show Connection Diagrams',
-        ),
-        const SizedBox(width: 16),
-      ],
-    );
-  }
-
   Widget _buildConnectionsOverlay(ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+    return ContentCard(
+      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -460,13 +410,10 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
     IconData icon,
   ) {
     return Expanded(
-      child: Container(
+      child: ContentCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
+        borderRadius: 16,
+        color: theme.colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -568,20 +515,9 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
     Widget? action,
   }) {
     return Expanded(
-      child: Container(
+      child: ContentCard(
+        isSidebar: true, // Use simpler style
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-          border: Border.all(color: color.withOpacity(0.1)),
-        ),
         child: Row(
           children: [
             Container(
@@ -627,19 +563,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
         !_cableSuggestions.contains(_cableNameController.text.trim()) &&
         _cableNameController.text.trim().isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return ContentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

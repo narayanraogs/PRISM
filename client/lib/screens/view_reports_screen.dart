@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'dart:js_interop';
 import 'package:web/web.dart' as web;
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 import '../services/server_service.dart';
 
 class ViewReportsScreen extends StatefulWidget {
@@ -72,11 +74,15 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
           final month = monthItem.toLowerCase();
           parts[1] = month[0].toUpperCase() + month.substring(1);
           final normalizedDate = parts.join('-');
-          return DateFormat("dd-MMM-yyyy HH:mm:ss").parse("$normalizedDate $time");
+          return DateFormat(
+            "dd-MMM-yyyy HH:mm:ss",
+          ).parse("$normalizedDate $time");
         } else {
           // It's a numeric month
           final normalizedDate = parts.join('-');
-          return DateFormat("dd-MM-yyyy HH:mm:ss").parse("$normalizedDate $time");
+          return DateFormat(
+            "dd-MM-yyyy HH:mm:ss",
+          ).parse("$normalizedDate $time");
         }
       }
       return DateTime.now();
@@ -404,87 +410,84 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Row(
+      body: Column(
         children: [
-          // Left Side: Filters and Table
-          Expanded(
-            flex: 6,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildHeader(theme),
-                  const Divider(height: 1),
-                  _buildFilterRibbon(theme),
-                  Expanded(
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 48,
-                                  color: theme.colorScheme.error,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _errorMessage!,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.error,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _fetchData,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
-                            ),
-                          )
-                        : _filteredResultEntries.isEmpty
-                        ? const Center(
-                            child: Text('No reports found matching filters'),
-                          )
-                        : _buildDataTable(theme),
-                  ),
-                ],
-              ),
+          ScreenHeader(
+            title: 'Test Reports',
+            subtitle:
+                'Showing ${_filteredResultEntries.length} of ${_allEntries.length} results',
+            icon: Icons.assignment,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [_buildDateRangePicker(theme)],
             ),
           ),
-
-          // Right Side: Report Preview
           Expanded(
-            flex: 4,
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
+            child: Row(
+              children: [
+                // Left Side: Filters and Table
+                Expanded(
+                  flex: 6,
+                  child: ContentCard(
+                    margin: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    child: Column(
+                      children: [
+                        _buildControls(theme),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: _isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _errorMessage != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 48,
+                                        color: theme.colorScheme.error,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          color: theme.colorScheme.error,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: _fetchData,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _filteredResultEntries.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No reports found matching filters',
+                                  ),
+                                )
+                              : _buildDataTable(theme),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildPreviewArea(theme),
+                ),
+
+                // Right Side: Report Preview
+                Expanded(
+                  flex: 4,
+                  child: ContentCard(
+                    margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+                    width: double.infinity,
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildPreviewArea(theme),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -492,36 +495,12 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  Widget _buildControls(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Test Reports',
-                    style: GoogleFonts.outfit(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Showing ${_filteredResultEntries.length} of ${_allEntries.length} results',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                  ),
-                ],
-              ),
-              _buildDateRangePicker(theme),
-            ],
-          ),
-          const SizedBox(height: 24),
           TextField(
             onChanged: (value) {
               _searchQuery = value;
@@ -539,6 +518,8 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
+          const SizedBox(height: 16),
+          _buildFilterRibbon(theme),
         ],
       ),
     );
@@ -627,23 +608,19 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
   }
 
   Widget _buildFilterRibbon(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      color: Colors.grey.shade50,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildChipRow('Phases', _phases, _selectedPhase, (val) {
-            setState(() => _selectedPhase = val);
-            _applyFilters();
-          }, theme),
-          const SizedBox(height: 8),
-          _buildChipRow('Types', _types, _selectedType, (val) {
-            setState(() => _selectedType = val);
-            _applyFilters();
-          }, theme),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildChipRow('Phases', _phases, _selectedPhase, (val) {
+          setState(() => _selectedPhase = val);
+          _applyFilters();
+        }, theme),
+        const SizedBox(height: 8),
+        _buildChipRow('Types', _types, _selectedType, (val) {
+          setState(() => _selectedType = val);
+          _applyFilters();
+        }, theme),
+      ],
     );
   }
 

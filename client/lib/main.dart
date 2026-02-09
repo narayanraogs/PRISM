@@ -21,9 +21,11 @@ import 'package:prism_client/screens/stability_reports_screen.dart';
 import 'package:prism_client/screens/splash_screen.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:prism_client/screens/scpi_commander_screen.dart';
 
 void main() {
+  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(
     MultiProvider(
       providers: [

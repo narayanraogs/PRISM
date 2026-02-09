@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 import '../services/server_service.dart';
 
 class TSMInternalPathLossScreen extends StatefulWidget {
@@ -107,95 +109,63 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     }
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.background,
-                  theme.colorScheme.primary.withOpacity(0.01),
-                  theme.colorScheme.background,
-                ],
-              ),
-            ),
-            child: CustomScrollView(
-              slivers: [
-                _buildAppBar(theme),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_showConnections) _buildConnectionsOverlay(theme),
-                        _buildTopStatusCards(theme),
-                        const SizedBox(height: 24),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 2, child: _buildConfigCard(theme)),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 3,
-                              child: _buildLatestResultCard(theme),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-                        _buildHistorySection(theme),
-                      ],
-                    ),
-                  ),
+          ScreenHeader(
+            title: 'TSM Internal Path Loss',
+            subtitle: 'Measure internal path loss for TSM',
+            icon: Icons.settings_ethernet,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton.filledTonal(
+                  onPressed: _fetchMetadata,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh Data',
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: () =>
+                      setState(() => _showConnections = !_showConnections),
+                  icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
+                  tooltip: 'Show Path Diagrams',
                 ),
               ],
             ),
           ),
-          if (_isMeasuring) _buildMeasuringOverlay(theme),
+          Expanded(
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_showConnections) _buildConnectionsOverlay(theme),
+                      _buildTopStatusCards(theme),
+                      const SizedBox(height: 24),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 2, child: _buildConfigCard(theme)),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 3,
+                            child: _buildLatestResultCard(theme),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      _buildHistorySection(theme),
+                    ],
+                  ),
+                ),
+                if (_isMeasuring) _buildMeasuringOverlay(theme),
+              ],
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAppBar(ThemeData theme) {
-    return SliverAppBar(
-      expandedHeight: 100.0,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        title: Text(
-          'TSM Internal Path Loss',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-            fontSize: 20,
-          ),
-        ),
-        background: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withOpacity(0.8),
-          ),
-        ),
-      ),
-      actions: [
-        IconButton.filledTonal(
-          onPressed: () => _fetchMetadata(),
-          icon: const Icon(Icons.refresh),
-          tooltip: 'Refresh Data',
-        ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          onPressed: () => setState(() => _showConnections = !_showConnections),
-          icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
-          tooltip: 'Show Path Diagrams',
-        ),
-        const SizedBox(width: 16),
-      ],
     );
   }
 
@@ -269,20 +239,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     Widget? action,
   }) {
     return Expanded(
-      child: Container(
+      child: ContentCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-          border: Border.all(color: color.withOpacity(0.1)),
-        ),
         child: Row(
           children: [
             Container(
@@ -327,19 +285,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   Widget _buildConfigCard(ThemeData theme) {
     bool canMeasureTSM = _isPmReferenced && _isCableMeasured;
 
-    return Container(
+    return ContentCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -558,19 +505,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
 
     return Column(
       children: [
-        Container(
+        ContentCard(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -700,19 +636,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     int completed = _allPaths.where((e) => e.measured).length;
     double progress = total > 0 ? completed / total : 0;
 
-    return Container(
+    return ContentCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -755,18 +680,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   }
 
   Widget _buildHistorySection(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return ContentCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -927,14 +842,10 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   }
 
   Widget _buildConnectionsOverlay(ThemeData theme) {
-    return Container(
+    return ContentCard(
+      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -968,12 +879,9 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     return Container(
       color: Colors.black.withOpacity(0.3),
       child: Center(
-        child: Container(
+        child: ContentCard(
           padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
+          width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

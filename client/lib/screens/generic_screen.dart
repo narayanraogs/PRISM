@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/services/notification_service.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class GenericScreen extends StatelessWidget {
   final String title;
@@ -14,28 +16,15 @@ class GenericScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
-            ),
+          ScreenHeader(
+            title: title,
+            subtitle: 'This screen is currently under development',
+            icon: Icons.grid_view_rounded,
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
+            child: ContentCard(
+              isSidebar: false,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

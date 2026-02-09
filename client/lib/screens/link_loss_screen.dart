@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
@@ -10,6 +10,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'dart:js_interop';
 import 'package:web/web.dart' as web;
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 
 class PathLossEntry {
   final int id;
@@ -91,7 +93,9 @@ class _LinkLossScreenState extends State<LinkLossScreen>
 
     if (metadata != null) {
       if (metadata.ok && !_hasSyncedMetadata) {
-        debugPrint('LinkLossScreen: Syncing ${metadata.testPhases.length} test phases');
+        debugPrint(
+          'LinkLossScreen: Syncing ${metadata.testPhases.length} test phases',
+        );
         setState(() {
           _testPhases = metadata.testPhases;
           if (_testPhases.isNotEmpty && _selectedTestPhase.isEmpty) {
@@ -101,7 +105,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
           _isLoading = false;
         });
         if (_selectedTestPhase.isNotEmpty) {
-           _loadConfigs();
+          _loadConfigs();
         }
       } else if (!metadata.ok) {
         setState(() => _isLoading = false);
@@ -111,7 +115,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
 
   void _loadMetadata() {
     setState(() => _isLoading = true);
-    _hasSyncedMetadata = false; 
+    _hasSyncedMetadata = false;
     final serverService = Provider.of<ServerService>(context, listen: false);
     if (serverService.status.bootstrapData?.databaseData != null) {
       _syncMetadata(serverService);
@@ -326,61 +330,51 @@ class _LinkLossScreenState extends State<LinkLossScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      body: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Database Management',
-                style: GoogleFonts.outfit(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _showAddPhaseDialog,
-                icon: const Icon(Icons.add_box_outlined),
-                label: const Text('New Test Phase'),
-              ),
-            ],
+          ScreenHeader(
+            title: 'Database Management',
+            subtitle: 'Manage test phases and path loss profiles',
+            icon: Icons.storage,
+            trailing: ElevatedButton.icon(
+              onPressed: _showAddPhaseDialog,
+              icon: const Icon(Icons.add_box_outlined),
+              label: const Text('New Test Phase'),
+            ),
           ),
-          const SizedBox(height: 24),
-          _buildPhaseSelector(theme),
-          const SizedBox(height: 24),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: theme.colorScheme.primary,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: theme.colorScheme.primary,
-                    tabs: const [
-                      Tab(text: 'Uplink (RX) Path Loss'),
-                      Tab(text: 'Downlink (TX) Path Loss'),
-                    ],
-                  ),
+                  _buildPhaseSelector(theme),
+                  const SizedBox(height: 24),
                   Expanded(
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildEditorView(theme),
+                    child: ContentCard(
+                      child: Column(
+                        children: [
+                          TabBar(
+                            controller: _tabController,
+                            labelColor: theme.colorScheme.primary,
+                            unselectedLabelColor: Colors.grey,
+                            indicatorColor: theme.colorScheme.primary,
+                            tabs: const [
+                              Tab(text: 'Uplink (RX) Path Loss'),
+                              Tab(text: 'Downlink (TX) Path Loss'),
+                            ],
+                          ),
+                          Expanded(
+                            child: _isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : _buildEditorView(theme),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -392,13 +386,8 @@ class _LinkLossScreenState extends State<LinkLossScreen>
   }
 
   Widget _buildPhaseSelector(ThemeData theme) {
-    return Container(
+    return ContentCard(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
       child: Row(
         children: [
           const Icon(Icons.layers, color: Colors.grey),

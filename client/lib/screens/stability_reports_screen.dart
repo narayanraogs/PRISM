@@ -10,6 +10,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:web/web.dart' as web;
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/screen_header.dart';
 import 'dart:js_interop';
 
 import '../utils/lttb.dart';
@@ -37,7 +39,7 @@ class ParameterData {
 
 class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   final GlobalKey _chartKey = GlobalKey();
-  
+
   List<StabilityReportModel> _sessions = [];
   StabilityReportModel? _selectedSession;
   final List<String> _selectedParams = [];
@@ -75,11 +77,15 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
       // Update sessions if length changed or they were empty
       if (newSessions.length != _sessions.length || _sessions.isEmpty) {
-        debugPrint('StabilityReportsScreen: Syncing ${newSessions.length} sessions');
+        debugPrint(
+          'StabilityReportsScreen: Syncing ${newSessions.length} sessions',
+        );
         setState(() {
           _sessions = newSessions;
           _isLoadingMetadata = false;
-          if (_sessions.isNotEmpty && (_selectedSession == null || !_sessions.any((s) => s.id == _selectedSession!.id))) {
+          if (_sessions.isNotEmpty &&
+              (_selectedSession == null ||
+                  !_sessions.any((s) => s.id == _selectedSession!.id))) {
             _selectedSession = _sessions.first;
           }
         });
@@ -99,17 +105,22 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
   Future<void> _fetchParamData(String param) async {
     if (_selectedSession == null) return;
-    
+
     setState(() => _isLoadingPoints = true);
-    
+
     final serverService = Provider.of<ServerService>(context, listen: false);
-    final response = await serverService.fetchStabilityPoints(_selectedSession!.id, param);
+    final response = await serverService.fetchStabilityPoints(
+      _selectedSession!.id,
+      param,
+    );
 
     if (mounted) {
       if (response != null && response.ok) {
         if (response.points.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No data points found for this parameter')),
+            const SnackBar(
+              content: Text('No data points found for this parameter'),
+            ),
           );
           setState(() => _isLoadingPoints = false);
           return;
@@ -120,8 +131,8 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         int baseTs = response.points.first.tsInt;
         // If we already have some data loaded, try to find the absolute minimum TS
         for (var data in _loadedData.values) {
-           // This is tricky because we don't store raw TSInt in ParameterData. 
-           // Let's just use the current parameter's first point as base if _loadedData is empty
+          // This is tricky because we don't store raw TSInt in ParameterData.
+          // Let's just use the current parameter's first point as base if _loadedData is empty
         }
 
         final points = response.points.map((p) {
@@ -130,7 +141,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
         final minY = points.map((p) => p.y).reduce(math.min);
         final maxY = points.map((p) => p.y).reduce(math.max);
-        
+
         setState(() {
           _loadedData[param] = ParameterData(
             name: param,
@@ -144,7 +155,11 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
       } else {
         setState(() => _isLoadingPoints = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response?.message ?? 'Failed to load parameter points')),
+          SnackBar(
+            content: Text(
+              response?.message ?? 'Failed to load parameter points',
+            ),
+          ),
         );
       }
     }
@@ -160,11 +175,11 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
       if (_selectedParams.length >= 2) {
         _selectedParams.removeAt(0);
       }
-      
+
       if (!_loadedData.containsKey(param)) {
         await _fetchParamData(param);
       }
-      
+
       if (_loadedData.containsKey(param)) {
         setState(() {
           _selectedParams.add(param);
@@ -190,28 +205,45 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
     }
   }
 
-  double _normalize(double val, double min2, double max2, double min1, double max1) {
+  double _normalize(
+    double val,
+    double min2,
+    double max2,
+    double min1,
+    double max1,
+  ) {
     if (max2 == min2) return min1;
     return min1 + ((val - min2) / (max2 - min2)) * (max1 - min1);
   }
 
-  double _denormalize(double val, double min1, double max1, double min2, double max2) {
+  double _denormalize(
+    double val,
+    double min1,
+    double max1,
+    double min2,
+    double max2,
+  ) {
     if (max1 == min1) return min2;
     return min2 + ((val - min1) / (max1 - min1)) * (max2 - min2);
   }
 
   Future<void> _exportImage(String format) async {
     try {
-      final boundary = _chartKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final boundary =
+          _chartKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: 'image/$format'));
+      final blob = web.Blob(
+        [bytes.toJS].toJS,
+        web.BlobPropertyBag(type: 'image/$format'),
+      );
       final url = web.URL.createObjectURL(blob);
       final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
       anchor.href = url;
-      anchor.download = 'Stability_Report_${_selectedSession?.date}_${_selectedSession?.time}.$format';
+      anchor.download =
+          'Stability_Report_${_selectedSession?.date}_${_selectedSession?.time}.$format';
       anchor.click();
       web.URL.revokeObjectURL(url);
 
@@ -219,23 +251,39 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         SnackBar(content: Text('Report exported as ${format.toUpperCase()}')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting image: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      body: Row(
+      body: Column(
         children: [
-          _buildSidebar(theme),
+          const ScreenHeader(
+            title: 'Stability Reports',
+            subtitle: 'Analyze long-term stability data',
+            icon: Icons.analytics_rounded,
+          ),
           Expanded(
-            child: _buildPreviewArea(theme),
+            child: Row(
+              children: [
+                _buildSidebar(theme),
+                Expanded(
+                  child: ContentCard(
+                    margin: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
+                    child: _buildPreviewArea(theme),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -243,22 +291,25 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   }
 
   Widget _buildSidebar(ThemeData theme) {
-    return Container(
+    return ContentCard(
       width: 380,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(4, 0),
-          ),
-        ],
-      ),
+      isSidebar: true,
+      margin: const EdgeInsets.fromLTRB(16, 16, 0, 16),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSidebarHeader(theme),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'Report Editor',
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(24),
@@ -267,7 +318,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 const SizedBox(height: 12),
                 _buildSessionDropdown(theme),
                 const SizedBox(height: 32),
-                
+
                 _buildSectionTitle('PARAMETERS (MAX 2)'),
                 const SizedBox(height: 12),
                 _buildParamSelector(theme),
@@ -280,35 +331,6 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
                 _buildActionButtons(theme),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSidebarHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.analytics_rounded, color: theme.colorScheme.primary),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            'Report Editor',
-            style: GoogleFonts.outfit(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -347,7 +369,10 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           items: _sessions.map((s) {
             return DropdownMenuItem(
               value: s,
-              child: Text('${s.date} ${s.time}', style: GoogleFonts.inter(fontSize: 14)),
+              child: Text(
+                '${s.date} ${s.time}',
+                style: GoogleFonts.inter(fontSize: 14),
+              ),
             );
           }).toList(),
           onChanged: (val) {
@@ -366,14 +391,17 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
   Widget _buildParamSelector(ThemeData theme) {
     if (_selectedSession == null) {
-      return Text('Select a session first', style: TextStyle(color: Colors.grey.shade400));
+      return Text(
+        'Select a session first',
+        style: TextStyle(color: Colors.grey.shade400),
+      );
     }
 
     return Column(
       children: _selectedSession!.parameters.map((param) {
         final isSelected = _selectedParams.contains(param);
         final index = _selectedParams.indexOf(param);
-        
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: InkWell(
@@ -382,18 +410,26 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected ? theme.colorScheme.primary.withOpacity(0.05) : Colors.transparent,
+                color: isSelected
+                    ? theme.colorScheme.primary.withOpacity(0.05)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? theme.colorScheme.primary.withOpacity(0.3) : Colors.grey.shade200,
+                  color: isSelected
+                      ? theme.colorScheme.primary.withOpacity(0.3)
+                      : Colors.grey.shade200,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
                     size: 20,
-                    color: isSelected ? theme.colorScheme.primary : Colors.grey.shade400,
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : Colors.grey.shade400,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -401,21 +437,32 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                       param,
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected ? Colors.black87 : Colors.grey.shade700,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? Colors.black87
+                            : Colors.grey.shade700,
                       ),
                     ),
                   ),
                   if (isSelected)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: index == 0 ? Colors.indigo : Colors.teal,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         'AXIS ${index + 1}',
-                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                 ],
@@ -479,7 +526,13 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         ),
         const SizedBox(height: 12),
         Row(
-          children: fields.expand((f) => [Expanded(child: f), const SizedBox(width: 12)]).toList()..removeLast(),
+          children:
+              fields
+                  .expand(
+                    (f) => [Expanded(child: f), const SizedBox(width: 12)],
+                  )
+                  .toList()
+                ..removeLast(),
         ),
       ],
     );
@@ -518,7 +571,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
             backgroundColor: theme.colorScheme.primary,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: const Text('UPDATE PLOT'),
         ),
@@ -532,7 +587,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 label: const Text('PNG'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -544,7 +601,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 label: const Text('JPG'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -564,51 +623,45 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add_chart_rounded, size: 64, color: Colors.grey.shade300),
+            Icon(
+              Icons.add_chart_rounded,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 16),
             Text(
-              _isLoadingPoints ? 'Loading points...' : 'Select parameters to begin plotting',
+              _isLoadingPoints
+                  ? 'Loading points...'
+                  : 'Select parameters to begin plotting',
               style: GoogleFonts.inter(color: Colors.grey.shade500),
             ),
             if (_isLoadingPoints) const SizedBox(height: 20),
-            if (_isLoadingPoints) const CircularProgressIndicator(strokeWidth: 2),
+            if (_isLoadingPoints)
+              const CircularProgressIndicator(strokeWidth: 2),
           ],
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: RepaintBoundary(
-              key: _chartKey,
-              child: Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    _buildFinalChart(theme),
-                    if (_isLoadingPoints)
-                      const Center(child: CircularProgressIndicator()),
-                  ],
-                ),
+    return Column(
+      children: [
+        Expanded(
+          child: RepaintBoundary(
+            key: _chartKey,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              // Removed inner decoration as the parent ContentCard provides container style
+              child: Stack(
+                children: [
+                  _buildFinalChart(theme),
+                  if (_isLoadingPoints)
+                    const Center(child: CircularProgressIndicator()),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -624,33 +677,48 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
     // Param 1
     final data1 = _loadedData[_selectedParams[0]]!;
-    final displayPoints1 = data1.points.length > 2000 ? lttb(data1.points, 2000) : data1.points;
-    barData.add(LineChartBarData(
-      spots: displayPoints1.map((p) => FlSpot(p.x, p.y)).toList(),
-      isCurved: true,
-      curveSmoothness: 0.1,
-      color: Colors.indigo,
-      barWidth: 2,
-      dotData: const FlDotData(show: false),
-      belowBarData: BarAreaData(show: true, color: Colors.indigo.withOpacity(0.05)),
-    ));
+    final displayPoints1 = data1.points.length > 2000
+        ? lttb(data1.points, 2000)
+        : data1.points;
+    barData.add(
+      LineChartBarData(
+        spots: displayPoints1.map((p) => FlSpot(p.x, p.y)).toList(),
+        isCurved: true,
+        curveSmoothness: 0.1,
+        color: Colors.indigo,
+        barWidth: 2,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(
+          show: true,
+          color: Colors.indigo.withOpacity(0.05),
+        ),
+      ),
+    );
 
     // Param 2 (Normalized)
     if (_selectedParams.length > 1) {
       final data2 = _loadedData[_selectedParams[1]]!;
-      final displayPoints2 = data2.points.length > 2000 ? lttb(data2.points, 2000) : data2.points;
-      barData.add(LineChartBarData(
-        spots: displayPoints2.map((p) => FlSpot(
-          p.x, 
-          _normalize(p.y, y2Min, y2Max, y1Min, y1Max)
-        )).toList(),
-        isCurved: true,
-        curveSmoothness: 0.1,
-        color: Colors.teal,
-        barWidth: 2,
-        dotData: const FlDotData(show: false),
-        belowBarData: BarAreaData(show: true, color: Colors.teal.withOpacity(0.05)),
-      ));
+      final displayPoints2 = data2.points.length > 2000
+          ? lttb(data2.points, 2000)
+          : data2.points;
+      barData.add(
+        LineChartBarData(
+          spots: displayPoints2
+              .map(
+                (p) => FlSpot(p.x, _normalize(p.y, y2Min, y2Max, y1Min, y1Max)),
+              )
+              .toList(),
+          isCurved: true,
+          curveSmoothness: 0.1,
+          color: Colors.teal,
+          barWidth: 2,
+          dotData: const FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            color: Colors.teal.withOpacity(0.05),
+          ),
+        ),
+      );
     }
 
     return Column(
@@ -665,7 +733,10 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
             const Spacer(),
             Text(
               '${_selectedSession?.date} ${_selectedSession?.time}',
-              style: GoogleFonts.robotoMono(fontSize: 12, color: Colors.grey.shade400),
+              style: GoogleFonts.robotoMono(
+                fontSize: 12,
+                color: Colors.grey.shade400,
+              ),
             ),
           ],
         ),
@@ -681,53 +752,101 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: true,
-                getDrawingHorizontalLine: (val) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
-                getDrawingVerticalLine: (val) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                getDrawingHorizontalLine: (val) =>
+                    FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                getDrawingVerticalLine: (val) =>
+                    FlLine(color: Colors.grey.shade100, strokeWidth: 1),
               ),
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
-                  axisNameWidget: Text('Axis 1: ${_selectedParams[0]}', style: const TextStyle(fontSize: 10, color: Colors.indigo, fontWeight: FontWeight.bold)),
+                  axisNameWidget: Text(
+                    'Axis 1: ${_selectedParams[0]}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.indigo,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   axisNameSize: 22,
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 50,
-                    getTitlesWidget: (val, meta) => Text(val.toStringAsFixed(1), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    getTitlesWidget: (val, meta) => Text(
+                      val.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
                   ),
                 ),
                 rightTitles: AxisTitles(
-                  axisNameWidget: _selectedParams.length > 1 ? Text('Axis 2: ${_selectedParams[1]}', style: const TextStyle(fontSize: 10, color: Colors.teal, fontWeight: FontWeight.bold)) : null,
+                  axisNameWidget: _selectedParams.length > 1
+                      ? Text(
+                          'Axis 2: ${_selectedParams[1]}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.teal,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                   axisNameSize: 22,
                   sideTitles: SideTitles(
                     showTitles: _selectedParams.length > 1,
                     reservedSize: 50,
                     getTitlesWidget: (val, meta) {
-                      final realVal = _denormalize(val, y1Min, y1Max, y2Min, y2Max);
-                      return Text(realVal.toStringAsFixed(1), style: const TextStyle(fontSize: 10, color: Colors.grey));
+                      final realVal = _denormalize(
+                        val,
+                        y1Min,
+                        y1Max,
+                        y2Min,
+                        y2Max,
+                      );
+                      return Text(
+                        realVal.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      );
                     },
                   ),
                 ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 bottomTitles: AxisTitles(
-                  axisNameWidget: const Text('Time (seconds)', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  axisNameWidget: const Text(
+                    'Time (seconds)',
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
                   sideTitles: SideTitles(
                     showTitles: true,
-                    getTitlesWidget: (val, meta) => Text('${val.toInt()}s', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    getTitlesWidget: (val, meta) => Text(
+                      '${val.toInt()}s',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
                   ),
                 ),
               ),
-              borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade100)),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: Colors.grey.shade100),
+              ),
               lineTouchData: LineTouchData(
                 touchTooltipData: LineTouchTooltipData(
                   getTooltipColor: (spot) => Colors.white,
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
                       final isSecond = spot.barIndex == 1;
-                      final val = isSecond 
+                      final val = isSecond
                           ? _denormalize(spot.y, y1Min, y1Max, y2Min, y2Max)
                           : spot.y;
                       return LineTooltipItem(
                         '${_selectedParams[spot.barIndex]}\n${val.toStringAsFixed(4)}',
-                        TextStyle(color: isSecond ? Colors.teal : Colors.indigo, fontWeight: FontWeight.bold, fontSize: 11),
+                        TextStyle(
+                          color: isSecond ? Colors.teal : Colors.indigo,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
                       );
                     }).toList();
                   },
@@ -752,7 +871,11 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         const SizedBox(width: 8),
         Text(
           label,
-          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade800,
+          ),
         ),
       ],
     );

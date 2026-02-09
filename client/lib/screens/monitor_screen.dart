@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class MonitorScreen extends StatefulWidget {
   final bool isActive;
@@ -184,30 +186,16 @@ class _MonitorScreenState extends State<MonitorScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Icon(
-          Icons.monitor_heart_rounded,
-          color: theme.colorScheme.primary,
-          size: 32,
-        ),
-        const SizedBox(width: 16),
-        Text(
-          'Continuous Monitor',
-          style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold),
-        ),
-      ],
+    return const ScreenHeader(
+      title: 'Continuous Monitor',
+      subtitle: 'Real-time instrument monitoring and visualization',
+      icon: Icons.monitor_heart_rounded,
     );
   }
 
   Widget _buildSelectionPanel(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-      ),
+    return ContentCard(
+      isSidebar: true, // Radius 24
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -274,11 +262,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Widget _buildMonitorView(ThemeData theme) {
     if (!_isMonitoring) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
+      return ContentCard(
+        isSidebar: false,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

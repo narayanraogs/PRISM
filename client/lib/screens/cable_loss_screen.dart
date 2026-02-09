@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:prism_client/services/server_service.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class CableLossScreen extends StatefulWidget {
   const CableLossScreen({super.key});
@@ -368,146 +370,116 @@ class _CableLossScreenState extends State<CableLossScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        theme.colorScheme.background,
-                        theme.colorScheme.primary.withOpacity(0.02),
-                        theme.colorScheme.background,
-                      ],
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                ScreenHeader(
+                  title: 'Cable Loss Measurement',
+                  subtitle:
+                      'Measure and record cable loss details across frequency bands',
+                  icon: Icons.cable,
+                  trailing: IconButton.filledTonal(
+                    onPressed: () =>
+                        setState(() => _showConnections = !_showConnections),
+                    icon: Icon(
+                      _showConnections ? Icons.hub : Icons.hub_outlined,
                     ),
-                  ),
-                  child: CustomScrollView(
-                    slivers: [
-                      _buildAppBar(theme),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (_showConnections)
-                                _buildConnectionsOverlay(theme),
-                              _buildTopStatusCards(theme),
-                              const SizedBox(height: 24),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: _buildConfigCard(theme),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    flex: 3,
-                                    child: _buildLatestResultCard(theme),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 32),
-                              _buildHistorySection(theme),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    tooltip: 'Show Connection Diagrams',
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                if (_isLoading)
+                  const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_showConnections) _buildConnectionsOverlay(theme),
+                          _buildTopStatusCards(theme),
+                          const SizedBox(height: 24),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 2, child: _buildConfigCard(theme)),
+                              const SizedBox(width: 24),
+                              Expanded(
+                                flex: 3,
+                                child: _buildLatestResultCard(theme),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          _buildHistorySection(theme),
+                          const SizedBox(height: 24), // Bottom padding
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           if (_isMeasuring) _buildMeasuringOverlay(theme),
         ],
       ),
     );
   }
 
-  Widget _buildAppBar(ThemeData theme) {
-    return SliverAppBar(
-      expandedHeight: 120.0,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        title: Text(
-          'Cable Loss Measurement',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-            fontSize: 20,
-          ),
-        ),
-        background: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withOpacity(0.8),
-          ),
-        ),
-      ),
-      actions: [
-        IconButton.filledTonal(
-          onPressed: () => setState(() => _showConnections = !_showConnections),
-          icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
-          tooltip: 'Show Connection Diagrams',
-        ),
-        const SizedBox(width: 16),
-      ],
-    );
-  }
-
   Widget _buildConnectionsOverlay(ThemeData theme) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
+      child: ContentCard(
+        isSidebar: true, // Use simpler style
         color: theme.colorScheme.primaryContainer.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Reference Connection Diagrams',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onPrimaryContainer,
+        borderRadius: 24,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Reference Connection Diagrams',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () => setState(() => _showConnections = false),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _buildDiagramCard(
-                theme,
-                '1. PM Zero Connection',
-                'Connect Power Sensor directly to PM Zero output for reference.',
-                Icons.shutter_speed,
-              ),
-              const SizedBox(width: 20),
-              _buildDiagramCard(
-                theme,
-                '2. Cable Measurement',
-                'Insert the cable under test between the source and the sensor.',
-                Icons.settings_input_antenna,
-              ),
-            ],
-          ),
-        ],
+                IconButton(
+                  onPressed: () => setState(() => _showConnections = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _buildDiagramCard(
+                  theme,
+                  '1. PM Zero Connection',
+                  'Connect Power Sensor directly to PM Zero output for reference.',
+                  Icons.shutter_speed,
+                ),
+                const SizedBox(width: 20),
+                _buildDiagramCard(
+                  theme,
+                  '2. Cable Measurement',
+                  'Insert the cable under test between the source and the sensor.',
+                  Icons.settings_input_antenna,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -618,20 +590,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
     Widget? action,
   }) {
     return Expanded(
-      child: Container(
+      child: ContentCard(
+        isSidebar: true, // Use simpler style for status cards
+        borderRadius: 20,
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-          border: Border.all(color: color.withOpacity(0.1)),
-        ),
         child: Row(
           children: [
             Container(
@@ -673,19 +635,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
   }
 
   Widget _buildConfigCard(ThemeData theme) {
-    return Container(
+    return ContentCard(
+      isSidebar: false,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -909,12 +861,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
 
   Widget _buildLatestResultCard(ThemeData theme) {
     if (_history.isEmpty || _selectedPlotRecord == null) {
-      return Container(
+      return ContentCard(
+        isSidebar: false,
         height: 480,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -936,19 +885,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
       return FlSpot(i.toDouble(), plotRecord.measurements[i].loss);
     });
 
-    return Container(
+    return ContentCard(
+      isSidebar: false,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1095,13 +1034,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
   }
 
   Widget _buildHistorySection(ThemeData theme) {
-    return Container(
+    return ContentCard(
+      isSidebar: false,
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

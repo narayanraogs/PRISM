@@ -8,6 +8,8 @@ import 'package:prism_client/screens/test_progress_screen.dart';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'package:web/web.dart' as web;
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -39,10 +41,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void _fetchData() {
     setState(() => _isLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
-    
+
     // Use bootstrapped data
     final tests = serverService.status.bootstrapData?.testData;
-    
+
     if (tests != null) {
       debugPrint('ScheduleScreen: Using Bootstrapped Metadata');
       setState(() {
@@ -254,43 +256,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            Icons.schedule_rounded,
-            color: theme.colorScheme.primary,
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Test Scheduler',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
-            ),
-            Text(
-              'Build and manage automatically executed test sequences',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
+    return const ScreenHeader(
+      title: 'Test Scheduler',
+      subtitle: 'Build and manage automatically executed test sequences',
+      icon: Icons.schedule_rounded,
     );
   }
 
@@ -298,19 +267,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (_isLoading) return const SizedBox(width: 280);
     final categories = _allTests?.categories ?? [];
 
-    return Container(
+    return ContentCard(
       width: 280,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      isSidebar: true,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Padding(
@@ -406,18 +366,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     return Expanded(
       flex: 3,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.03),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
-        ),
+      child: ContentCard(
+        isSidebar: false,
+        padding: EdgeInsets.zero,
         child: Column(
           children: [
             // Top Bar: Config Selection
@@ -614,19 +565,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildSchedulePanel(ThemeData theme) {
-    return Container(
+    return ContentCard(
       width: 450,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      isSidebar: true, // Auxiliary panel
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           Padding(
