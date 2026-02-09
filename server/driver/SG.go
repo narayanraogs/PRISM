@@ -45,6 +45,13 @@ func (sg *SG) CheckConnection() utils.CommandResponse {
 	return sg.device.getModulationStatus()
 }
 
+func (sg *SG) GetCommandDatabase() map[string]utils.Command {
+	if sg.device == nil {
+		return nil
+	}
+	return sg.device.getCommandDatabase()
+}
+
 func (sg *SG) SetRFOn() utils.CommandResponse {
 	if sg.device == nil {
 		return getDeviceNotAvailable()

@@ -44,6 +44,13 @@ func (pm *PM) LoadDevice(name string) bool {
 	return loaded
 }
 
+func (pm *PM) GetCommandDatabase() map[string]utils.Command {
+	if pm.device == nil {
+		return nil
+	}
+	return pm.device.getCommandDatabase()
+}
+
 func (pm *PM) CheckConnection() utils.CommandResponse {
 	return pm.GetPowerChannelA(true)
 }

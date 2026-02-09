@@ -28,6 +28,7 @@ type BootstrapData struct {
 	UCDCData             UCDCMetadata
 	AttnData             AttnMetaData
 	GTxData              GTxMeasurementMetadata
+	SCPIData             SCPIDetails
 }
 
 type RFUplinkRequest struct {
@@ -507,4 +508,24 @@ type UCDCDetails struct {
 	InputFrequency  float64
 	OutputFrequency float64
 	LOFrequency     float64
+}
+
+type InstrumentDetails struct {
+	IPAddress string
+	PortNo    int
+}
+
+type CommandDetails struct {
+	Mnemonic string
+	Command  string
+	Argument bool
+	Write    bool
+}
+
+type SCPIDetails struct {
+	Instruments       []string
+	InstrumentDetails map[string]InstrumentDetails
+	Commands          map[string][]CommandDetails
+	OK                bool
+	Message           string
 }

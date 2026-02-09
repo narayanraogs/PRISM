@@ -9,6 +9,7 @@ import (
 
 type simulatedSA struct {
 	connection instrument
+	commands   map[string]utils.Command
 }
 
 func (device *simulatedSA) setClearWrite() utils.CommandResponse {
@@ -20,11 +21,16 @@ func (device *simulatedSA) loadLANDetails(name string) bool {
 	return true
 }
 
+func (device *simulatedSA) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *simulatedSA) loadCommands() bool {
 	return true
 }
 
 func (device *simulatedSA) initializeDevice(name string) {
+	device.commands = make(map[string]utils.Command)
 }
 
 func (device *simulatedSA) getCommands(mnemonics []string, arguments []string, replace []string) []utils.Command {

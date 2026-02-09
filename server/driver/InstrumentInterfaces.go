@@ -53,6 +53,7 @@ type saDevice interface {
 	getPhaseNoiseMarkerY(marker int) utils.CommandResponse
 	getSpectrumDump() utils.CommandResponse
 	getTraceDump(points int) utils.CommandResponse
+	getCommandDatabase() map[string]utils.Command
 }
 
 type pmDevice interface {
@@ -71,6 +72,7 @@ type pmDevice interface {
 	setChBAverageOn() utils.CommandResponse
 	presetPM() utils.CommandResponse
 	disConnect() utils.CommandResponse
+	getCommandDatabase() map[string]utils.Command
 }
 
 type ppmDevice interface {
@@ -120,6 +122,7 @@ type sgDevice interface {
 	getModulationStatus() utils.CommandResponse
 	setFrequency(value float64) utils.CommandResponse
 	setPower(value float64) utils.CommandResponse
+	getCommandDatabase() map[string]utils.Command
 }
 
 type gtxDevice interface {

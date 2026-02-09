@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"prismServer/database"
+	"prismServer/driver"
 	"prismServer/resultsDB"
 	"prismServer/utils"
 	"slices"
@@ -31,6 +32,7 @@ func getBootstrapData(c *gin.Context) {
 	resp.UCDCData = getUCDCMetadata()
 	resp.AttnData = getAttnInitialData()
 	resp.GTxData = getGTxMeasurementMetadata()
+	resp.SCPIData = getSCPIData()
 
 	c.IndentedJSON(http.StatusOK, resp)
 }
@@ -217,21 +219,23 @@ func getStabilityMetadata() StabilityMetadata {
 func getStabilityReportsMetadata() StabilityReportsMetadata {
 	rows, err := resultsDB.GetStabilitySessions()
 	var resp StabilityReportsMetadata
+	resp.ID = make([]int64, 0)
+	resp.Date = make([]string, 0)
+	resp.Time = make([]string, 0)
+	resp.Parameters = make([][]string, 0)
 	if err != nil {
 		resp.OK = false
 		resp.Message = "Error getting stability reports metadata"
 		return resp
 	}
-	resp.ID = make([]int64, len(rows))
-	resp.Date = make([]string, len(rows))
-	resp.Time = make([]string, len(rows))
-	resp.Parameters = make([][]string, len(rows))
-	for i, row := range rows {
-		resp.ID[i] = row.ID
-		resp.Date[i] = row.Date
-		resp.Time[i] = row.Time
+	for _, row := range rows {
 		params, _ := resultsDB.GetStabilityParameters(row.ID)
-		resp.Parameters[i] = params
+		if len(params) > 0 {
+			resp.ID = append(resp.ID, row.ID)
+			resp.Date = append(resp.Date, row.Date)
+			resp.Time = append(resp.Time, row.Time)
+			resp.Parameters = append(resp.Parameters, params)
+		}
 	}
 	resp.OK = true
 	resp.Message = "Success"
@@ -582,4 +586,87 @@ func getAttnInitialData() AttnMetaData {
 	attnMetaData.OK = true
 	attnMetaData.Message = "Successfully retrieved metadata"
 	return attnMetaData
+}
+
+func getSCPIData() SCPIDetails {
+	var scpiDetails SCPIDetails
+	var instruments = make([]string, 0)
+	sa, ok := database.GetSAAndVSAList()
+	if !ok {
+		scpiDetails.OK = false
+		scpiDetails.Message = "Unable to get SA and VSA list"
+		return scpiDetails
+	}
+	instruments = append(instruments, sa...)
+	pm, ok := database.GetPMAndPPMList()
+	if !ok {
+		scpiDetails.OK = false
+		scpiDetails.Message = "Unable to get PM and PPM list"
+		return scpiDetails
+	}
+	instruments = append(instruments, pm...)
+	sg, ok := database.GetSGList()
+	if !ok {
+		scpiDetails.OK = false
+		scpiDetails.Message = "Unable to get SG list"
+		return scpiDetails
+	}
+	instruments = append(instruments, sg...)
+	scpiDetails.Instruments = instruments
+	scpiDetails.InstrumentDetails = make(map[string]InstrumentDetails)
+	for _, instrument := range instruments {
+		var details InstrumentDetails
+		dev, ok := database.GetDeviceDetails(instrument)
+		if !ok {
+			scpiDetails.OK = false
+			scpiDetails.Message = "Unable to get IP address and Port No for " + instrument
+			return scpiDetails
+		}
+		details.IPAddress = dev.IPAddress
+		details.PortNo = int(dev.ControlPort)
+		scpiDetails.InstrumentDetails[instrument] = details
+	}
+	scpiDetails.Commands = make(map[string][]CommandDetails)
+	for _, instrument := range sa {
+		var sa driver.SA
+		sa.LoadDevice(instrument)
+		commands := sa.GetCommandDatabase()
+		for _, command := range commands {
+			scpiDetails.Commands[instrument] = append(scpiDetails.Commands[instrument], CommandDetails{
+				Command:  command.Command,
+				Mnemonic: command.Mnemonic,
+				Argument: command.Argument,
+				Write:    !command.Read,
+			})
+		}
+	}
+	for _, instrument := range pm {
+		var pm driver.PM
+		pm.LoadDevice(instrument)
+		commands := pm.GetCommandDatabase()
+		for _, command := range commands {
+			scpiDetails.Commands[instrument] = append(scpiDetails.Commands[instrument], CommandDetails{
+				Command:  command.Command,
+				Mnemonic: command.Mnemonic,
+				Argument: command.Argument,
+				Write:    !command.Read,
+			})
+		}
+	}
+	for _, instrument := range sg {
+		var sg driver.SG
+		sg.LoadDevice(instrument)
+		commands := sg.GetCommandDatabase()
+		for _, command := range commands {
+			scpiDetails.Commands[instrument] = append(scpiDetails.Commands[instrument], CommandDetails{
+				Command:  command.Command,
+				Mnemonic: command.Mnemonic,
+				Argument: command.Argument,
+				Write:    !command.Read,
+			})
+		}
+	}
+	scpiDetails.OK = true
+	scpiDetails.Message = "Successfully retrieved metadata"
+	return scpiDetails
 }

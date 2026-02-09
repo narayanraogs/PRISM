@@ -46,6 +46,13 @@ func (sa *SA) LoadDevice(name string) bool {
 	return loaded
 }
 
+func (sa *SA) GetCommandDatabase() map[string]utils.Command {
+	if sa.device == nil {
+		return nil
+	}
+	return sa.device.getCommandDatabase()
+}
+
 func (sa *SA) CheckConnection() utils.CommandResponse {
 	if sa.device == nil {
 		return getDeviceNotAvailable()

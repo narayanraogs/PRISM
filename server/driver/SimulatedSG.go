@@ -14,11 +14,16 @@ func (device *simulatedSG) loadLANDetails(name string) bool {
 	return true
 }
 
+func (device *simulatedSG) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *simulatedSG) loadCommands() bool {
 	return true
 }
 
 func (device *simulatedSG) initializeDevice(name string) {
+	device.commands = make(map[string]utils.Command)
 }
 
 func (device *simulatedSG) getCommands(mnemonics []string, arguments []string, replace []string) []utils.Command {

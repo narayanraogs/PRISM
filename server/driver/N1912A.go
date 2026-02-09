@@ -45,6 +45,10 @@ func (device *n1912a) loadCommands() bool {
 	return true
 }
 
+func (device *n1912a) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *n1912a) initializeDevice(name string) {
 	device.loadLANDetails(name)
 	device.connection.Configure(" ", "\n", true, true)

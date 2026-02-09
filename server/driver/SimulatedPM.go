@@ -6,6 +6,7 @@ import (
 
 type simulatedPM struct {
 	connection instrument
+	commands   map[string]utils.Command
 }
 
 func (device *simulatedPM) loadLANDetails(name string) bool {
@@ -13,7 +14,12 @@ func (device *simulatedPM) loadLANDetails(name string) bool {
 }
 
 func (device *simulatedPM) loadCommands() bool {
+	device.commands = make(map[string]utils.Command)
 	return true
+}
+
+func (device *simulatedPM) getCommandDatabase() map[string]utils.Command {
+	return device.commands
 }
 
 func (device *simulatedPM) initializeDevice(name string) {

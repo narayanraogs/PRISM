@@ -11,7 +11,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -26,11 +27,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeIn)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+      ),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+      ),
     );
 
     _controller.forward();
@@ -39,13 +46,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _startBootstrapping() async {
     final serverService = Provider.of<ServerService>(context, listen: false);
-    
+
     await Future.delayed(const Duration(milliseconds: 800));
     setState(() => _statusMessage = "Connecting to PRISM server...");
-    
+
     // Attempt to fetch bootstrap data
     final data = await serverService.fetchBootstrapData();
-    
+
     if (data != null) {
       setState(() => _statusMessage = "Loading configurations...");
       await Future.delayed(const Duration(milliseconds: 500));
@@ -53,8 +60,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       await Future.delayed(const Duration(milliseconds: 300));
       widget.onLoaded();
     } else {
-      setState(() => _statusMessage = "Server unreachable. Retrying...");
-      await Future.delayed(const Duration(seconds: 2));
+      final error = serverService.bootstrapError;
+      if (error != null) {
+        setState(() => _statusMessage = "Initialization Error: $error");
+      } else {
+        setState(() => _statusMessage = "Server unreachable. Retrying...");
+      }
+      await Future.delayed(const Duration(seconds: 3));
       _startBootstrapping();
     }
   }
@@ -124,13 +136,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.15),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 2,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.1),
                                   blurRadius: 30,
                                   spreadRadius: 5,
-                                )
+                                ),
                               ],
                             ),
                             child: const Icon(
@@ -178,7 +193,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       children: [
                         LinearProgressIndicator(
                           backgroundColor: Colors.white.withOpacity(0.2),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                           borderRadius: BorderRadius.circular(10),
                           minHeight: 2,
                         ),

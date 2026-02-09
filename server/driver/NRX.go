@@ -45,6 +45,10 @@ func (device *nrx) loadCommands() bool {
 	return true
 }
 
+func (device *nrx) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *nrx) initializeDevice(name string) {
 	device.loadLANDetails(name)
 	device.connection.Configure(" ", "\n", true, true)

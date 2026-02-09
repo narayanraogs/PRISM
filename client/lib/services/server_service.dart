@@ -23,7 +23,11 @@ class ServerStatus {
     this.bootstrapData,
   });
 
-  factory ServerStatus.fromJson(Map<String, dynamic> json, bool connected, {BootstrapData? bootstrap}) {
+  factory ServerStatus.fromJson(
+    Map<String, dynamic> json,
+    bool connected, {
+    BootstrapData? bootstrap,
+  }) {
     return ServerStatus(
       satelliteName: json['SatelliteName'] ?? 'Unknown',
       testPhase: json['TestPhase'] ?? 'Unknown',
@@ -50,6 +54,7 @@ class BootstrapData {
   final UCDCMetadata ucdcData;
   final AttnMetaData attnData;
   final GTxMeasurementMetadata gtxData;
+  final SCPIDetails scpiData;
 
   BootstrapData({
     required this.rfuData,
@@ -66,26 +71,84 @@ class BootstrapData {
     required this.ucdcData,
     required this.attnData,
     required this.gtxData,
+    required this.scpiData,
   });
 
   factory BootstrapData.fromJson(Map<String, dynamic> json) {
     return BootstrapData(
-      rfuData: RFUplinkMetaData.fromJson(json['RFUplinkData'] ?? {}),
-      testData: AllTests.fromJson(json['TestData'] ?? {}),
-      stabilityData: StabilityMetadata.fromJson(json['StabilityData'] ?? {}),
-      stabilityReportsData:
-          StabilityReportMetadataResponse.fromJson(json['StabilityReportsData'] ?? {}),
-      spectrumDumpData: SpectrumDumpMetadata.fromJson(json['SpectrumDumpData'] ?? {}),
-      monitorData: MonitorMetadata.fromJson(json['MonitorData'] ?? {}),
-      tvacCableLossData: TVACCableLossMetadata.fromJson(json['TVACCableLossData'] ?? {}),
-      cableLossData: CableLossMetadata.fromJson(json['CableLossData'] ?? {}),
-      databaseData: DatabaseMetadata.fromJson(json['DatabaseData'] ?? {}),
-      reportsData: ReportsResponse.fromJson(json['ReportsData'] ?? {}),
-      tsmInternalLossData: TSMInternalLossMetadata.fromJson(json['TSMInternalLossData'] ?? {}),
-      ucdcData: UCDCMetadata.fromJson(json['UCDCData'] ?? {}),
-      attnData: AttnMetaData.fromJson(json['AttnData'] ?? {}),
-      gtxData: GTxMeasurementMetadata.fromJson(json['GTxData'] ?? {}),
+      rfuData: _parseField(
+        'RFUplinkData',
+        () => RFUplinkMetaData.fromJson(json['RFUplinkData'] ?? {}),
+      ),
+      testData: _parseField(
+        'TestData',
+        () => AllTests.fromJson(json['TestData'] ?? {}),
+      ),
+      stabilityData: _parseField(
+        'StabilityData',
+        () => StabilityMetadata.fromJson(json['StabilityData'] ?? {}),
+      ),
+      stabilityReportsData: _parseField(
+        'StabilityReportsData',
+        () => StabilityReportMetadataResponse.fromJson(
+          json['StabilityReportsData'] ?? {},
+        ),
+      ),
+      spectrumDumpData: _parseField(
+        'SpectrumDumpData',
+        () => SpectrumDumpMetadata.fromJson(json['SpectrumDumpData'] ?? {}),
+      ),
+      monitorData: _parseField(
+        'MonitorData',
+        () => MonitorMetadata.fromJson(json['MonitorData'] ?? {}),
+      ),
+      tvacCableLossData: _parseField(
+        'TVACCableLossData',
+        () => TVACCableLossMetadata.fromJson(json['TVACCableLossData'] ?? {}),
+      ),
+      cableLossData: _parseField(
+        'CableLossData',
+        () => CableLossMetadata.fromJson(json['CableLossData'] ?? {}),
+      ),
+      databaseData: _parseField(
+        'DatabaseData',
+        () => DatabaseMetadata.fromJson(json['DatabaseData'] ?? {}),
+      ),
+      reportsData: _parseField(
+        'ReportsData',
+        () => ReportsResponse.fromJson(json['ReportsData'] ?? {}),
+      ),
+      tsmInternalLossData: _parseField(
+        'TSMInternalLossData',
+        () =>
+            TSMInternalLossMetadata.fromJson(json['TSMInternalLossData'] ?? {}),
+      ),
+      ucdcData: _parseField(
+        'UCDCData',
+        () => UCDCMetadata.fromJson(json['UCDCData'] ?? {}),
+      ),
+      attnData: _parseField(
+        'AttnData',
+        () => AttnMetaData.fromJson(json['AttnData'] ?? {}),
+      ),
+      gtxData: _parseField(
+        'GTxData',
+        () => GTxMeasurementMetadata.fromJson(json['GTxData'] ?? {}),
+      ),
+      scpiData: _parseField(
+        'SCPIData',
+        () => SCPIDetails.fromJson(json['SCPIData'] ?? {}),
+      ),
     );
+  }
+
+  static T _parseField<T>(String name, T Function() parser) {
+    try {
+      return parser();
+    } catch (e) {
+      debugPrint('Error parsing BootstrapData field "$name": $e');
+      throw 'Error in $name: $e';
+    }
   }
 }
 
@@ -144,35 +207,43 @@ class RFUplinkMetaData {
 
   factory RFUplinkMetaData.fromJson(Map<String, dynamic> json) {
     var uplinkConfigInfoMap = <String, UplinkConfigInformation>{};
-    if (json['UplinkConfigInformation'] != null) {
-      (json['UplinkConfigInformation'] as Map<String, dynamic>).forEach((
-        key,
-        value,
-      ) {
-        uplinkConfigInfoMap[key] = UplinkConfigInformation.fromJson(value);
+    if (json['UplinkConfigInformation'] != null &&
+        json['UplinkConfigInformation'] is Map) {
+      (json['UplinkConfigInformation'] as Map).forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          uplinkConfigInfoMap[key.toString()] =
+              UplinkConfigInformation.fromJson(value);
+        }
       });
     }
 
     var configPathInfoMap = <String, List<ConfigPathInformation>>{};
-    if (json['ConfigPathInformation'] != null) {
-      (json['ConfigPathInformation'] as Map<String, dynamic>).forEach((
-        key,
-        value,
-      ) {
-        configPathInfoMap[key] = (value as List)
-            .map((i) => ConfigPathInformation.fromJson(i))
-            .toList();
+    if (json['ConfigPathInformation'] != null &&
+        json['ConfigPathInformation'] is Map) {
+      (json['ConfigPathInformation'] as Map).forEach((key, value) {
+        if (value is List) {
+          configPathInfoMap[key.toString()] = value
+              .map(
+                (i) =>
+                    ConfigPathInformation.fromJson(i as Map<String, dynamic>),
+              )
+              .toList();
+        }
       });
     }
 
     return RFUplinkMetaData(
-      uplinkConfigs: List<String>.from(json['UplinkConfigs'] ?? []),
+      uplinkConfigs:
+          (json['UplinkConfigs'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
       uplinkConfigInformation: uplinkConfigInfoMap,
-      tsms: List<String>.from(json['TSMs'] ?? []),
-      allConfigs: List<String>.from(json['AllConfigs'] ?? []),
+      tsms: (json['TSMs'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      allConfigs:
+          (json['AllConfigs'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
       configPathInformation: configPathInfoMap,
-      ok: json['OK'] ?? false,
-      message: json['Message'] ?? '',
+      ok: json['OK'] == true,
+      message: json['Message']?.toString() ?? '',
     );
   }
 }
@@ -320,27 +391,42 @@ class StabilityMetadata {
 
   factory StabilityMetadata.fromJson(Map<String, dynamic> json) {
     return StabilityMetadata(
-      instrumentTypes: List<String>.from(json['InstrumentTypes'] ?? []),
+      instrumentTypes:
+          (json['InstrumentTypes'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       instruments:
-          (json['Instruments'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, List<String>.from(value)),
+          (json['Instruments'] as Map?)?.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              (value as List).map((e) => e.toString()).toList(),
+            ),
           ) ??
           {},
       parameters:
-          (json['Parameters'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, List<String>.from(value)),
+          (json['Parameters'] as Map?)?.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              (value as List).map((e) => e.toString()).toList(),
+            ),
           ) ??
           {},
       profiles:
           (json['Profiles'] as List?)
-              ?.map((e) => SpectrumProfile.fromJson(e))
+              ?.map((e) => SpectrumProfile.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      plConfigs: List<String>.from(json['PLConfigs'] ?? []),
-      pulseProfiles: List<String>.from(json['PulseProfiles'] ?? []),
-      ppmChannels: List<String>.from(json['PPMChannels'] ?? []),
-      ok: json['OK'] ?? false,
-      message: json['Message'] ?? '',
+      plConfigs:
+          (json['PLConfigs'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      pulseProfiles:
+          (json['PulseProfiles'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
+      ppmChannels:
+          (json['PPMChannels'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
+      ok: json['OK'] == true,
+      message: json['Message']?.toString() ?? '',
     );
   }
 }
@@ -716,12 +802,22 @@ class CableLossMetadata {
 
   factory CableLossMetadata.fromJson(Map<String, dynamic> json) {
     return CableLossMetadata(
-      frequencies: List<String>.from(json['frequencies'] ?? []),
-      deviceProfiles: List<String>.from(json['deviceProfiles'] ?? []),
-      existingCables: List<String>.from(json['existingCables'] ?? []),
-      isPmZeroed: json['isPmZeroed'] ?? false,
-      ok: json['ok'] ?? false,
-      message: json['message'] ?? '',
+      frequencies:
+          (json['frequencies'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
+      deviceProfiles:
+          (json['deviceProfiles'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      existingCables:
+          (json['existingCables'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      isPmZeroed: json['isPmZeroed'] == true,
+      ok: json['ok'] == true,
+      message: json['message']?.toString() ?? '',
     );
   }
 }
@@ -878,6 +974,87 @@ class AttnRange {
       max: (json['Max'] as num?)?.toDouble() ?? 0.0,
       min: (json['Min'] as num?)?.toDouble() ?? 0.0,
       stepSize: (json['StepSize'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class InstrumentDetails {
+  final String ipAddress;
+  final int portNo;
+
+  InstrumentDetails({required this.ipAddress, required this.portNo});
+
+  factory InstrumentDetails.fromJson(Map<String, dynamic> json) {
+    return InstrumentDetails(
+      ipAddress: json['IPAddress'] ?? '',
+      portNo: (json['PortNo'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class CommandDetails {
+  final String mnemonic;
+  final String command;
+  final bool argument;
+  final bool write;
+
+  CommandDetails({
+    required this.mnemonic,
+    required this.command,
+    required this.argument,
+    required this.write,
+  });
+
+  factory CommandDetails.fromJson(Map<String, dynamic> json) {
+    return CommandDetails(
+      mnemonic: json['Mnemonic'] ?? '',
+      command: json['Command'] ?? '',
+      argument: json['Argument'] ?? false,
+      write: json['Write'] ?? false,
+    );
+  }
+}
+
+class SCPIDetails {
+  final List<String> instruments;
+  final Map<String, InstrumentDetails> instrumentDetails;
+  final Map<String, List<CommandDetails>> commands;
+  final bool ok;
+  final String message;
+
+  SCPIDetails({
+    required this.instruments,
+    required this.instrumentDetails,
+    required this.commands,
+    required this.ok,
+    required this.message,
+  });
+
+  factory SCPIDetails.fromJson(Map<String, dynamic> json) {
+    var instrDetailsMap = <String, InstrumentDetails>{};
+    if (json['InstrumentDetails'] != null) {
+      (json['InstrumentDetails'] as Map<String, dynamic>).forEach((key, value) {
+        instrDetailsMap[key] = InstrumentDetails.fromJson(value);
+      });
+    }
+
+    var commandsMap = <String, List<CommandDetails>>{};
+    if (json['Commands'] != null) {
+      (json['Commands'] as Map<String, dynamic>).forEach((key, value) {
+        if (value is List) {
+          commandsMap[key] = value
+              .map((e) => CommandDetails.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+      });
+    }
+
+    return SCPIDetails(
+      instruments: List<String>.from(json['Instruments'] ?? []),
+      instrumentDetails: instrDetailsMap,
+      commands: commandsMap,
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
     );
   }
 }
@@ -1393,8 +1570,7 @@ class GTxResult {
               ?.map((e) => (e as num).toDouble())
               .toList() ??
           [],
-      harmonicsPresent:
-          (json['HarmonicsPresent'] as List?)?.cast<bool>() ?? [],
+      harmonicsPresent: (json['HarmonicsPresent'] as List?)?.cast<bool>() ?? [],
       harmonicsNoiseFloor:
           (json['HarmonicsNoiseFloor'] as List?)
               ?.map((e) => (e as num).toDouble())
@@ -1831,14 +2007,16 @@ class StabilityReportMetadataResponse {
 
   factory StabilityReportMetadataResponse.fromJson(Map<String, dynamic> json) {
     return StabilityReportMetadataResponse(
-      id: List<int>.from(json['id'] ?? []),
-      date: List<String>.from(json['date'] ?? []),
-      time: List<String>.from(json['time'] ?? []),
-      parameters: (json['parameters'] as List?)
-          ?.map((e) => List<String>.from(e))
-          .toList() ?? [],
-      ok: json['ok'] ?? false,
-      message: json['message'] ?? '',
+      id: (json['id'] as List?)?.map((e) => (e as num).toInt()).toList() ?? [],
+      date: (json['date'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      time: (json['time'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      parameters:
+          (json['parameters'] as List?)
+              ?.map((e) => (e as List).map((val) => val.toString()).toList())
+              .toList() ??
+          [],
+      ok: json['ok'] == true,
+      message: json['message']?.toString() ?? '',
     );
   }
 }
@@ -1856,9 +2034,11 @@ class StabilityPointsResponse {
 
   factory StabilityPointsResponse.fromJson(Map<String, dynamic> json) {
     return StabilityPointsResponse(
-      points: (json['points'] as List?)
-          ?.map((e) => StabilityPointData.fromJson(e))
-          .toList() ?? [],
+      points:
+          (json['points'] as List?)
+              ?.map((e) => StabilityPointData.fromJson(e))
+              .toList() ??
+          [],
       ok: json['ok'] ?? false,
       message: json['message'] ?? '',
     );
@@ -1906,29 +2086,41 @@ class AllTests {
   });
 
   factory AllTests.fromJson(Map<String, dynamic> json) {
-    var categories = List<String>.from(json['Categories'] ?? []);
+    var categories =
+        (json['Categories'] as List?)?.map((e) => e.toString()).toList() ?? [];
     var configurations = <String, List<String>>{};
-    if (json['Configurations'] != null) {
-      (json['Configurations'] as Map<String, dynamic>).forEach((key, value) {
-        configurations[key] = List<String>.from(value);
+    if (json['Configurations'] != null && json['Configurations'] is Map) {
+      (json['Configurations'] as Map).forEach((key, value) {
+        if (value is List) {
+          configurations[key.toString()] = value
+              .map((e) => e.toString())
+              .toList();
+        }
       });
     }
     var tests = <String, List<TestDescription>>{};
-    if (json['Tests'] != null) {
-      (json['Tests'] as Map<String, dynamic>).forEach((key, value) {
-        tests[key] = (value as List)
-            .map((i) => TestDescription.fromJson(i))
-            .toList();
+    if (json['Tests'] != null && json['Tests'] is Map) {
+      (json['Tests'] as Map).forEach((key, value) {
+        if (value is List) {
+          tests[key.toString()] = value
+              .map((i) => TestDescription.fromJson(i as Map<String, dynamic>))
+              .toList();
+        }
       });
     }
-    var losses = Map<String, String>.from(json['Losses'] ?? {});
+    var losses = <String, String>{};
+    if (json['Losses'] != null && json['Losses'] is Map) {
+      (json['Losses'] as Map).forEach((key, value) {
+        losses[key.toString()] = value?.toString() ?? '';
+      });
+    }
     return AllTests(
       categories: categories,
       configurations: configurations,
       tests: tests,
       losses: losses,
-      ok: json['OK'] ?? false,
-      message: json['Message'] ?? '',
+      ok: json['OK'] == true,
+      message: json['Message']?.toString() ?? '',
     );
   }
 }
@@ -1972,8 +2164,10 @@ class ServerService extends ChangeNotifier {
   WebSocketChannel? _tvacCableLossChannel;
   ServerStatus _status = ServerStatus();
   bool _isReconnecting = false;
+  String? _bootstrapError;
 
   ServerStatus get status => _status;
+  String? get bootstrapError => _bootstrapError;
 
   ServerService() {
     _connect();
@@ -1999,7 +2193,11 @@ class ServerService extends ChangeNotifier {
       _channel!.stream.listen(
         (data) {
           final Map<String, dynamic> json = jsonDecode(data);
-          _status = ServerStatus.fromJson(json, true);
+          _status = ServerStatus.fromJson(
+            json,
+            true,
+            bootstrap: _status.bootstrapData,
+          );
           notifyListeners();
         },
         onError: (error) {
@@ -2018,7 +2216,14 @@ class ServerService extends ChangeNotifier {
   }
 
   void _handleDisconnect() {
-    _status = ServerStatus(isConnected: false);
+    _status = ServerStatus(
+      satelliteName: _status.satelliteName,
+      testPhase: _status.testPhase,
+      memoryUsed: _status.memoryUsed,
+      cpuUsed: _status.cpuUsed,
+      isConnected: false,
+      bootstrapData: _status.bootstrapData,
+    );
     notifyListeners();
     _reconnect();
   }
@@ -2037,6 +2242,7 @@ class ServerService extends ChangeNotifier {
   }
 
   Future<BootstrapData?> fetchBootstrapData() async {
+    _bootstrapError = null;
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     final protocol = web.window.location.protocol == 'https:'
         ? 'https'
@@ -2047,24 +2253,35 @@ class ServerService extends ChangeNotifier {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        final data = BootstrapData.fromJson(jsonDecode(response.body));
-        _status = ServerStatus(
-          satelliteName: _status.satelliteName,
-          testPhase: _status.testPhase,
-          memoryUsed: _status.memoryUsed,
-          cpuUsed: _status.cpuUsed,
-          isConnected: _status.isConnected,
-          bootstrapData: data,
-        );
+        try {
+          final data = BootstrapData.fromJson(jsonDecode(response.body));
+          _status = ServerStatus(
+            satelliteName: _status.satelliteName,
+            testPhase: _status.testPhase,
+            memoryUsed: _status.memoryUsed,
+            cpuUsed: _status.cpuUsed,
+            isConnected: _status.isConnected,
+            bootstrapData: data,
+          );
+          notifyListeners();
+          return data;
+        } catch (e) {
+          _bootstrapError = e.toString();
+          debugPrint('Bootstrap Data Parsing Error: $e');
+          notifyListeners();
+          return null;
+        }
+      } else {
+        _bootstrapError = 'Server returned status code: ${response.statusCode}';
         notifyListeners();
-        return data;
       }
     } catch (e) {
+      _bootstrapError = 'Network error: $e';
       debugPrint('Error fetching Bootstrap Data: $e');
+      notifyListeners();
     }
     return null;
   }
-
 
   Future<LinkStatus?> fetchLinkStatus(String tsmSelected) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -2142,7 +2359,6 @@ class ServerService extends ChangeNotifier {
     }
     return null;
   }
-
 
   Future<Ack?> startTests(List<TestDescription> tests, String remark) async {
     // Note: The user replaced startTests with testProgress endpoint.
@@ -2227,8 +2443,6 @@ class ServerService extends ChangeNotifier {
     _monitorChannel = null;
   }
 
-
-
   Future<CableLossResponse?> fetchCableMeasuredDetails() async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     final protocol = web.window.location.protocol == 'https:'
@@ -2250,7 +2464,6 @@ class ServerService extends ChangeNotifier {
     }
     return null;
   }
-
 
   Future<Ack?> fetchReportPDF(String date, String time) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -2334,7 +2547,6 @@ class ServerService extends ChangeNotifier {
     }
   }
 
-
   WebSocketChannel? _stabilityChannel;
 
   Stream<StabilityResponse> connectStability(
@@ -2373,8 +2585,6 @@ class ServerService extends ChangeNotifier {
   void sendAbortStability() {
     _stabilityChannel?.sink.add(jsonEncode({'Action': 'abort'}));
   }
-
-
 
   Future<Ack?> setSpectrum({
     required String sa,
@@ -2463,7 +2673,6 @@ class ServerService extends ChangeNotifier {
       _attnChannel!.sink.add('abort');
     }
   }
-
 
   Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
@@ -2588,7 +2797,6 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-
   WebSocketChannel? _tsmInternalLossChannel;
 
   Stream<dynamic> streamTSMInternalLossAction(
@@ -2652,7 +2860,6 @@ class ServerService extends ChangeNotifier {
       _tvacCableLossChannel!.sink.add('abort');
     }
   }
-
 
   Future<ConfigsForLossResponse?> fetchConfigsForLoss(
     String phase,
@@ -2794,20 +3001,21 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
-
-  Future<StabilityPointsResponse?> fetchStabilityPoints(int id, String parameter) async {
+  Future<StabilityPointsResponse?> fetchStabilityPoints(
+    int id,
+    String parameter,
+  ) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
-    final protocol = web.window.location.protocol == 'https:' ? 'https' : 'http';
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
     final url = '$protocol://$host/getStabilityPoints';
 
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'id': id,
-          'parameter': parameter,
-        }),
+        body: jsonEncode({'id': id, 'parameter': parameter}),
       );
 
       if (response.statusCode == 200) {
@@ -2847,8 +3055,6 @@ class ServerService extends ChangeNotifier {
     _gtxTneChannel?.sink.close();
     _gtxTneChannel = null;
   }
-
-
 
   @override
   void dispose() {

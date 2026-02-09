@@ -50,6 +50,10 @@ func (device *ml2488b) initializeDevice(name string) {
 	device.loadCommands()
 }
 
+func (device *ml2488b) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *ml2488b) getCommands(mnemonics []string, arguments []string, replace []string) []utils.Command {
 	var cmds = make([]utils.Command, 0)
 	for i, mnemonic := range mnemonics {

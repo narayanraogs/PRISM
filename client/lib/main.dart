@@ -21,6 +21,7 @@ import 'package:prism_client/screens/stability_reports_screen.dart';
 import 'package:prism_client/screens/splash_screen.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
+import 'package:prism_client/screens/scpi_commander_screen.dart';
 
 void main() {
   runApp(
@@ -110,6 +111,7 @@ class _RootPageState extends State<RootPage> {
           if (index == 4) return const SpectrumDumpScreen();
           if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
           if (index == 6) return const TVACCableLossScreen();
+          if (index == 7) return const ScpiCommanderScreen();
           if (index == 8) return const CableLossScreen();
           if (index == 9) return const AttenuationScreen();
           if (index == 10) return const TSMInternalPathLossScreen();

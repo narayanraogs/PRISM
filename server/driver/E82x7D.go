@@ -43,6 +43,10 @@ func (device *e82x7d) loadCommands() bool {
 	return true
 }
 
+func (device *e82x7d) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *e82x7d) initializeDevice(name string) {
 	device.loadLANDetails(name)
 	device.connection.Configure(" ", "\n", true, true)

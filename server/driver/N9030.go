@@ -64,6 +64,10 @@ func (device *n9030) getCommands(mnemonics []string, arguments []string, replace
 	return cmds
 }
 
+func (device *n9030) getCommandDatabase() map[string]utils.Command {
+	return device.commands
+}
+
 func (device *n9030) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
