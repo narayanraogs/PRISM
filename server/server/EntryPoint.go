@@ -60,5 +60,7 @@ func GetRouter() *gin.Engine {
 	//GTxMeasurementRelated
 	r.GET("/conductGTxTne", conductGTxTne)
 	//UpDownConverterRelated
+	//SCPI
+	r.GET("/scpi", scpi)
 	return r
 }

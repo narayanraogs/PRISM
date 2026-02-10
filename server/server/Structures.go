@@ -529,3 +529,18 @@ type SCPIDetails struct {
 	OK                bool
 	Message           string
 }
+
+type SCPICommandRequest struct {
+	Instrument string
+	PortNo     int
+	Commands   []string
+	Delays     []float64
+	Read       []bool
+}
+
+type SCPICommandResponse struct {
+	Command  string
+	Response string
+	OK       bool
+	Message  string
+}

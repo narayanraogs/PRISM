@@ -111,6 +111,21 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     final finalCmd = _getFinalCommandString();
     if (finalCmd.isEmpty) return;
 
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final scpiData = serverService.status.bootstrapData?.scpiData;
+    if (scpiData == null || _selectedDevice == null) return;
+
+    final details = scpiData.instrumentDetails[_selectedDevice];
+    if (details == null) return;
+
+    final request = SCPICommandRequest(
+      instrument: _selectedDevice!,
+      portNo: details.portNo,
+      commands: [finalCmd],
+      delays: [0.0],
+      read: [_isWriteAndRead],
+    );
+
     setState(() {
       _logs.insert(
         0,
@@ -120,25 +135,46 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           message: finalCmd,
         ),
       );
-
-      // Simulating a response for queries
-      if (_isWriteAndRead) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            setState(() {
-              _logs.insert(
-                0,
-                ScpiLogEntry(
-                  timestamp: DateTime.now(),
-                  type: 'RECV',
-                  message: "MOCK_RESPONSE: +1.234E-01",
-                ),
-              );
-            });
-          }
-        });
-      }
     });
+
+    serverService.connectSCPI(request).listen(
+      (response) {
+        if (mounted) {
+          setState(() {
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: response.ok ? 'RECV' : 'ERROR',
+                message: response.ok
+                    ? (response.response.isEmpty
+                        ? "Success"
+                        : response.response)
+                    : response.message,
+              ),
+            );
+          });
+        }
+      },
+      onDone: () {
+        serverService.closeSCPI();
+      },
+      onError: (err) {
+        if (mounted) {
+          setState(() {
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: 'ERROR',
+                message: "Connection error: $err",
+              ),
+            );
+          });
+        }
+        serverService.closeSCPI();
+      },
+    );
   }
 
   void _clearLogs() {
@@ -174,51 +210,88 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
   Future<void> _executeSequence() async {
     if (_sequence.isEmpty || _isExecutingSequence) return;
 
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final scpiData = serverService.status.bootstrapData?.scpiData;
+    if (scpiData == null || _selectedDevice == null) return;
+
+    final details = scpiData.instrumentDetails[_selectedDevice];
+    if (details == null) return;
+
+    final request = SCPICommandRequest(
+      instrument: _selectedDevice!,
+      portNo: details.portNo,
+      commands: _sequence.map((e) => e.command).toList(),
+      delays: _sequence.map((e) => e.delayMs.toDouble()).toList(),
+      read: _sequence.map((e) => e.isQuery).toList(),
+    );
+
     setState(() {
       _isExecutingSequence = true;
       _currentSequenceIndex = 0;
+      _logs.insert(
+        0,
+        ScpiLogEntry(
+          timestamp: DateTime.now(),
+          type: 'SENT',
+          message: "Starting sequence of ${_sequence.length} commands...",
+        ),
+      );
     });
 
-    for (int i = 0; i < _sequence.length; i++) {
-      if (!_isExecutingSequence) break;
-
-      setState(() => _currentSequenceIndex = i);
-      final cmd = _sequence[i];
-
-      // Send Command
-      setState(() {
-        _logs.insert(
-          0,
-          ScpiLogEntry(
-            timestamp: DateTime.now(),
-            type: 'SENT',
-            message: "[SEQ $i] ${cmd.command}",
-          ),
-        );
-      });
-
-      // Wait for Delay
-      await Future.delayed(Duration(milliseconds: cmd.delayMs));
-
-      // Mock Response for Query
-      if (cmd.isQuery) {
-        setState(() {
-          _logs.insert(
-            0,
-            ScpiLogEntry(
-              timestamp: DateTime.now(),
-              type: 'RECV',
-              message: "[SEQ $i] MOCK_RESPONSE: +${10 + i}.00",
-            ),
-          );
-        });
-      }
-    }
-
-    setState(() {
-      _isExecutingSequence = false;
-      _currentSequenceIndex = -1;
-    });
+    int receivedCount = 1;
+    serverService.connectSCPI(request).listen(
+      (response) {
+        if (mounted) {
+          setState(() {
+            _currentSequenceIndex = receivedCount - 1;
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: response.ok ? 'RECV' : 'ERROR',
+                message:
+                    "[#$receivedCount] CMD: ${response.command} -> ${response.ok ? (response.response.isEmpty ? "Success" : response.response) : response.message}",
+              ),
+            );
+            receivedCount++;
+          });
+        }
+      },
+      onDone: () {
+        if (mounted) {
+          setState(() {
+            _isExecutingSequence = false;
+            _currentSequenceIndex = -1;
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: 'SENT',
+                message: "Sequence execution completed.",
+              ),
+            );
+          });
+        }
+        serverService.closeSCPI();
+      },
+      onError: (err) {
+        if (mounted) {
+          setState(() {
+            _isExecutingSequence = false;
+            _currentSequenceIndex = -1;
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: 'ERROR',
+                message: "Sequence failed: $err",
+              ),
+            );
+          });
+        }
+        serverService.closeSCPI();
+      },
+    );
   }
 
   @override
@@ -260,7 +333,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
                   Expanded(flex: 3, child: _buildDevicePanel(theme, scpiData)),
                   const SizedBox(width: 20),
                   // 2. Command Builder Panel
-                  Expanded(flex: 4, child: _buildBuilderPanel(theme, scpiData)),
+                  Expanded(flex: 4, child: _buildBuilderPanel(theme, scpiData, serverService)),
                   const SizedBox(width: 20),
                   // 3. Response Console Panel
                   Expanded(flex: 5, child: _buildConsolePanel(theme)),
@@ -332,7 +405,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     );
   }
 
-  Widget _buildBuilderPanel(ThemeData theme, SCPIDetails scpiData) {
+  Widget _buildBuilderPanel(ThemeData theme, SCPIDetails scpiData, ServerService serverService) {
     bool hasHash = _commandController.text.contains('#');
     List<CommandDetails> availableCommands = [];
     if (_selectedDevice != null) {
@@ -466,8 +539,18 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: () => setState(() => _sequence = []),
-                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () {
+                    if (_isExecutingSequence) {
+                      serverService.abortSCPI();
+                    } else {
+                      setState(() => _sequence = []);
+                    }
+                  },
+                  icon: Icon(
+                    _isExecutingSequence
+                        ? Icons.stop_circle_outlined
+                        : Icons.close_rounded,
+                  ),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.red.shade50,
                     foregroundColor: Colors.red.shade700,

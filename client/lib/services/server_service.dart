@@ -1059,6 +1059,55 @@ class SCPIDetails {
   }
 }
 
+class SCPICommandRequest {
+  final String instrument;
+  final int portNo;
+  final List<String> commands;
+  final List<double> delays;
+  final List<bool> read;
+
+  SCPICommandRequest({
+    required this.instrument,
+    required this.portNo,
+    required this.commands,
+    required this.delays,
+    required this.read,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Instrument': instrument,
+      'PortNo': portNo,
+      'Commands': commands,
+      'Delays': delays,
+      'Read': read,
+    };
+  }
+}
+
+class SCPICommandResponse {
+  final String command;
+  final String response;
+  final bool ok;
+  final String message;
+
+  SCPICommandResponse({
+    required this.command,
+    required this.response,
+    required this.ok,
+    required this.message,
+  });
+
+  factory SCPICommandResponse.fromJson(Map<String, dynamic> json) {
+    return SCPICommandResponse(
+      command: json['Command'] ?? '',
+      response: json['Response'] ?? '',
+      ok: json['OK'] ?? false,
+      message: json['Message'] ?? '',
+    );
+  }
+}
+
 class AttnMetaData {
   final List<String> deviceProfile;
   final List<String> receiver;
@@ -3056,9 +3105,42 @@ class ServerService extends ChangeNotifier {
     _gtxTneChannel = null;
   }
 
+  WebSocketChannel? _scpiChannel;
+
+  Stream<SCPICommandResponse> connectSCPI(SCPICommandRequest request) {
+    String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    String url = '$protocol://$host/scpi';
+
+    _scpiChannel = WebSocketChannel.connect(Uri.parse(url));
+    _scpiChannel!.sink.add(jsonEncode(request.toJson()));
+
+    return _scpiChannel!.stream.map((data) {
+      return SCPICommandResponse.fromJson(jsonDecode(data as String));
+    });
+  }
+
+  void abortSCPI() {
+    _scpiChannel?.sink.add('abort');
+  }
+
+  void closeSCPI() {
+    _scpiChannel?.sink.close();
+    _scpiChannel = null;
+  }
+
   @override
   void dispose() {
     _channel?.sink.close();
+    _attnChannel?.sink.close();
+    _cableLossChannel?.sink.close();
+    _tvacCableLossChannel?.sink.close();
+    _progressChannel?.sink.close();
+    _monitorChannel?.sink.close();
+    _stabilityChannel?.sink.close();
+    _tsmInternalLossChannel?.sink.close();
+    _gtxTneChannel?.sink.close();
+    _scpiChannel?.sink.close();
     super.dispose();
   }
 }

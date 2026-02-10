@@ -23,6 +23,7 @@ import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:prism_client/screens/scpi_commander_screen.dart';
+import 'package:prism_client/screens/insights_screen.dart';
 
 void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -122,6 +123,7 @@ class _RootPageState extends State<RootPage> {
           if (index == 13) return const LinkLossScreen();
           if (index == 14) return const ViewReportsScreen();
           if (index == 15) return const StabilityReportsScreen();
+          if (index == 16) return const InsightsScreen();
 
           return GenericScreen(title: title);
         }).toList(),
