@@ -18,6 +18,7 @@ class StabilityScreen extends StatefulWidget {
 class _StabilityScreenState extends State<StabilityScreen> {
   StabilityMetadata? _metadata;
   bool _isLoading = true;
+  bool _isHelpOpen = false;
   String? _errorMessage;
 
   String? _selectedType;
@@ -335,30 +336,53 @@ class _StabilityScreenState extends State<StabilityScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(theme),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Basic Selection
-                  Expanded(flex: 3, child: _buildBasicSelectionPanel(theme)),
-                  const SizedBox(width: 20),
-                  // 2. Instrument Specific Details
-                  Expanded(flex: 4, child: _buildInstrumentDetailsPanel(theme)),
-                  const SizedBox(width: 20),
-                  // 3. Monitoring List
-                  Expanded(flex: 5, child: _buildListPanel(theme)),
-                ],
-              ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(theme),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Basic Selection
+                      Expanded(
+                        flex: 3,
+                        child: _buildBasicSelectionPanel(theme),
+                      ),
+                      const SizedBox(width: 20),
+                      // 2. Instrument Specific Details
+                      Expanded(
+                        flex: 4,
+                        child: _buildInstrumentDetailsPanel(theme),
+                      ),
+                      const SizedBox(width: 20),
+                      // 3. Monitoring List
+                      Expanded(flex: 5, child: _buildListPanel(theme)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
+          ),
+        ],
       ),
     );
   }
@@ -1315,42 +1339,160 @@ class _StabilityScreenState extends State<StabilityScreen> {
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'STABILITY CONFIGURATION',
+                style: GoogleFonts.outfit(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Define instrument parameters for long-term stability monitoring',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          child: Icon(
-            Icons.speed_rounded,
-            color: theme.colorScheme.primary,
-            size: 32,
+          const Spacer(),
+          _buildHelpTrigger(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
           ),
         ),
-        const SizedBox(width: 20),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Stability Monitoring',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Stability Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
-            Text(
-              'Configure instruments and parameters to monitor over time',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Stability Monitoring',
+                  'Long-term stability monitoring allows you to track specific RF parameters over time. '
+                      'You can combine multiple measurements from different instruments into a single session.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Configuring Entries',
+                  '1. **Basic Info**: Provide a unique description and select the equipment type.\n'
+                      '2. **Instrument Details**: Configure specific settings. For SA, you can use existing profiles or set custom spans.\n'
+                      '3. **Add to Monitoring**: Once configured, add the entry to your active list.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Instrument Types',
+                  '• **SA (Spectrum Analyzer)**: Monitors power level, peak search, or trace data at specific frequencies.\n'
+                      '• **PM (Power Meter)**: Continuous total power monitoring at a calibrated frequency.\n'
+                      '• **PPM (Peak Power Meter)**: Specialized for pulsed signal analysis.\n'
+                      '• **TM (Telemetry)**: Monitors specific satellite telemetry mnemonics via the backend.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Profiles',
+                  'Profiles allow you to save your entire monitoring configuration setup. '
+                      'This is useful for repetitive test campaigns involving many parameters.',
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
         ),
       ],
     );

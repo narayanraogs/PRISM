@@ -29,7 +29,10 @@ func init() {
 //go:embed web
 var embeddedFiles embed.FS
 
+var VersionString string = "Development"
+
 func main() {
+	fmt.Printf("Starting PRISM Server. Version: %s\n", VersionString)
 
 	ok := utils.ReadConfiguration(*cfgPath)
 	if !ok {

@@ -15,6 +15,7 @@ class SpectrumDumpScreen extends StatefulWidget {
 class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
   SpectrumDumpMetadata? _metadata;
   bool _isLoading = true;
+  bool _isHelpOpen = false;
   String? _errorMessage;
 
   String? _selectedMode;
@@ -122,27 +123,44 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(theme),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Mode & Instrument Selection
-                  Expanded(flex: 3, child: _buildSelectionPanel(theme)),
-                  const SizedBox(width: 20),
-                  // 2. Details Pane
-                  Expanded(flex: 7, child: _buildDetailsPanel(theme)),
-                ],
-              ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(theme),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Mode & Instrument Selection
+                      Expanded(flex: 3, child: _buildSelectionPanel(theme)),
+                      const SizedBox(width: 20),
+                      // 2. Details Pane
+                      Expanded(flex: 7, child: _buildDetailsPanel(theme)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
+          ),
+        ],
       ),
     );
   }
@@ -184,6 +202,133 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
               ),
             ),
           ],
+        ),
+        const Spacer(),
+        _buildHelpTrigger(theme),
+      ],
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Capture Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Capture Modes',
+                  '• **Spectrum Dump**: Use this with Spectrum Analyzers (SA) to capture raw frequency data and trace plots.\n'
+                      '• **Screenshot**: Use this with Vector Signal Analyzers (VSA) to capture exact graphical displays from the instrument.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Spectrum Controls',
+                  '• **SET SPECTRUM**: Push local parameters (CF, Span, VBW, RBW) directly to the instrument.\n'
+                      '• **READ FROM SA**: Pull the current hardware settings from the instrument into PRISM.\n'
+                      '• **CAPTURE TRACE**: Generate a high-resolution PNG plot of the current trace data.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Capture Methods',
+                  '• **Clear Write**: Standard live trace capture.\n'
+                      '• **Max/Min Hold**: Captures the peak or minimum envelope over multiple sweeps.\n'
+                      '• **Average**: Captures the statistically averaged noise floor and signal level.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Troubleshooting',
+                  'If a capture fails, ensure that the selected instrument is online and reachable via the network. '
+                      'Check the Notification Center for specific error logs related to SCPI communication.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
         ),
       ],
     );

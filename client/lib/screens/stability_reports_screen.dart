@@ -54,6 +54,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   final TextEditingController _y1MaxController = TextEditingController();
   final TextEditingController _y2MinController = TextEditingController();
   final TextEditingController _y2MaxController = TextEditingController();
+  bool _isHelpOpen = false;
 
   @override
   void didChangeDependencies() {
@@ -263,27 +264,45 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      body: Column(
+      body: Stack(
         children: [
-          const ScreenHeader(
-            title: 'Stability Reports',
-            subtitle: 'Analyze long-term stability data',
-            icon: Icons.analytics_rounded,
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                _buildSidebar(theme),
-                Expanded(
-                  child: ContentCard(
-                    margin: const EdgeInsets.all(16),
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32),
-                    child: _buildPreviewArea(theme),
-                  ),
+          Column(
+            children: [
+              ScreenHeader(
+                title: 'Stability Reports',
+                subtitle: 'Analyze long-term stability data',
+                icon: Icons.analytics_rounded,
+                trailing: _buildHelpTrigger(theme),
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildSidebar(theme),
+                    Expanded(
+                      child: ContentCard(
+                        margin: const EdgeInsets.all(16),
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(32),
+                        child: _buildPreviewArea(theme),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
             ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
           ),
         ],
       ),
@@ -875,6 +894,129 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Stability Report Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Dual-Axis Plotting',
+                  'Select up to 2 parameters to compare variations over time. The second parameter is '
+                      'automatically normalized to the first axis to allow meaningful visual overlay.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Axis Limits',
+                  'PRISM auto-scales axes when parameters are first loaded. You can manually override these '
+                      'limits to zoom into specific power fluctuations or frequency drifts.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'LTTB Downsampling',
+                  'For sessions with millions of points, the chart uses the Largest Triangle Three Buckets (LTTB) '
+                      'algorithm to preserve visual spikes/extreme values while ensuring the UI remains responsive.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Report Export',
+                  'Export the current view as High-Resolution PNG or JPG. The filename automatically includes '
+                      'the session date and time for easy archival.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
           ),
         ),
       ],

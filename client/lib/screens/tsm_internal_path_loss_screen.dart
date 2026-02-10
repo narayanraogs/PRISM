@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import '../services/server_service.dart';
+import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class TSMInternalPathLossScreen extends StatefulWidget {
   const TSMInternalPathLossScreen({super.key});
@@ -32,6 +33,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   bool _isLoading = true;
   String _measuringStatus = '';
   bool _showConnections = false;
+  bool _isHelpOpen = false;
+  int _guideStep = 0; // 0: PM Offset, 1: Cable Loss, 2: Internal Path
 
   @override
   void initState() {
@@ -130,6 +133,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                   icon: Icon(_showConnections ? Icons.hub : Icons.hub_outlined),
                   tooltip: 'Show Path Diagrams',
                 ),
+                const SizedBox(width: 12),
+                _buildHelpTrigger(theme),
               ],
             ),
           ),
@@ -161,6 +166,19 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                   ),
                 ),
                 if (_isMeasuring) _buildMeasuringOverlay(theme),
+                if (_isHelpOpen)
+                  GestureDetector(
+                    onTap: () => setState(() => _isHelpOpen = false),
+                    child: Container(color: Colors.black.withOpacity(0.1)),
+                  ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  right: _isHelpOpen ? 0 : -450,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildHelpPanel(theme),
+                ),
               ],
             ),
           ),
@@ -410,7 +428,9 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                       style: TextStyle(
                         fontSize: 9,
                         color: isSelected
-                            ? Colors.white.withOpacity(0.8)
+                            ? theme.colorScheme.onPrimaryContainer.withOpacity(
+                                0.7,
+                              )
                             : Colors.grey.shade600,
                       ),
                     ),
@@ -788,6 +808,130 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     );
   }
 
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'TSM Path Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Measurement Prerequisites',
+                  '1. **PM Zeroing**: Connect Source directly to Power Sensor.\n'
+                      '2. **Cable Loss**: Connect Source to Power Sensor via the Test Cable.\n'
+                      'Both steps must be completed and marked "Green" before measuring Internal Path Loss.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Internal Loss Principle',
+                  'Internal path loss is calculated as: `Measured - Ref - CableLoss`. This ensures that '
+                      'only the loss of the TSM internal routing is recorded in the characterization database.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Path Selection',
+                  'Choose an Input Port (Matrix Input) and then an Output Port. The system will automatically '
+                      'switch the internal relays to verify that specific path.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Database Updates',
+                  'Successful measurements are automatically committed to the server memory and visible in the '
+                      '"Full Port Mapping History" at the bottom of the screen.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFieldLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
@@ -842,6 +986,27 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   }
 
   Widget _buildConnectionsOverlay(ThemeData theme) {
+    DiagramType dType;
+    String guideText;
+    String stepTitle;
+
+    if (_guideStep == 0) {
+      dType = DiagramType.pmZero;
+      stepTitle = 'Step 1: PM Offset';
+      guideText =
+          'Connect the Signal Generator output directly to the Power sensor to zero the power meter.';
+    } else if (_guideStep == 1) {
+      dType = DiagramType.cableMeasurement;
+      stepTitle = 'Step 2: Cable Loss';
+      guideText =
+          'Connect the Signal Generator to the Power sensor via the test cable to measure its loss.';
+    } else {
+      dType = DiagramType.attnTSM;
+      stepTitle = 'Step 3: Internal Path';
+      guideText =
+          'Connect Signal Generator to TSM Input ($_selectedInput) and TSM Output ($_selectedOutputPort) to Spectrum Analyzer.';
+    }
+
     return ContentCard(
       color: theme.colorScheme.primaryContainer.withOpacity(0.4),
       margin: const EdgeInsets.only(bottom: 24),
@@ -853,7 +1018,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TSM Path Selection Guide',
+                'Connection Guide',
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -867,8 +1032,56 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Select the appropriate input and output ports based on the test configuration. Completed paths are marked with a green checkmark.',
+          Center(
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                  value: 0,
+                  label: Text('PM Offset'),
+                  icon: Icon(Icons.speed, size: 16),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text('Cable Loss'),
+                  icon: Icon(Icons.cable, size: 16),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text('Internal Path'),
+                  icon: Icon(Icons.settings_ethernet, size: 16),
+                ),
+              ],
+              selected: {_guideStep},
+              onSelectionChanged: (val) =>
+                  setState(() => _guideStep = val.first),
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            stepTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            guideText,
+            style: TextStyle(
+              fontSize: 13,
+              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          AspectRatio(
+            aspectRatio: 3 / 1,
+            child: InstrumentConnectionDiagram(
+              type: dType,
+              tsmInputName: _selectedInput,
+              tsmOutputName: _selectedOutputPort,
+              receiverName: 'Power\nMeter',
+            ),
           ),
         ],
       ),

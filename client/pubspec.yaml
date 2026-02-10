@@ -93,6 +93,10 @@ flutter:
           weight: 600
         - asset: assets/google_fonts/Inter-Bold.ttf
           weight: 700
+        - asset: assets/google_fonts/Inter-Black.ttf
+          weight: 900
+        - asset: assets/google_fonts/Inter-Italic.ttf
+          style: italic
     - family: Outfit
       fonts:
         - asset: assets/google_fonts/Outfit-Regular.ttf
@@ -102,6 +106,8 @@ flutter:
           weight: 600
         - asset: assets/google_fonts/Outfit-Bold.ttf
           weight: 700
+        - asset: assets/google_fonts/Outfit-Black.ttf
+          weight: 900
     - family: Roboto Mono
       fonts:
         - asset: assets/google_fonts/RobotoMono-Regular.ttf

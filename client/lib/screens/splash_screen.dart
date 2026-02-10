@@ -88,9 +88,8 @@ class _SplashScreenState extends State<SplashScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF0D47A1), // Deep Navy
-              Color(0xFF1976D2), // Stronger Blue
-              Color(0xFF42A5F5), // Lighter Blue
+              Color(0xFF050A14), // Deep Space Navy (Logo Background)
+              Color(0xFF0D1826), // Slightly lighter
             ],
           ),
         ),
@@ -132,26 +131,13 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 30,
-                                  spreadRadius: 5,
-                                ),
-                              ],
+                            constraints: const BoxConstraints(
+                              maxWidth: 300,
+                              maxHeight: 300,
                             ),
-                            child: const Icon(
-                              Icons.auto_awesome,
-                              size: 80,
-                              color: Colors.white,
+                            child: Image.asset(
+                              'assets/images/logo.jpg',
+                              fit: BoxFit.contain,
                             ),
                           ),
                           const SizedBox(height: 32),

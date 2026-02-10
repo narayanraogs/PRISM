@@ -36,7 +36,7 @@ func scpi(c *gin.Context) {
 		}
 	}()
 	var device driver.ArbitraryDevice
-	device = *driver.NewArbitraryDevice(request.Instrument, request.PortNo)
+	device = *driver.NewArbitraryDevice(request.IPAddress, request.PortNo)
 	for i, command := range request.Commands {
 		if stop {
 			conn.WriteJSON(SCPICommandResponse{

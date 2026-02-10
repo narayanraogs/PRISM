@@ -8,7 +8,7 @@ import 'package:prism_client/widgets/screen_header.dart';
 enum InsightDataCategory {
   singleValue, // Category 1: Power, Frequency Error
   fixedMultiple, // Category 2: Lock Dynamic Range
-  variableResults // Category 3: Spurious, Harmonics
+  variableResults, // Category 3: Spurious, Harmonics
 }
 
 class InsightsScreen extends StatefulWidget {
@@ -24,6 +24,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   final List<String> _selectedSessions = ["Session_001", "Session_002"];
   String? _referenceSession = "Session_001";
   bool _useMeanAsReference = false;
+  bool _isHelpOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -31,34 +32,53 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      body: Column(
+      body: Stack(
         children: [
-          const ScreenHeader(
-            title: 'Insights',
-            subtitle: 'Comparative analysis and historical trend visualization',
-            icon: Icons.lightbulb_rounded,
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                _buildSidebar(theme),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ContentCard(
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(24),
-                          child: _buildMainVisualization(theme),
-                        ),
+          Column(
+            children: [
+              ScreenHeader(
+                title: 'Insights',
+                subtitle:
+                    'Comparative analysis and historical trend visualization',
+                icon: Icons.lightbulb_rounded,
+                trailing: _buildHelpTrigger(theme),
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildSidebar(theme),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ContentCard(
+                              margin: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(24),
+                              child: _buildMainVisualization(theme),
+                            ),
+                          ),
+                          _buildInsightBar(theme),
+                        ],
                       ),
-                      _buildInsightBar(theme),
-                    ],
-                  ),
+                    ),
+                    _buildStatsRail(theme),
+                  ],
                 ),
-                _buildStatsRail(theme),
-              ],
+              ),
+            ],
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
             ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
           ),
         ],
       ),
@@ -129,12 +149,25 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
                     decoration: BoxDecoration(
-                      color: isRef ? theme.colorScheme.primary.withOpacity(0.05) : Colors.transparent,
+                      color: isRef
+                          ? theme.colorScheme.primary.withOpacity(0.05)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: CheckboxListTile(
-                      title: Text(sessionId, style: TextStyle(fontSize: 13, fontWeight: isRef ? FontWeight.bold : FontWeight.normal)),
-                      subtitle: Text("2026-02-0${10 - index} ${isRef ? '(Reference)' : ''}", style: const TextStyle(fontSize: 11)),
+                      title: Text(
+                        sessionId,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isRef
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "2026-02-0${10 - index} ${isRef ? '(Reference)' : ''}",
+                        style: const TextStyle(fontSize: 11),
+                      ),
                       value: isSelected,
                       activeColor: theme.colorScheme.primary,
                       dense: true,
@@ -146,16 +179,23 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             _selectedSessions.add(sessionId);
                           } else {
                             _selectedSessions.remove(sessionId);
-                            if (_referenceSession == sessionId) _referenceSession = null;
+                            if (_referenceSession == sessionId)
+                              _referenceSession = null;
                           }
                         });
                       },
                       secondary: IconButton(
-                        icon: Icon(isRef ? Icons.push_pin : Icons.push_pin_outlined, 
-                          size: 18, 
-                          color: isRef ? theme.colorScheme.primary : Colors.grey.shade400
+                        icon: Icon(
+                          isRef ? Icons.push_pin : Icons.push_pin_outlined,
+                          size: 18,
+                          color: isRef
+                              ? theme.colorScheme.primary
+                              : Colors.grey.shade400,
                         ),
-                        onPressed: isSelected ? () => setState(() => _referenceSession = sessionId) : null,
+                        onPressed: isSelected
+                            ? () =>
+                                  setState(() => _referenceSession = sessionId)
+                            : null,
                         tooltip: 'Set as Golden Reference',
                       ),
                     ),
@@ -176,12 +216,23 @@ class _InsightsScreenState extends State<InsightsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isActive ? Theme.of(context).colorScheme.primary : Colors.transparent,
+            color: isActive
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isActive ? Colors.transparent : Colors.grey.shade300),
+            border: Border.all(
+              color: isActive ? Colors.transparent : Colors.grey.shade300,
+            ),
           ),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(fontSize: 12, color: isActive ? Colors.white : Colors.grey.shade600, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isActive ? Colors.white : Colors.grey.shade600,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ),
       ),
     );
@@ -200,7 +251,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
         },
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          side: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(label, style: const TextStyle(fontSize: 12)),
@@ -212,7 +265,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final tests = [
       {"name": "Transmit Power", "cat": InsightDataCategory.singleValue},
       {"name": "Dynamic Range", "cat": InsightDataCategory.fixedMultiple},
-      {"name": "Spurious Emissions", "cat": InsightDataCategory.variableResults},
+      {
+        "name": "Spurious Emissions",
+        "cat": InsightDataCategory.variableResults,
+      },
     ];
 
     return Container(
@@ -230,7 +286,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
           items: tests.map((t) {
             return DropdownMenuItem(
               value: t,
-              child: Text(t['name'] as String, style: const TextStyle(fontSize: 13)),
+              child: Text(
+                t['name'] as String,
+                style: const TextStyle(fontSize: 13),
+              ),
             );
           }).toList(),
           onChanged: (val) {
@@ -259,9 +318,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Widget _buildSingleValueTrend(ThemeData theme) {
     // Mock logic: Session_001 is index 0 in our mock data
     double? refValue;
-    if (_referenceSession == "Session_010") refValue = 10.4;
-    else if (_referenceSession == "Session_009") refValue = 10.5;
-    else if (_referenceSession == "Session_008") refValue = 10.2;
+    if (_referenceSession == "Session_010")
+      refValue = 10.4;
+    else if (_referenceSession == "Session_009")
+      refValue = 10.5;
+    else if (_referenceSession == "Session_008")
+      refValue = 10.2;
     // ... and so on. For now, let's assume 10.4 is our Golden baseline if something is pinned.
     final hasRef = _referenceSession != null;
     final benchmarkY = refValue ?? 10.4;
@@ -354,13 +416,22 @@ class _InsightsScreenState extends State<InsightsScreen> {
                     getDotPainter: (spot, percent, barData, index) {
                       bool isOutOfSpec = spot.y > 10.7 || spot.y < 10.3;
                       // Check if this spot is the Golden Ref spot
-                      bool isGolden = hasRef && spot.y == benchmarkY && index == 0; // index matching pin logic
+                      bool isGolden =
+                          hasRef &&
+                          spot.y == benchmarkY &&
+                          index == 0; // index matching pin logic
 
                       return FlDotCirclePainter(
                         radius: isGolden ? 8 : (isOutOfSpec ? 6 : 4),
-                        color: isGolden ? Colors.white : (isOutOfSpec ? Colors.red : theme.colorScheme.primary),
+                        color: isGolden
+                            ? Colors.white
+                            : (isOutOfSpec
+                                  ? Colors.red
+                                  : theme.colorScheme.primary),
                         strokeWidth: isGolden ? 4 : (isOutOfSpec ? 2 : 0),
-                        strokeColor: isGolden ? theme.colorScheme.primary : Colors.white,
+                        strokeColor: isGolden
+                            ? theme.colorScheme.primary
+                            : Colors.white,
                       );
                     },
                   ),
@@ -388,14 +459,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
       const Color(0xFF1E88E5),
       const Color(0xFF43A047),
     ];
-    
+
     for (int i = 0; i < _selectedSessions.length; i++) {
       final sessionId = _selectedSessions[i];
       final isRef = _referenceSession == sessionId;
-      
+
       // Determine color: Golden for ref, cycled palette for others
-      final Color sessionColor = isRef 
-          ? Colors.amber.shade700 
+      final Color sessionColor = isRef
+          ? Colors.amber.shade700
           : palette[i % palette.length].withOpacity(0.6);
 
       List<FlSpot> spots = [
@@ -406,35 +477,46 @@ class _InsightsScreenState extends State<InsightsScreen> {
         FlSpot(4, 15.3 + (i * 0.05)),
       ];
 
-      bars.add(LineChartBarData(
-        spots: spots,
-        color: sessionColor,
-        barWidth: isRef ? 5 : 2.5,
-        isCurved: true,
-        dotData: FlDotData(
-          show: true,
-          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-            radius: isRef ? 5 : 3.5,
-            color: sessionColor,
-            strokeWidth: isRef ? 2 : 1,
-            strokeColor: Colors.white,
+      bars.add(
+        LineChartBarData(
+          spots: spots,
+          color: sessionColor,
+          barWidth: isRef ? 5 : 2.5,
+          isCurved: true,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
+                  radius: isRef ? 5 : 3.5,
+                  color: sessionColor,
+                  strokeWidth: isRef ? 2 : 1,
+                  strokeColor: Colors.white,
+                ),
           ),
+          belowBarData: isRef
+              ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
+              : null,
         ),
-        belowBarData: isRef ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05)) : null,
-      ));
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildChartHeader("Gain Stability Overlay (dB)", "Reference Highlights in Gold"),
+        _buildChartHeader(
+          "Gain Stability Overlay (dB)",
+          "Reference Highlights in Gold",
+        ),
         const SizedBox(height: 32),
         Expanded(
           child: LineChart(
             LineChartData(
               lineTouchData: _buildTouchData(theme),
               gridData: const FlGridData(show: true, drawVerticalLine: false),
-              titlesData: _buildTitlesData(xTitle: "Freq Bin", yTitle: "Gain (dB)"),
+              titlesData: _buildTitlesData(
+                xTitle: "Freq Bin",
+                yTitle: "Gain (dB)",
+              ),
               borderData: FlBorderData(show: false),
               lineBarsData: bars,
             ),
@@ -450,51 +532,66 @@ class _InsightsScreenState extends State<InsightsScreen> {
     for (int i = 0; i < _selectedSessions.length; i++) {
       final sessionId = _selectedSessions[i];
       final isRef = _referenceSession == sessionId;
-      
+
       // Mock spectral spots
       List<FlSpot> spots = [];
       if (sessionId == "Session_001") {
-        spots = [const FlSpot(1.2, -65), const FlSpot(2.4, -72), const FlSpot(3.1, -80)];
+        spots = [
+          const FlSpot(1.2, -65),
+          const FlSpot(2.4, -72),
+          const FlSpot(3.1, -80),
+        ];
       } else {
         // Randomly offset subsequent sessions
         spots = [
           FlSpot(1.2 + (i * 0.05), -65 - (i * 2)),
           FlSpot(2.4 + (i * 0.03), -72 + (i * 1.5)),
         ];
-        if (i == 1) spots.add(const FlSpot(1.5, -58)); // New spur in Session_002
+        if (i == 1)
+          spots.add(const FlSpot(1.5, -58)); // New spur in Session_002
       }
 
-      layers.add(LineChartBarData(
-        spots: spots,
-        barWidth: 0,
-        dotData: FlDotData(
-          show: true,
-          getDotPainter: (spot, percent, barData, index) {
-            bool isAlert = spot.x == 1.5; // Our dummy alert spur
-            Color dotColor = isRef ? Colors.amber.shade700 : (isAlert ? Colors.red : Colors.indigo.withOpacity(0.4));
-            
-            return FlDotCirclePainter(
-              radius: isRef ? 8 : (isAlert ? 7 : 4),
-              color: dotColor,
-              strokeWidth: isRef ? 3 : 0,
-              strokeColor: Colors.white,
-            );
-          },
+      layers.add(
+        LineChartBarData(
+          spots: spots,
+          barWidth: 0,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              bool isAlert = spot.x == 1.5; // Our dummy alert spur
+              Color dotColor = isRef
+                  ? Colors.amber.shade700
+                  : (isAlert ? Colors.red : Colors.indigo.withOpacity(0.4));
+
+              return FlDotCirclePainter(
+                radius: isRef ? 8 : (isAlert ? 7 : 4),
+                color: dotColor,
+                strokeWidth: isRef ? 3 : 0,
+                strokeColor: Colors.white,
+              );
+            },
+          ),
         ),
-      ));
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildChartHeader("Spurious Emissions Overlay", "Spectral variations highlighting Reference"),
+        _buildChartHeader(
+          "Spurious Emissions Overlay",
+          "Spectral variations highlighting Reference",
+        ),
         const SizedBox(height: 32),
         Expanded(
           child: LineChart(
             LineChartData(
               lineTouchData: _buildTouchData(theme),
               lineBarsData: layers,
-              titlesData: _buildTitlesData(xTitle: "Freq (GHz)", yTitle: "Level (dBc)"),
+              titlesData: _buildTitlesData(
+                xTitle: "Freq (GHz)",
+                yTitle: "Level (dBc)",
+              ),
               borderData: FlBorderData(show: false),
               gridData: const FlGridData(show: true),
             ),
@@ -504,17 +601,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  FlTitlesData _buildTitlesData({String xTitle = "Session", String yTitle = "Value"}) {
+  FlTitlesData _buildTitlesData({
+    String xTitle = "Session",
+    String yTitle = "Value",
+  }) {
     return FlTitlesData(
       show: true,
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       bottomTitles: AxisTitles(
-        axisNameWidget: Text(xTitle, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+        axisNameWidget: Text(
+          xTitle,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+        ),
         sideTitles: const SideTitles(showTitles: true, reservedSize: 30),
       ),
       leftTitles: AxisTitles(
-        axisNameWidget: Text(yTitle, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+        axisNameWidget: Text(
+          yTitle,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+        ),
         sideTitles: const SideTitles(showTitles: true, reservedSize: 45),
       ),
     );
@@ -525,12 +631,16 @@ class _InsightsScreenState extends State<InsightsScreen> {
       touchTooltipData: LineTouchTooltipData(
         getTooltipColor: (spot) => theme.colorScheme.surface.withOpacity(0.9),
         tooltipRoundedRadius: 8,
-        tooltipBorder: BorderSide(color: theme.colorScheme.primary.withOpacity(0.2)),
+        tooltipBorder: BorderSide(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+        ),
         getTooltipItems: (List<LineBarSpot> touchedSpots) {
           return touchedSpots.map((LineBarSpot touchedSpot) {
             // Mock session mapping based on touchedSpot
             // In a real app, we'd look up the session by spot index or bar index
-            final sessionId = _selectedSessions[touchedSpot.barIndex % _selectedSessions.length];
+            final sessionId =
+                _selectedSessions[touchedSpot.barIndex %
+                    _selectedSessions.length];
             final date = "2026-02-0${10 - (touchedSpot.barIndex % 10)}";
             final time = "14:30:${10 + touchedSpot.spotIndex}";
 
@@ -574,17 +684,34 @@ class _InsightsScreenState extends State<InsightsScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
           ],
         ),
         Row(
           children: [
-            OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.download, size: 16), label: const Text("Export CSV")),
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.download, size: 16),
+              label: const Text("Export CSV"),
+            ),
             const SizedBox(width: 12),
-            ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.picture_as_pdf, size: 16), label: const Text("Report")),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.picture_as_pdf, size: 16),
+              label: const Text("Report"),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -596,11 +723,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     if (_selectedCategory == InsightDataCategory.singleValue) {
       // Check for out of spec points in mock data
-      message = "Warning: 2 out-of-spec points detected (Low: 10.2, High: 10.8).";
+      message =
+          "Warning: 2 out-of-spec points detected (Low: 10.2, High: 10.8).";
       color = Colors.red;
       icon = Icons.error_outline;
     } else if (_selectedCategory == InsightDataCategory.variableResults) {
-      message = "Alert: 1 new spur detected at 1.5 GHz that was not in previous sessions.";
+      message =
+          "Alert: 1 new spur detected at 1.5 GHz that was not in previous sessions.";
       color = Colors.orange;
       icon = Icons.warning_amber_rounded;
     }
@@ -617,8 +746,22 @@ class _InsightsScreenState extends State<InsightsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("DETERMINISTIC INSIGHT", style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: color, letterSpacing: 1.1)),
-                Text(message, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  "DETERMINISTIC INSIGHT",
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -630,8 +773,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Widget _buildStatsRail(ThemeData theme) {
     final modeLabel = _useMeanAsReference ? "MEAN" : "GOLDEN";
-    final refName = _useMeanAsReference ? "Average (Historical)" : (_referenceSession ?? "None");
-    
+    final refName = _useMeanAsReference
+        ? "Average (Historical)"
+        : (_referenceSession ?? "None");
+
     return ContentCard(
       width: 240,
       margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
@@ -639,12 +784,23 @@ class _InsightsScreenState extends State<InsightsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("STATISTICS", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+          Text(
+            "STATISTICS",
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
           const SizedBox(height: 20),
           _statItem("Reference ($modeLabel)", refName, isRef: true),
           const Divider(height: 32),
           _statItem("Current Value", "10.42 dBm"),
-          _statItem("Delta from $modeLabel", "+0.04 dB", valueColor: Colors.orange),
+          _statItem(
+            "Delta from $modeLabel",
+            "+0.04 dB",
+            valueColor: Colors.orange,
+          ),
           const Spacer(),
           _statItem("Max Drift", "+0.42 dB"),
           _statItem("Std Dev (σ)", "0.24"),
@@ -653,7 +809,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _statItem(String label, String value, {bool isRef = false, Color? valueColor}) {
+  Widget _statItem(
+    String label,
+    String value, {
+    bool isRef = false,
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
@@ -662,12 +823,16 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 4),
           Text(
-            value, 
+            value,
             style: GoogleFonts.robotoMono(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold, 
-              color: valueColor ?? (isRef ? Theme.of(context).colorScheme.primary : Colors.black87)
-            )
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color:
+                  valueColor ??
+                  (isRef
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.black87),
+            ),
           ),
         ],
       ),
@@ -679,7 +844,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
       child: Text(
         title,
-        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey.shade500, letterSpacing: 1.2),
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          color: Colors.grey.shade500,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -687,7 +857,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Widget _buildMockDropdown(String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -695,6 +869,130 @@ class _InsightsScreenState extends State<InsightsScreen> {
           const Icon(Icons.arrow_drop_down, size: 20),
         ],
       ),
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Insights Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Golden Reference',
+                  'Pin any session as a "Golden" baseline. All other sessions will be compared against this '
+                      'reference to calculate deltas in power, noise floor, or gain stability.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Trend Categories',
+                  '• **Single Value**: Tracks Scalar data over historical sessions.\n'
+                      '• **Fixed Multiple**: Overlays gain/loss vectors across multiple sessions.\n'
+                      '• **Variable Results**: Spectral overlay of spurs and harmonics.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Deterministic Insights',
+                  'The system automatically compares the current session with historical means. It flags "Trend Drifts" '
+                      'and "New Artifacts" (like spurs) that deviate significantly from baseline.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Statistical Rail',
+                  'Provides real-time σ (Standard Deviation) and Max Drift metrics based on the currently '
+                      'selected Analysis Scope and Reference Mode.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
     );
   }
 }

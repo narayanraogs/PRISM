@@ -1,5 +1,10 @@
 .PHONY: all client server clean-client-build deploy-client
 
+# Version Information
+GIT_Commit := $(shell git rev-parse --short HEAD)
+BUILD_Time := $(shell date +%Y-%m-%d_%H:%M:%S)
+VERSION := $(GIT_Commit)-$(BUILD_Time)
+
 # Output binary name
 BINARY_NAME=prism-server
 
@@ -12,7 +17,7 @@ client: clean-client-build
 
 # Provision to build only the server
 server:
-	cd server && go build -o ../$(BINARY_NAME) main.go
+	cd server && go build -ldflags "-X 'main.VersionString=$(VERSION)'" -o ../$(BINARY_NAME) main.go
 
 # Helper step: Remove the web folder in client build
 clean-client-build:

@@ -531,11 +531,11 @@ type SCPIDetails struct {
 }
 
 type SCPICommandRequest struct {
-	Instrument string
-	PortNo     int
-	Commands   []string
-	Delays     []float64
-	Read       []bool
+	IPAddress string
+	PortNo    int
+	Commands  []string
+	Delays    []float64
+	Read      []bool
 }
 
 type SCPICommandResponse struct {

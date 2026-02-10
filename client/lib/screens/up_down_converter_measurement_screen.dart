@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class UpDownConverterScreen extends StatefulWidget {
   const UpDownConverterScreen({super.key});
@@ -23,6 +24,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   int _selectedSpectrumTab = 0;
   bool _isPortConnected = false;
   bool _abortRequested = false;
+  bool _isHelpOpen = false;
+  bool _showConnectionDiagram = false;
 
   // --- Real Data from Server ---
   UCDCMetadata? _metadata;
@@ -340,31 +343,62 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 _buildTopStat("CONVERTER", _selectedConverter),
                 const SizedBox(width: 24),
                 _buildTopStat("PORT", _ports[_selectedPortIndex].name),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: () => setState(
+                    () => _showConnectionDiagram = !_showConnectionDiagram,
+                  ),
+                  icon: Icon(
+                    _showConnectionDiagram ? Icons.hub : Icons.hub_outlined,
+                  ),
+                  tooltip: 'Show Path Diagrams',
+                ),
+                const SizedBox(width: 12),
+                _buildHelpTrigger(theme),
               ],
             ),
           ),
           Expanded(
-            child: Row(
+            child: Stack(
               children: [
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFF8FAFC),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInstructionBanner(theme),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: _isConfigMode
-                              ? _buildConfigurationView(theme)
-                              : _buildMeasurementView(theme),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        color: const Color(0xFFF8FAFC),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInstructionBanner(theme),
+                            if (_showConnectionDiagram)
+                              _buildConnectionOverlay(theme),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: _isConfigMode
+                                  ? _buildConfigurationView(theme)
+                                  : _buildMeasurementView(theme),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    _buildSidebar(theme),
+                  ],
                 ),
-                _buildSidebar(theme),
+                if (_isHelpOpen)
+                  GestureDetector(
+                    onTap: () => setState(() => _isHelpOpen = false),
+                    child: Container(color: Colors.black.withOpacity(0.1)),
+                  ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  right: _isHelpOpen ? 0 : -450,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildHelpPanel(theme),
+                ),
               ],
             ),
           ),
@@ -1381,6 +1415,180 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Converter Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Sequential Testing',
+                  'Testing is performed port-by-port. Each port (Input, Output, LO Monitor, etc.) has a specific set '
+                      'of assigned tests like Gain, Spurious, or Phase Noise.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Port Connection',
+                  'Before running a batch, follow the instruction in the top banner. Once the hardware is connected, '
+                      'click "CONNECTED" to enable the "RUN BATCH" action.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Reference LO',
+                  'You can choose between the internal converter LO or an external Signal Generator. Use the '
+                      'toggle in the configuration panel to select the appropriate source.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Spectrum Automation',
+                  'PRISM automatically configures Span, RBW, and VBW on the Spectrum Analyzer based on the '
+                      'parameters defined in the Spectrum Settings tab.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectionOverlay(ThemeData theme) {
+    final activePort = _ports[_selectedPortIndex];
+    final isInputPort = activePort.name == "Input Port";
+
+    return ContentCard(
+      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Connection Guide: ${activePort.name}',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _showConnectionDiagram = false),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            activePort.instruction,
+            style: TextStyle(
+              fontSize: 13,
+              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          AspectRatio(
+            aspectRatio: 3 / 1,
+            child: InstrumentConnectionDiagram(
+              type: isInputPort
+                  ? DiagramType.converterSimple
+                  : DiagramType.converterComplex,
+              tsmOutputName: activePort.name,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

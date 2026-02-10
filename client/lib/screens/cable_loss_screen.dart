@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class CableLossScreen extends StatefulWidget {
   const CableLossScreen({super.key});
@@ -27,6 +28,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
   bool _isLoading = true;
   String _measuringStatus = '';
   bool _showConnections = false;
+  bool _isHelpOpen = false;
 
   // Mock Data
   List<String> _cableSuggestions = [
@@ -382,13 +384,21 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   subtitle:
                       'Measure and record cable loss details across frequency bands',
                   icon: Icons.cable,
-                  trailing: IconButton.filledTonal(
-                    onPressed: () =>
-                        setState(() => _showConnections = !_showConnections),
-                    icon: Icon(
-                      _showConnections ? Icons.hub : Icons.hub_outlined,
-                    ),
-                    tooltip: 'Show Connection Diagrams',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton.filledTonal(
+                        onPressed: () => setState(
+                          () => _showConnections = !_showConnections,
+                        ),
+                        icon: Icon(
+                          _showConnections ? Icons.hub : Icons.hub_outlined,
+                        ),
+                        tooltip: 'Show Connection Diagrams',
+                      ),
+                      const SizedBox(width: 12),
+                      _buildHelpTrigger(theme),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -428,8 +438,145 @@ class _CableLossScreenState extends State<CableLossScreen> {
             ),
           ),
           if (_isMeasuring) _buildMeasuringOverlay(theme),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Cable Loss Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Calibration Principle',
+                  'Cable loss measurement determines the attenuation of an RF cable across multiple frequency bands. '
+                      'The system compares current power readings against a zeroed reference baseline.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Standard Procedure',
+                  '1. **Zero PM**: Connect the sensor directly to the source reference to remove offsets.\n'
+                      '2. **Measure**: Insert the cable between the source and sensor to calculate loss.\n'
+                      '3. **Save**: Record name and length for traceability in the history logs.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Reference Diagrams',
+                  'Toggle the "Hub" icon in the screen header to view visual wiring instructions. '
+                      'Ensure all connections are finger-tight and use specific torque wrenches for precision measurements.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Accuracy Tips',
+                  '• Always use the same Power Meter profile for reference and loss measurement.\n'
+                      '• Ensure the cable length matches the physical tag for accurate loss-per-meter calculation.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -486,7 +633,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
 
   Widget _buildDiagramCard(
     ThemeData theme,
-    String title,
+    String type,
     String desc,
     IconData icon,
   ) {
@@ -500,39 +647,18 @@ class _CableLossScreenState extends State<CableLossScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
                 Icon(icon, size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Text(type, style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 12),
-            Container(
-              height: 140,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade100),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.image_outlined, size: 40, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text(
-                    '[ Placeholder Image ]',
-                    style: TextStyle(color: Colors.grey, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            _buildBlockDiagram(theme, type),
+            const SizedBox(height: 16),
             Text(
               desc,
               style: TextStyle(
@@ -543,6 +669,17 @@ class _CableLossScreenState extends State<CableLossScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBlockDiagram(ThemeData theme, String type) {
+    bool isZero = type.contains('Zero');
+
+    return AspectRatio(
+      aspectRatio: 3 / 1,
+      child: InstrumentConnectionDiagram(
+        type: isZero ? DiagramType.pmZero : DiagramType.cableMeasurement,
       ),
     );
   }
@@ -926,7 +1063,6 @@ class _CableLossScreenState extends State<CableLossScreen> {
                 gridData: FlGridData(
                   show: true,
                   drawHorizontalLine: true,
-                  horizontalInterval: 0.5,
                   getDrawingHorizontalLine: (value) => FlLine(
                     color: Colors.grey.withOpacity(0.1),
                     strokeWidth: 1,

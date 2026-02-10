@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
+import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/content_card.dart';
+import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class GTxCharacterizationScreen extends StatefulWidget {
   const GTxCharacterizationScreen({super.key});
@@ -26,6 +29,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
 
   bool _isHelpOpen = false;
   bool _isMeasuring = false;
+  bool _showConnections = false;
 
   // Controllers
   final _cableLossController = TextEditingController(text: "1.2");
@@ -95,7 +99,9 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
       setState(() {
         _metadata = metadata;
         _profiles = metadata.deviceProfile;
-        if (_profiles.isNotEmpty && (_selectedProfile == null || !_profiles.contains(_selectedProfile))) {
+        if (_profiles.isNotEmpty &&
+            (_selectedProfile == null ||
+                !_profiles.contains(_selectedProfile))) {
           _selectedProfile = _profiles.first;
         }
       });
@@ -124,68 +130,86 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
       cableLoss: double.tryParse(_cableLossController.text) ?? 0.0,
       modulationScheme: _selectedModulation,
       subCarrierFrequency:
-          double.tryParse(_subCarFreqController.text.replaceAll(',', '')) ?? 0.0,
+          double.tryParse(_subCarFreqController.text.replaceAll(',', '')) ??
+          0.0,
       modIndex: double.tryParse(_modIndexController.text) ?? 0.0,
       frequencyDeviation:
           double.tryParse(_freqDevController.text.replaceAll(',', '')) ?? 0.0,
       frequencySpectrum: GTxSpectrum(
-        span: double.tryParse(_freqSpanController.text.replaceAll(',', '')) ??
+        span:
+            double.tryParse(_freqSpanController.text.replaceAll(',', '')) ??
             1000000,
         rbw:
-            double.tryParse(_freqRBWController.text.replaceAll(',', '')) ?? 3000,
+            double.tryParse(_freqRBWController.text.replaceAll(',', '')) ??
+            3000,
         vbw:
-            double.tryParse(_freqVBWController.text.replaceAll(',', '')) ?? 1000,
+            double.tryParse(_freqVBWController.text.replaceAll(',', '')) ??
+            1000,
       ),
       powerSpectrum: GTxSpectrum(
-        span: double.tryParse(_powerSpanController.text.replaceAll(',', '')) ??
+        span:
+            double.tryParse(_powerSpanController.text.replaceAll(',', '')) ??
             1000000,
-        rbw: double.tryParse(_powerRBWController.text.replaceAll(',', '')) ??
+        rbw:
+            double.tryParse(_powerRBWController.text.replaceAll(',', '')) ??
             3000,
-        vbw: double.tryParse(_powerVBWController.text.replaceAll(',', '')) ??
+        vbw:
+            double.tryParse(_powerVBWController.text.replaceAll(',', '')) ??
             1000,
       ),
       inBandSpectrum: GTxSpectrum(
-        span: double.tryParse(_inBandSpanController.text.replaceAll(',', '')) ??
+        span:
+            double.tryParse(_inBandSpanController.text.replaceAll(',', '')) ??
             1000000,
-        rbw: double.tryParse(_inBandRBWController.text.replaceAll(',', '')) ??
+        rbw:
+            double.tryParse(_inBandRBWController.text.replaceAll(',', '')) ??
             3000,
-        vbw: double.tryParse(_inBandVBWController.text.replaceAll(',', '')) ??
+        vbw:
+            double.tryParse(_inBandVBWController.text.replaceAll(',', '')) ??
             1000,
       ),
       outBandSpectrum: GTxSpectrum(
         span:
             double.tryParse(_outBandSpanController.text.replaceAll(',', '')) ??
             1000000,
-        rbw: double.tryParse(_outBandRBWController.text.replaceAll(',', '')) ??
+        rbw:
+            double.tryParse(_outBandRBWController.text.replaceAll(',', '')) ??
             3000,
-        vbw: double.tryParse(_outBandVBWController.text.replaceAll(',', '')) ??
+        vbw:
+            double.tryParse(_outBandVBWController.text.replaceAll(',', '')) ??
             1000,
       ),
     );
 
-    _subscription = serverService.connectGTxTne(request).listen((data) {
-      if (data is RTStatus) {
-        setState(() {
-          _logs.add(data.message);
-          if (data.completed) {
-            _isMeasuring = false;
-          }
-        });
-      } else if (data is GTxResult) {
-        setState(() {
-          _latestResult = data;
-        });
-      }
-    }, onError: (e) {
-      setState(() {
-        _logs.add("Critical Error: $e");
-        _isMeasuring = false;
-      });
-    }, onDone: () {
-      setState(() {
-        _isMeasuring = false;
-      });
-    });
+    _subscription = serverService
+        .connectGTxTne(request)
+        .listen(
+          (data) {
+            if (data is RTStatus) {
+              setState(() {
+                _logs.add(data.message);
+                if (data.completed) {
+                  _isMeasuring = false;
+                }
+              });
+            } else if (data is GTxResult) {
+              setState(() {
+                _latestResult = data;
+              });
+            }
+          },
+          onError: (e) {
+            setState(() {
+              _logs.add("Critical Error: $e");
+              _isMeasuring = false;
+            });
+          },
+          onDone: () {
+            setState(() {
+              _isMeasuring = false;
+            });
+          },
+        );
   }
 
   void _stopCharacterization() {
@@ -206,7 +230,49 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(theme),
+                ScreenHeader(
+                  title: 'GTx Characterization',
+                  subtitle: 'Detailed performance analysis of Generator Source',
+                  icon: Icons.radar,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_metadata != null &&
+                          _selectedProfile != null &&
+                          _metadata!.deviceMapping.containsKey(
+                            _selectedProfile,
+                          )) ...[
+                        _buildInstrumentStatus(
+                          theme,
+                          _metadata!.deviceMapping[_selectedProfile!]!.gtxName,
+                          true,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildInstrumentStatus(
+                          theme,
+                          _metadata!.deviceMapping[_selectedProfile!]!.saName,
+                          true,
+                        ),
+                      ] else ...[
+                        _buildInstrumentStatus(theme, "GTx-GEN-01", true),
+                        const SizedBox(width: 16),
+                        _buildInstrumentStatus(theme, "SA-SPEC-04", true),
+                      ],
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        onPressed: () => setState(
+                          () => _showConnections = !_showConnections,
+                        ),
+                        icon: Icon(
+                          _showConnections ? Icons.hub : Icons.hub_outlined,
+                        ),
+                        tooltip: 'Show Path Diagrams',
+                      ),
+                      const SizedBox(width: 24),
+                      _buildHelpTrigger(theme),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 32),
                 Expanded(
                   child: Row(
@@ -214,7 +280,16 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                     children: [
                       _buildProfileSidebar(theme),
                       const SizedBox(width: 32),
-                      _buildMainConfiguration(theme),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            if (_showConnections)
+                              _buildConnectionOverlay(theme),
+                            Expanded(child: _buildMainConfiguration(theme)),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 32),
                       _buildResultsPanel(theme),
                     ],
@@ -232,7 +307,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
-            right: _isHelpOpen ? 0 : -400,
+            right: _isHelpOpen ? 0 : -450,
             top: 0,
             bottom: 0,
             child: _buildHelpPanel(theme),
@@ -242,77 +317,16 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(Icons.radar, color: theme.colorScheme.primary, size: 32),
-        ),
-        const SizedBox(width: 20),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'GTx Characterization',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
-            ),
-            Text(
-              'Detailed performance analysis of Generator Source',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        if (_metadata != null &&
-            _selectedProfile != null &&
-            _metadata!.deviceMapping.containsKey(_selectedProfile))
-          Row(
-            children: [
-              _buildInstrumentStatus(
-                theme,
-                _metadata!.deviceMapping[_selectedProfile!]!.gtxName,
-                true,
-              ),
-              const SizedBox(width: 16),
-              _buildInstrumentStatus(
-                theme,
-                _metadata!.deviceMapping[_selectedProfile!]!.saName,
-                true,
-              ),
-            ],
-          )
-        else ...[
-          _buildInstrumentStatus(theme, "GTx-GEN-01", true),
-          const SizedBox(width: 16),
-          _buildInstrumentStatus(theme, "SA-SPEC-04", true),
-        ],
-        const SizedBox(width: 24),
-        IconButton(
-          onPressed: () => setState(() => _isHelpOpen = !_isHelpOpen),
-          icon: const Icon(Icons.help_outline),
-          style: IconButton.styleFrom(
-            backgroundColor: _isHelpOpen
-                ? theme.colorScheme.primary
-                : Colors.white,
-            foregroundColor: _isHelpOpen
-                ? Colors.white
-                : theme.colorScheme.primary,
-          ),
-        ),
-      ],
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return IconButton(
+      onPressed: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      icon: const Icon(Icons.help_outline),
+      style: IconButton.styleFrom(
+        backgroundColor: _isHelpOpen ? theme.colorScheme.primary : Colors.white,
+        foregroundColor: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+        padding: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -520,26 +534,26 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   width: 300,
                   height: 56,
                   child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (_isMeasuring) {
-                      _stopCharacterization();
-                    } else {
-                      _startCharacterization();
-                    }
-                  },
-                  icon: _isMeasuring
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.play_arrow_rounded, size: 28),
-                  label: Text(
-                    _isMeasuring ? 'STOPPING...' : 'START CHARACTERIZATION',
-                  ),
+                    onPressed: () {
+                      if (_isMeasuring) {
+                        _stopCharacterization();
+                      } else {
+                        _startCharacterization();
+                      }
+                    },
+                    icon: _isMeasuring
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.play_arrow_rounded, size: 28),
+                    label: Text(
+                      _isMeasuring ? 'STOPPING...' : 'START CHARACTERIZATION',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isMeasuring
                           ? Colors.red
@@ -607,73 +621,72 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                       ),
                     ),
                   )
-                else
-                  ...[
+                else ...[
+                  _buildResultRow(
+                    "Power Level",
+                    _latestResult!.powerMeasurementCompleted
+                        ? "${_latestResult!.powerMeasured.toStringAsFixed(2)} dBm"
+                        : "Measuring...",
+                    _latestResult!.powerMeasurementCompleted
+                        ? "COMPLETE"
+                        : "PENDING",
+                  ),
+                  _buildResultRow(
+                    "Center Freq",
+                    _latestResult!.freqMeasurementCompleted
+                        ? "${_latestResult!.freqMeasuredMHz.toStringAsFixed(6)} MHz"
+                        : "Measuring...",
+                    _latestResult!.freqMeasurementCompleted
+                        ? "COMPLETE"
+                        : "PENDING",
+                  ),
+                  if (_latestResult!.inBandSpuriousMeasurementCompleted)
                     _buildResultRow(
-                      "Power Level",
-                      _latestResult!.powerMeasurementCompleted
-                          ? "${_latestResult!.powerMeasured.toStringAsFixed(2)} dBm"
+                      "In-Band Spurious",
+                      _latestResult!.inBandSpuriousFreqOffsetskHz.isEmpty
+                          ? "NIL"
+                          : "${_latestResult!.inBandPowerOffsets.first.toStringAsFixed(1)} dBc",
+                      "COMPLETE",
+                    ),
+                  if (_latestResult!.outBandSpuriousMeasurementCompleted)
+                    _buildResultRow(
+                      "Out-Band Spurious",
+                      _latestResult!.outBandSpuriousFreqOffsetskHz.isEmpty
+                          ? "NIL"
+                          : "${_latestResult!.outBandPowerOffsets.first.toStringAsFixed(1)} dBc",
+                      "COMPLETE",
+                    ),
+                  if (_latestResult!.modIndexApplicable)
+                    _buildResultRow(
+                      "Mod Index",
+                      _latestResult!.modIndexMeasurementCompleted
+                          ? _latestResult!.modIndexMeasured.toStringAsFixed(2)
                           : "Measuring...",
-                      _latestResult!.powerMeasurementCompleted
+                      _latestResult!.modIndexMeasurementCompleted
                           ? "COMPLETE"
                           : "PENDING",
                     ),
+                  if (_latestResult!.frequencyDeviationApplicable)
                     _buildResultRow(
-                      "Center Freq",
-                      _latestResult!.freqMeasurementCompleted
-                          ? "${_latestResult!.freqMeasuredMHz.toStringAsFixed(6)} MHz"
+                      "Freq Dev",
+                      _latestResult!.frequencyDeviationMeasurementCompleted
+                          ? "${(_latestResult!.frequencyDeviationMeasured / 1000).toStringAsFixed(1)} kHz"
                           : "Measuring...",
-                      _latestResult!.freqMeasurementCompleted
+                      _latestResult!.frequencyDeviationMeasurementCompleted
                           ? "COMPLETE"
                           : "PENDING",
                     ),
-                    if (_latestResult!.inBandSpuriousMeasurementCompleted)
-                      _buildResultRow(
-                        "In-Band Spurious",
-                        _latestResult!.inBandSpuriousFreqOffsetskHz.isEmpty
-                            ? "NIL"
-                            : "${_latestResult!.inBandPowerOffsets.first.toStringAsFixed(1)} dBc",
-                        "COMPLETE",
-                      ),
-                    if (_latestResult!.outBandSpuriousMeasurementCompleted)
-                      _buildResultRow(
-                        "Out-Band Spurious",
-                        _latestResult!.outBandSpuriousFreqOffsetskHz.isEmpty
-                            ? "NIL"
-                            : "${_latestResult!.outBandPowerOffsets.first.toStringAsFixed(1)} dBc",
-                        "COMPLETE",
-                      ),
-                    if (_latestResult!.modIndexApplicable)
-                      _buildResultRow(
-                        "Mod Index",
-                        _latestResult!.modIndexMeasurementCompleted
-                            ? _latestResult!.modIndexMeasured.toStringAsFixed(2)
-                            : "Measuring...",
-                        _latestResult!.modIndexMeasurementCompleted
-                            ? "COMPLETE"
-                            : "PENDING",
-                      ),
-                    if (_latestResult!.frequencyDeviationApplicable)
-                      _buildResultRow(
-                        "Freq Dev",
-                        _latestResult!.frequencyDeviationMeasurementCompleted
-                            ? "${(_latestResult!.frequencyDeviationMeasured / 1000).toStringAsFixed(1)} kHz"
-                            : "Measuring...",
-                        _latestResult!.frequencyDeviationMeasurementCompleted
-                            ? "COMPLETE"
-                            : "PENDING",
-                      ),
-                    if (_latestResult!.harmonicsMeasurementCompleted)
-                      _buildResultRow(
-                        "2nd Harmonic",
-                        _latestResult!.harmonicsFreqMHz.length > 1
-                            ? (_latestResult!.harmonicsPresent[1]
+                  if (_latestResult!.harmonicsMeasurementCompleted)
+                    _buildResultRow(
+                      "2nd Harmonic",
+                      _latestResult!.harmonicsFreqMHz.length > 1
+                          ? (_latestResult!.harmonicsPresent[1]
                                 ? "${_latestResult!.harmonicsMeasureddBm[1].toStringAsFixed(1)} dBm"
                                 : "NIL")
-                            : "-",
-                        "COMPLETE",
-                      ),
-                  ],
+                          : "-",
+                      "COMPLETE",
+                    ),
+                ],
               ],
             ),
           ),
@@ -834,10 +847,10 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                 controller: _selectedSpectrumTab == 0
                     ? _powerSpanController
                     : _selectedSpectrumTab == 1
-                        ? _freqSpanController
-                        : _selectedSpectrumTab == 2
-                            ? _inBandSpanController
-                            : _outBandSpanController,
+                    ? _freqSpanController
+                    : _selectedSpectrumTab == 2
+                    ? _inBandSpanController
+                    : _outBandSpanController,
                 icon: Icons.unfold_more,
               ),
             ),
@@ -848,10 +861,10 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                 controller: _selectedSpectrumTab == 0
                     ? _powerRBWController
                     : _selectedSpectrumTab == 1
-                        ? _freqRBWController
-                        : _selectedSpectrumTab == 2
-                            ? _inBandRBWController
-                            : _outBandRBWController,
+                    ? _freqRBWController
+                    : _selectedSpectrumTab == 2
+                    ? _inBandRBWController
+                    : _outBandRBWController,
                 icon: Icons.grid_view,
               ),
             ),
@@ -862,10 +875,10 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                 controller: _selectedSpectrumTab == 0
                     ? _powerVBWController
                     : _selectedSpectrumTab == 1
-                        ? _freqVBWController
-                        : _selectedSpectrumTab == 2
-                            ? _inBandVBWController
-                            : _outBandVBWController,
+                    ? _freqVBWController
+                    : _selectedSpectrumTab == 2
+                    ? _inBandVBWController
+                    : _outBandVBWController,
                 icon: Icons.blur_on,
               ),
             ),
@@ -963,7 +976,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
 
   Widget _buildHelpPanel(ThemeData theme) {
     return Container(
-      width: 400,
+      width: 450,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -993,9 +1006,6 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                 IconButton(
                   onPressed: () => setState(() => _isHelpOpen = false),
                   icon: const Icon(Icons.close),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade100,
-                  ),
                 ),
               ],
             ),
@@ -1006,13 +1016,31 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
               padding: const EdgeInsets.all(24),
               children: [
                 _buildHelpItem(
-                  "About Characterization",
-                  "This screen automates the performance verification of RF Generator sources. It measures Power, Center Frequency, and Spectral Purity (Spurious).",
+                  theme,
+                  'Modulation Profiles',
+                  'Characterization depends on the modulation scheme (PM, FM, PSK, etc.). The system calculates '
+                      'parameters like Modulation Index or Frequency Deviation based on carrier/sub-carrier power ratios.',
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 _buildHelpItem(
-                  "Instrument Setup",
-                  "Ensure the GTx is connected to the Spectrum Analyzer via the selected component path. Cable loss must be calibrated for accurate power readings.",
+                  theme,
+                  'Spectrum Automation',
+                  'PRISM automatically scales the Spectrum Analyzer span and resolution bandwidth (RBW) for each test '
+                      'phase (Power, Spurious, Harmonics) to ensure the noise floor does not mask critical spurs.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Spurious Detection',
+                  'In-Band and Out-Band spurious tests sweep the spectrum around the carrier. Any peak detected '
+                      'above the defined threshold is recorded with its absolute power and its offset in dBc.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Log Feedback',
+                  'The "Measurement Log" at the bottom right provides real-time SCPI command status and hardware '
+                      'settling events. Check this if measurements appear stuck.',
                 ),
               ],
             ),
@@ -1022,7 +1050,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
     );
   }
 
-  Widget _buildHelpItem(String title, String content) {
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1030,7 +1058,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           title,
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           content,
           style: GoogleFonts.inter(
@@ -1040,6 +1068,45 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildConnectionOverlay(ThemeData theme) {
+    return ContentCard(
+      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'GTx Connection Guide',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _showConnections = false),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Connect the Ground Transmitter (GTx) output directly to the Spectrum Analyzer. Any offset required for high-power protection must be entered in the "Cable Loss" field.',
+          ),
+          const SizedBox(height: 16),
+          const AspectRatio(
+            aspectRatio: 3 / 1,
+            child: InstrumentConnectionDiagram(type: DiagramType.attnGTx),
+          ),
+        ],
+      ),
     );
   }
 }

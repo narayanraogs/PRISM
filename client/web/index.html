@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -27,12 +28,34 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/jpeg" href="favicon.jpg" />
 
-  <title>prism_client</title>
+  <title>PRISM - RF Monitoring</title>
+  <meta name="description" content="Payload Radio-frequency Instrument Selection & Monitoring">
   <link rel="manifest" href="manifest.json">
 </head>
+<style>
+  body {
+    background: linear-gradient(to bottom right, #050A14, #0D1826);
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .splash-logo {
+    width: 300px;
+    /* Matches Flutter constraint */
+    height: 300px;
+    object-fit: contain;
+  }
+</style>
+
 <body>
+  <img src="logo.jpg" alt="PRISM Logo" class="splash-logo">
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>

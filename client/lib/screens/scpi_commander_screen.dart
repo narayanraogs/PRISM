@@ -58,6 +58,9 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
   bool _isExecutingSequence = false;
   int _currentSequenceIndex = -1;
 
+  Key _mnemonicFieldKey = UniqueKey();
+  bool _isHelpOpen = false;
+
   @override
   void dispose() {
     _ipController.dispose();
@@ -79,6 +82,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           _portController.text = details.portNo.toString();
         }
         _selectedMnemonic = null;
+        _mnemonicFieldKey = UniqueKey();
         _commandController.clear();
       }
     });
@@ -113,14 +117,15 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
 
     final serverService = Provider.of<ServerService>(context, listen: false);
     final scpiData = serverService.status.bootstrapData?.scpiData;
-    if (scpiData == null || _selectedDevice == null) return;
+    if (scpiData == null) return;
 
-    final details = scpiData.instrumentDetails[_selectedDevice];
-    if (details == null) return;
+    final ip = _ipController.text;
+    final port = int.tryParse(_portController.text);
+    if (ip.isEmpty || port == null) return;
 
     final request = SCPICommandRequest(
-      instrument: _selectedDevice!,
-      portNo: details.portNo,
+      ipAddress: ip,
+      portNo: port,
       commands: [finalCmd],
       delays: [0.0],
       read: [_isWriteAndRead],
@@ -135,46 +140,55 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           message: finalCmd,
         ),
       );
+
+      _selectedMnemonic = null;
+      _mnemonicFieldKey = UniqueKey();
+      _commandController.clear();
+      _replacementController.clear();
+      _argsController.clear();
+      _isWriteAndRead = false;
     });
 
-    serverService.connectSCPI(request).listen(
-      (response) {
-        if (mounted) {
-          setState(() {
-            _logs.insert(
-              0,
-              ScpiLogEntry(
-                timestamp: DateTime.now(),
-                type: response.ok ? 'RECV' : 'ERROR',
-                message: response.ok
-                    ? (response.response.isEmpty
-                        ? "Success"
-                        : response.response)
-                    : response.message,
-              ),
-            );
-          });
-        }
-      },
-      onDone: () {
-        serverService.closeSCPI();
-      },
-      onError: (err) {
-        if (mounted) {
-          setState(() {
-            _logs.insert(
-              0,
-              ScpiLogEntry(
-                timestamp: DateTime.now(),
-                type: 'ERROR',
-                message: "Connection error: $err",
-              ),
-            );
-          });
-        }
-        serverService.closeSCPI();
-      },
-    );
+    serverService
+        .connectSCPI(request)
+        .listen(
+          (response) {
+            if (mounted) {
+              setState(() {
+                _logs.insert(
+                  0,
+                  ScpiLogEntry(
+                    timestamp: DateTime.now(),
+                    type: response.ok ? 'RECV' : 'ERROR',
+                    message: response.ok
+                        ? (response.response.isEmpty
+                              ? "Success"
+                              : response.response)
+                        : response.message,
+                  ),
+                );
+              });
+            }
+          },
+          onDone: () {
+            serverService.closeSCPI();
+          },
+          onError: (err) {
+            if (mounted) {
+              setState(() {
+                _logs.insert(
+                  0,
+                  ScpiLogEntry(
+                    timestamp: DateTime.now(),
+                    type: 'ERROR',
+                    message: "Connection error: $err",
+                  ),
+                );
+              });
+            }
+            serverService.closeSCPI();
+          },
+        );
   }
 
   void _clearLogs() {
@@ -212,14 +226,15 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
 
     final serverService = Provider.of<ServerService>(context, listen: false);
     final scpiData = serverService.status.bootstrapData?.scpiData;
-    if (scpiData == null || _selectedDevice == null) return;
+    if (scpiData == null) return;
 
-    final details = scpiData.instrumentDetails[_selectedDevice];
-    if (details == null) return;
+    final ip = _ipController.text;
+    final port = int.tryParse(_portController.text);
+    if (ip.isEmpty || port == null) return;
 
     final request = SCPICommandRequest(
-      instrument: _selectedDevice!,
-      portNo: details.portNo,
+      ipAddress: ip,
+      portNo: port,
       commands: _sequence.map((e) => e.command).toList(),
       delays: _sequence.map((e) => e.delayMs.toDouble()).toList(),
       read: _sequence.map((e) => e.isQuery).toList(),
@@ -239,59 +254,61 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     });
 
     int receivedCount = 1;
-    serverService.connectSCPI(request).listen(
-      (response) {
-        if (mounted) {
-          setState(() {
-            _currentSequenceIndex = receivedCount - 1;
-            _logs.insert(
-              0,
-              ScpiLogEntry(
-                timestamp: DateTime.now(),
-                type: response.ok ? 'RECV' : 'ERROR',
-                message:
-                    "[#$receivedCount] CMD: ${response.command} -> ${response.ok ? (response.response.isEmpty ? "Success" : response.response) : response.message}",
-              ),
-            );
-            receivedCount++;
-          });
-        }
-      },
-      onDone: () {
-        if (mounted) {
-          setState(() {
-            _isExecutingSequence = false;
-            _currentSequenceIndex = -1;
-            _logs.insert(
-              0,
-              ScpiLogEntry(
-                timestamp: DateTime.now(),
-                type: 'SENT',
-                message: "Sequence execution completed.",
-              ),
-            );
-          });
-        }
-        serverService.closeSCPI();
-      },
-      onError: (err) {
-        if (mounted) {
-          setState(() {
-            _isExecutingSequence = false;
-            _currentSequenceIndex = -1;
-            _logs.insert(
-              0,
-              ScpiLogEntry(
-                timestamp: DateTime.now(),
-                type: 'ERROR',
-                message: "Sequence failed: $err",
-              ),
-            );
-          });
-        }
-        serverService.closeSCPI();
-      },
-    );
+    serverService
+        .connectSCPI(request)
+        .listen(
+          (response) {
+            if (mounted) {
+              setState(() {
+                _currentSequenceIndex = receivedCount - 1;
+                _logs.insert(
+                  0,
+                  ScpiLogEntry(
+                    timestamp: DateTime.now(),
+                    type: response.ok ? 'RECV' : 'ERROR',
+                    message:
+                        "[#$receivedCount] CMD: ${response.command} -> ${response.ok ? (response.response.isEmpty ? "Success" : response.response) : response.message}",
+                  ),
+                );
+                receivedCount++;
+              });
+            }
+          },
+          onDone: () {
+            if (mounted) {
+              setState(() {
+                _isExecutingSequence = false;
+                _currentSequenceIndex = -1;
+                _logs.insert(
+                  0,
+                  ScpiLogEntry(
+                    timestamp: DateTime.now(),
+                    type: 'SENT',
+                    message: "Sequence execution completed.",
+                  ),
+                );
+              });
+            }
+            serverService.closeSCPI();
+          },
+          onError: (err) {
+            if (mounted) {
+              setState(() {
+                _isExecutingSequence = false;
+                _currentSequenceIndex = -1;
+                _logs.insert(
+                  0,
+                  ScpiLogEntry(
+                    timestamp: DateTime.now(),
+                    type: 'ERROR',
+                    message: "Sequence failed: $err",
+                  ),
+                );
+              });
+            }
+            serverService.closeSCPI();
+          },
+        );
   }
 
   @override
@@ -318,39 +335,190 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(theme),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Device Selection Panel
-                  Expanded(flex: 3, child: _buildDevicePanel(theme, scpiData)),
-                  const SizedBox(width: 20),
-                  // 2. Command Builder Panel
-                  Expanded(flex: 4, child: _buildBuilderPanel(theme, scpiData, serverService)),
-                  const SizedBox(width: 20),
-                  // 3. Response Console Panel
-                  Expanded(flex: 5, child: _buildConsolePanel(theme)),
-                ],
-              ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(theme),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Device Selection Panel
+                      Expanded(
+                        flex: 3,
+                        child: _buildDevicePanel(theme, scpiData),
+                      ),
+                      const SizedBox(width: 20),
+                      // 2. Command Builder Panel
+                      Expanded(
+                        flex: 4,
+                        child: _buildBuilderPanel(
+                          theme,
+                          scpiData,
+                          serverService,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      // 3. Response Console Panel
+                      Expanded(flex: 5, child: _buildConsolePanel(theme)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return const ScreenHeader(
+    return ScreenHeader(
       title: 'SCPI Commander',
       subtitle: 'Send direct SCPI commands to networked instruments',
       icon: Icons.terminal_rounded,
+      trailing: _buildHelpTrigger(theme),
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SCPI Commander Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Direct Communication',
+                  'SCPI Commander allows you to send raw ASCII commands to instruments over TCP/IP. '
+                      'This is useful for debugging or executing specialized functions not covered by the main UI.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Mnemonic Look-up',
+                  'The search field in the Command Builder helps you find known mnemonics for the selected device. '
+                      'Selecting a mnemonic will automatically populate the command string and toggle the type (Write/Read).',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Placeholders (#)',
+                  'Some commands use the `#` character as a placeholder for indices (like channel numbers). '
+                      'When detected, a dedicated "Index Number" field will appear to let you fill this in.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Orchestration & CSV',
+                  'For repetitive tasks, you can upload a CSV file containing a list of commands and delays. '
+                      'PRISM will execute these sequentially from the server side for maximum timing precision.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -405,7 +573,11 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     );
   }
 
-  Widget _buildBuilderPanel(ThemeData theme, SCPIDetails scpiData, ServerService serverService) {
+  Widget _buildBuilderPanel(
+    ThemeData theme,
+    SCPIDetails scpiData,
+    ServerService serverService,
+  ) {
     bool hasHash = _commandController.text.contains('#');
     List<CommandDetails> availableCommands = [];
     if (_selectedDevice != null) {
@@ -1119,6 +1291,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
         ),
         const SizedBox(height: 8),
         Autocomplete<CommandDetails>(
+          key: _mnemonicFieldKey,
           displayStringForOption: (CommandDetails option) => option.mnemonic,
           optionsBuilder: (TextEditingValue textEditingValue) {
             if (textEditingValue.text == '') {
@@ -1132,14 +1305,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           },
           onSelected: _onMnemonicSelected,
           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-            // Sync controller text if state changes externally
-            if (_selectedMnemonic == null && controller.text.isNotEmpty) {
-              controller.clear();
-            } else if (_selectedMnemonic != null &&
-                controller.text != _selectedMnemonic!.mnemonic) {
-              controller.text = _selectedMnemonic!.mnemonic;
-            }
-
+            // No manual syncing needed as we reset via Key
             return TextField(
               controller: controller,
               focusNode: focusNode,

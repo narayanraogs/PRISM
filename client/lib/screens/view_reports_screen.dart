@@ -53,6 +53,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
   List<String> _selectedVsaParams = [];
   List<String> _allPpmParams = [];
   List<String> _selectedPpmParams = [];
+  bool _isHelpOpen = false;
 
   @override
   void initState() {
@@ -419,73 +420,97 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
             icon: Icons.assignment,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [_buildDateRangePicker(theme)],
+              children: [
+                _buildDateRangePicker(theme),
+                const SizedBox(width: 12),
+                _buildHelpTrigger(theme),
+              ],
             ),
           ),
           Expanded(
-            child: Row(
+            child: Stack(
               children: [
-                // Left Side: Filters and Table
-                Expanded(
-                  flex: 6,
-                  child: ContentCard(
-                    margin: const EdgeInsets.all(16),
-                    width: double.infinity,
-                    child: Column(
-                      children: [
-                        _buildControls(theme),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: _isLoading
-                              ? const Center(child: CircularProgressIndicator())
-                              : _errorMessage != null
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        size: 48,
-                                        color: theme.colorScheme.error,
+                Row(
+                  children: [
+                    // Left Side: Filters and Table
+                    Expanded(
+                      flex: 6,
+                      child: ContentCard(
+                        margin: const EdgeInsets.all(16),
+                        width: double.infinity,
+                        child: Column(
+                          children: [
+                            _buildControls(theme),
+                            const Divider(height: 1),
+                            Expanded(
+                              child: _isLoading
+                                  ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  : _errorMessage != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.error_outline,
+                                            size: 48,
+                                            color: theme.colorScheme.error,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            _errorMessage!,
+                                            style: TextStyle(
+                                              color: theme.colorScheme.error,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          ElevatedButton(
+                                            onPressed: _fetchData,
+                                            child: const Text('Retry'),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        _errorMessage!,
-                                        style: TextStyle(
-                                          color: theme.colorScheme.error,
-                                        ),
+                                    )
+                                  : _filteredResultEntries.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        'No reports found matching filters',
                                       ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: _fetchData,
-                                        child: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _filteredResultEntries.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No reports found matching filters',
-                                  ),
-                                )
-                              : _buildDataTable(theme),
+                                    )
+                                  : _buildDataTable(theme),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // Right Side: Report Preview
-                Expanded(
-                  flex: 4,
-                  child: ContentCard(
-                    margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
-                    width: double.infinity,
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildPreviewArea(theme),
+                    // Right Side: Report Preview
+                    Expanded(
+                      flex: 4,
+                      child: ContentCard(
+                        margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+                        width: double.infinity,
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _buildPreviewArea(theme),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_isHelpOpen)
+                  GestureDetector(
+                    onTap: () => setState(() => _isHelpOpen = false),
+                    child: Container(color: Colors.black.withOpacity(0.1)),
                   ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  right: _isHelpOpen ? 0 : -450,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildHelpPanel(theme),
                 ),
               ],
             ),
@@ -920,6 +945,129 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                       params: const PdfViewerParams(maxScale: 10.0),
                     ),
                   ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Reports Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Finding Reports',
+                  'Use the search bar to filter by **Configuration Name** or **Remarks**. Use the Ribbon filters '
+                      'below it to drill down by Test Phase (Payload, RF, etc.) or Test Type.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Date Filtering',
+                  'Click the "All Time" (or specific date range) badge in the top right header to filter results '
+                      'within a specific time window.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Report Regeneration',
+                  'If you need to change which parameters (VSA/PPM) are included in the PDF, click "Regenerate" '
+                      'on a selected report. This will compute a fresh PDF with your updated parameter selection.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Downloading',
+                  'Once a PDF is loaded in the preview pane, use the Download icon in the top right of the preview '
+                      'card to save the file locally.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
           ),
         ),
       ],

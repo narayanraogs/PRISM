@@ -1060,14 +1060,14 @@ class SCPIDetails {
 }
 
 class SCPICommandRequest {
-  final String instrument;
+  final String ipAddress;
   final int portNo;
   final List<String> commands;
   final List<double> delays;
   final List<bool> read;
 
   SCPICommandRequest({
-    required this.instrument,
+    required this.ipAddress,
     required this.portNo,
     required this.commands,
     required this.delays,
@@ -1076,7 +1076,7 @@ class SCPICommandRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'Instrument': instrument,
+      'IPAddress': ipAddress,
       'PortNo': portNo,
       'Commands': commands,
       'Delays': delays,

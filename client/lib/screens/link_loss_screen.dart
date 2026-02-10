@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:intl/intl.dart';
 import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 import 'package:prism_client/widgets/content_card.dart';
@@ -44,6 +43,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
+  bool _isHelpOpen = false;
 
   List<String> _testPhases = [];
   String _selectedTestPhase = '';
@@ -331,54 +331,78 @@ class _LinkLossScreenState extends State<LinkLossScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          ScreenHeader(
-            title: 'Database Management',
-            subtitle: 'Manage test phases and path loss profiles',
-            icon: Icons.storage,
-            trailing: ElevatedButton.icon(
-              onPressed: _showAddPhaseDialog,
-              icon: const Icon(Icons.add_box_outlined),
-              label: const Text('New Test Phase'),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPhaseSelector(theme),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: ContentCard(
-                      child: Column(
-                        children: [
-                          TabBar(
-                            controller: _tabController,
-                            labelColor: theme.colorScheme.primary,
-                            unselectedLabelColor: Colors.grey,
-                            indicatorColor: theme.colorScheme.primary,
-                            tabs: const [
-                              Tab(text: 'Uplink (RX) Path Loss'),
-                              Tab(text: 'Downlink (TX) Path Loss'),
+          Column(
+            children: [
+              ScreenHeader(
+                title: 'Database Management',
+                subtitle: 'Manage test phases and path loss profiles',
+                icon: Icons.storage,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _showAddPhaseDialog,
+                      icon: const Icon(Icons.add_box_outlined),
+                      label: const Text('New Test Phase'),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildHelpTrigger(theme),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPhaseSelector(theme),
+                      const SizedBox(height: 24),
+                      Expanded(
+                        child: ContentCard(
+                          child: Column(
+                            children: [
+                              TabBar(
+                                controller: _tabController,
+                                labelColor: theme.colorScheme.primary,
+                                unselectedLabelColor: Colors.grey,
+                                indicatorColor: theme.colorScheme.primary,
+                                tabs: const [
+                                  Tab(text: 'Uplink (RX) Path Loss'),
+                                  Tab(text: 'Downlink (TX) Path Loss'),
+                                ],
+                              ),
+                              Expanded(
+                                child: _isLoading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : _buildEditorView(theme),
+                              ),
                             ],
                           ),
-                          Expanded(
-                            child: _isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : _buildEditorView(theme),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
+            ],
+          ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
             ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
           ),
         ],
       ),
@@ -676,6 +700,130 @@ class _LinkLossScreenState extends State<LinkLossScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Database Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Test Phases',
+                  'Phases represent major project milestones (e.g., Payload, Thermal). Switching the "Effective Phase" '
+                      'updates the loss reference for the entire PRISM ecosystem in real-time.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Loss Profiles',
+                  'Losses are defined per Configuration (VSA/PM). The system sums these values with live '
+                      'measurements to provide "Corrected" readings on measurement screens.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Type Categorization',
+                  '• **Common**: Shared loss across all paths.\n'
+                      '• **SA/PM/SC**: Instrument-specific calibration offsets.\n'
+                      'PRISM uses these to narrow down exactly where path loss originates.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Import / Export',
+                  'Use CSV files for mass updates. Expected format: `ID, Description, Loss, Type`. '
+                      'Always "Save Changes" after an import to commit to the server.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
     );
   }
 }

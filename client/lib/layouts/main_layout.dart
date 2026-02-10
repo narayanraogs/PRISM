@@ -112,7 +112,7 @@ class _MainLayoutState extends State<MainLayout> {
       category: 'T&E',
     ),
     NavigationItem(
-      label: 'GTx Charecterization',
+      label: 'GTx Characterization',
       icon: Icons.radar,
       selectedIcon: Icons.radar,
       category: 'T&E',
@@ -193,21 +193,44 @@ class _MainLayoutState extends State<MainLayout> {
                               height: 40,
                               alignment: Alignment.center,
                               child: _isExpanded
-                                  ? Text(
-                                      'PRISM',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium
-                                          ?.copyWith(
-                                            fontSize: 24,
-                                            letterSpacing: 2,
-                                            fontWeight: FontWeight.bold,
+                                  ? Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
+                                          child: Image.asset(
+                                            'assets/images/logo.jpg',
+                                            height: 32,
+                                            width: 32,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'PRISM',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineMedium
+                                              ?.copyWith(
+                                                fontSize: 24,
+                                                letterSpacing: 2,
+                                                fontWeight: FontWeight.bold,
+                                                color: const Color(0xFF050A14),
+                                              ),
+                                        ),
+                                      ],
                                     )
-                                  : const Icon(
-                                      Icons.auto_awesome,
-                                      size: 32,
-                                      color: Color(0xFF0D47A1),
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.asset(
+                                        'assets/images/logo.jpg',
+                                        height: 32,
+                                        width: 32,
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                             ),
                             const SizedBox(height: 20),

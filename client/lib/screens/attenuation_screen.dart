@@ -7,6 +7,7 @@ import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
+import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class AttenuationScreen extends StatefulWidget {
   const AttenuationScreen({super.key});
@@ -52,6 +53,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
   Map<String, AttnRange> _serverRanges = {};
   bool _isLoading = true;
   String _lastStatusMessage = '';
+  bool _isHelpOpen = false;
 
   // Subscription
   StreamSubscription? _attnSubscription;
@@ -263,30 +265,74 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(
+      body: Stack(
         children: [
-          const ScreenHeader(
-            title: 'Attenuation Measurement',
-            subtitle:
-                'Configure and measure attenuation across different instruments',
-            icon: Icons.graphic_eq, // Audio wave / signal icon
+          Column(
+            children: [
+              ScreenHeader(
+                title: 'Attenuation Measurement',
+                subtitle:
+                    'Configure and measure attenuation across different instruments',
+                icon: Icons.graphic_eq, // Audio wave / signal icon
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: () => setState(
+                        () => _showConnectionImage = !_showConnectionImage,
+                      ),
+                      icon: Icon(
+                        _showConnectionImage ? Icons.hub : Icons.hub_outlined,
+                      ),
+                      tooltip: 'Show Connection Diagrams',
+                    ),
+                    const SizedBox(width: 12),
+                    _buildHelpTrigger(theme),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Left Sidebar: Instrument Selection
+                          _buildInstrumentSidebar(theme),
+
+                          // Center: Configuration
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                if (_showConnectionImage)
+                                  _buildConnectionOverlay(theme),
+                                Expanded(
+                                  child: _buildConfigurationPanel(theme),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Right: Results & Analytics
+                          Expanded(flex: 5, child: _buildResultsPanel(theme)),
+                        ],
+                      ),
+              ),
+            ],
           ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Left Sidebar: Instrument Selection
-                      _buildInstrumentSidebar(theme),
-
-                      // Center: Configuration
-                      _buildConfigurationPanel(theme),
-
-                      // Right: Results & Analytics
-                      Expanded(flex: 5, child: _buildResultsPanel(theme)),
-                    ],
-                  ),
+          if (_isHelpOpen)
+            GestureDetector(
+              onTap: () => setState(() => _isHelpOpen = false),
+              child: Container(color: Colors.black.withOpacity(0.1)),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            right: _isHelpOpen ? 0 : -450,
+            top: 0,
+            bottom: 0,
+            child: _buildHelpPanel(theme),
           ),
         ],
       ),
@@ -385,7 +431,6 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
 
   Widget _buildConfigurationPanel(ThemeData theme) {
     return ContentCard(
-      width: 320,
       margin: const EdgeInsets.symmetric(
         horizontal: 24,
         vertical: 12,
@@ -403,18 +448,6 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-                IconButton(
-                  onPressed: () => setState(
-                    () => _showConnectionImage = !_showConnectionImage,
-                  ),
-                  icon: Icon(
-                    Icons.image_outlined,
-                    color: _showConnectionImage
-                        ? theme.colorScheme.primary
-                        : Colors.grey,
-                  ),
-                  tooltip: 'Connection Diagram',
                 ),
               ],
             ),
@@ -630,6 +663,130 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
     );
   }
 
+  Widget _buildHelpTrigger(ThemeData theme) {
+    return InkWell(
+      onTap: () => setState(() => _isHelpOpen = !_isHelpOpen),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHelpOpen
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHelpOpen
+                ? theme.colorScheme.primary
+                : theme.colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          Icons.help_outline,
+          color: _isHelpOpen ? Colors.white : theme.colorScheme.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpPanel(ThemeData theme) {
+    return Container(
+      width: 450,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(-10, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Attenuation Help',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _isHelpOpen = false),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _buildHelpItem(
+                  theme,
+                  'Instrument Modes',
+                  '• **TSM**: Measures attenuation through the TSM system components.\n'
+                      '• **GTx**: Specialized testing for GTx internal modules.\n'
+                      '• **SG**: Standard Signal Generator attenuation sweeps.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Range Calibration',
+                  'Define the sweep range (Min/Max) and the Step size. PRISM will calculate the necessary command '
+                      'sequence and execute them with sub-millisecond precision from the server.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Live Visualization',
+                  'The chart displays real-time power deviation. A "Corrected View" may appear after measurement '
+                      'tasks complete, showing post-calculated offsets for higher calibration accuracy.',
+                ),
+                const SizedBox(height: 24),
+                _buildHelpItem(
+                  theme,
+                  'Abort Safety',
+                  'If you need to stop a sweep, use the "Abort" button. The system will safely ramp down '
+                      'the signal generator or reset the TSM routes before closing the connection.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(ThemeData theme, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: GoogleFonts.inter(
+            height: 1.6,
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildResultsPanel(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(right: 24, top: 12, bottom: 24),
@@ -722,8 +879,6 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
               ),
             ),
           ),
-
-          if (_showConnectionImage) _buildConnectionOverlay(theme),
         ],
       ),
     );
@@ -888,71 +1043,63 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
   }
 
   Widget _buildConnectionOverlay(ThemeData theme) {
+    DiagramType dType = DiagramType.attnSG;
+    String guideText = '';
+
+    if (_selectedInstrument == 'SG') {
+      dType = DiagramType.attnSG;
+      guideText =
+          'Connect Signal Generator output directly to Spectrum Analyzer.';
+    } else if (_selectedInstrument == 'GTx') {
+      dType = DiagramType.attnGTx;
+      guideText =
+          'Connect Ground Transmitter output directly to Spectrum Analyzer.';
+    } else if (_selectedInstrument == 'TSM') {
+      dType = DiagramType.attnTSM;
+      guideText =
+          'Connect Signal Generator to TSM input port and Receiver Output to Spectrum Analyzer.';
+    }
+
     return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 300,
-            height: 180,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.hub_outlined, size: 48, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text(
-                    '[ Connection Diagram Placeholder ]',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: ContentCard(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Connection Guide: $_selectedInstrument',
-                  style: const TextStyle(
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  '1. Connect Signal Generator Output to TSM Port 1',
-                  style: TextStyle(fontSize: 13),
-                ),
-                const Text(
-                  '2. Connect Spectrum Analyzer Input to Receiver Port 2',
-                  style: TextStyle(fontSize: 13),
-                ),
-                const Text(
-                  '3. Ensure all cables are properly torqued',
-                  style: TextStyle(fontSize: 13),
+                IconButton(
+                  onPressed: () => setState(() => _showConnectionImage = false),
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
-          ),
-          IconButton(
-            onPressed: () => setState(() => _showConnectionImage = false),
-            icon: const Icon(Icons.close),
-          ),
-        ],
+            const SizedBox(height: 16),
+            AspectRatio(
+              aspectRatio: 3 / 1,
+              child: InstrumentConnectionDiagram(type: dType),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              guideText,
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
