@@ -16,6 +16,8 @@ class InstrumentConnectionDiagram extends StatefulWidget {
   final String? tsmInputName;
   final String? tsmOutputName;
   final String? receiverName;
+  final String? inputPortName;
+  final String? outputPortName;
 
   const InstrumentConnectionDiagram({
     super.key,
@@ -23,6 +25,8 @@ class InstrumentConnectionDiagram extends StatefulWidget {
     this.tsmInputName,
     this.tsmOutputName,
     this.receiverName,
+    this.inputPortName,
+    this.outputPortName,
   });
 
   @override
@@ -279,7 +283,7 @@ class _InstrumentConnectionDiagramState
                   child: Center(
                     child: _buildEdgeLabel(
                       context,
-                      'Input Cable',
+                      '${widget.inputPortName ?? "Input"} Cable',
                       primaryColor,
                     ),
                   ),
@@ -299,7 +303,7 @@ class _InstrumentConnectionDiagramState
                   child: Center(
                     child: _buildEdgeLabel(
                       context,
-                      'Output Cable',
+                      '${widget.outputPortName ?? "Output"} Cable',
                       primaryColor,
                     ),
                   ),
@@ -313,7 +317,7 @@ class _InstrumentConnectionDiagramState
                   child: Center(
                     child: _buildEdgeLabel(
                       context,
-                      'Input Port',
+                      widget.inputPortName ?? 'Input Port',
                       Colors.blueGrey,
                     ),
                   ),
@@ -335,7 +339,7 @@ class _InstrumentConnectionDiagramState
                   top: height * 0.5 - 15,
                   child: _buildEdgeLabel(
                     context,
-                    widget.tsmOutputName ?? 'Output',
+                    widget.outputPortName ?? widget.tsmOutputName ?? 'Output',
                     primaryColor,
                   ),
                 ),
@@ -344,11 +348,19 @@ class _InstrumentConnectionDiagramState
                 Positioned(
                   left: 105,
                   top: height * 0.5 - 15,
-                  child: _buildEdgeLabel(context, 'Input Port', primaryColor),
+                  child: _buildEdgeLabel(
+                    context,
+                    widget.inputPortName ?? 'Input Port',
+                    primaryColor,
+                  ),
                 ),
                 // Cable label in center
                 Center(
-                  child: _buildEdgeLabel(context, 'Output Cable', primaryColor),
+                  child: _buildEdgeLabel(
+                    context,
+                    '${widget.outputPortName ?? "Output"} Cable',
+                    primaryColor,
+                  ),
                 ),
               ],
             ],

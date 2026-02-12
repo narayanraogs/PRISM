@@ -124,7 +124,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   String _selectedConverter = 'UC-S-X-01';
   String _selectedDeviceProfile = 'Standard Profile';
   String _selectedExternalSG = 'SG-KEYSIGHT-01';
-  bool _isInternalLO = true;
 
   // --- Port & Test Definitions ---
   final List<PortConfig> _ports = [
@@ -258,7 +257,74 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         _saName = deviceMapping.saName;
         _sgName = deviceMapping.sgName;
       }
+
+      // 3. Update Port nomenclature and tests based on Up/Down Converter logic
+      _updatePortConfigs();
     });
+  }
+
+  void _updatePortConfigs() {
+    if (_metadata == null) return;
+    final converterDetails = _metadata!.converterDetails[_selectedConverter];
+    if (converterDetails == null) return;
+
+    // Up Converter: Output Frequency > Input Frequency
+    // Down Converter: Output Frequency < Input Frequency
+    bool isUpConverter =
+        converterDetails.outputFrequency > converterDetails.inputFrequency;
+
+    // --- Update Nomenclature ---
+    _ports[0].name = isUpConverter ? "RF Port" : "IF Port";
+    _ports[1].name = isUpConverter ? "RF Monitor" : "IF Monitor";
+    _ports[2].name = "LO Monitor"; // Always LO Monitor
+    _ports[3].name = isUpConverter ? "IF Monitor" : "RF Monitor";
+    _ports[4].name = isUpConverter ? "IF Port" : "RF Port";
+
+    // --- Update Instructions ---
+    for (var port in _ports) {
+      port.instruction =
+          "Connect Spectrum Analyzer to ${port.name.toUpperCase()}.";
+    }
+
+    // --- Update Tests for Main Output Port (Hardware Output, index 0) ---
+    final mainOutputPort = _ports[0];
+    mainOutputPort.tests.clear();
+
+    if (isUpConverter) {
+      mainOutputPort.tests.addAll([
+        TestDefinition("Gain Measurement - Internal LO", isSelected: true),
+        TestDefinition("Gain Measurement - External LO", isSelected: true),
+      ]);
+    } else {
+      mainOutputPort.tests.addAll([
+        TestDefinition(
+          "Gain Measurement - Cable Mode Internal LO",
+          isSelected: true,
+        ),
+        TestDefinition(
+          "Gain Measurement - Radiated Mode Internal LO",
+          isSelected: true,
+        ),
+        TestDefinition(
+          "Gain Measurement - Cable Mode External LO",
+          isSelected: true,
+        ),
+        TestDefinition(
+          "Gain Measurement - Radiated Mode External LO",
+          isSelected: true,
+        ),
+      ]);
+    }
+
+    // Add other common tests to physical output port
+    mainOutputPort.tests.addAll([
+      TestDefinition("Frequency Measurement", isSelected: true),
+      TestDefinition("Harmonics Measurement", isSelected: true),
+      TestDefinition("Spurious - In-Band", isSelected: true),
+      TestDefinition("Spurious - Out of Band", isSelected: true),
+      TestDefinition("LO Leakage", isSelected: false),
+      TestDefinition("Input Leakage", isSelected: false),
+    ]);
   }
 
   void _abortBatch() {
@@ -367,19 +433,19 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                       child: Container(
                         color: const Color(0xFFF8FAFC),
                         padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInstructionBanner(theme),
-                            if (_showConnectionDiagram)
-                              _buildConnectionOverlay(theme),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: _isConfigMode
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInstructionBanner(theme),
+                              if (_showConnectionDiagram)
+                                _buildConnectionOverlay(theme),
+                              const SizedBox(height: 16),
+                              _isConfigMode
                                   ? _buildConfigurationView(theme)
                                   : _buildMeasurementView(theme),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -627,263 +693,227 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Widget _buildConfigurationView(ThemeData theme) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Device Configuration Card
-              Expanded(
-                flex: 3,
-                child: ContentCard(
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.developer_board,
-                            color: theme.colorScheme.primary,
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Device Configuration Card
+            Expanded(
+              flex: 3,
+              child: ContentCard(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.developer_board,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          "DEVICE CONFIGURATION",
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.grey.shade500,
+                            letterSpacing: 1.2,
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "DEVICE CONFIGURATION",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.grey.shade500,
-                              letterSpacing: 1.2,
-                            ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                            "Converter Model",
+                            _selectedConverter,
+                            _converters,
+                            (v) {
+                              setState(() => _selectedConverter = v!);
+                              _updateDBParams();
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown(
-                              "Converter Model",
-                              _selectedConverter,
-                              _converters,
-                              (v) {
-                                setState(() => _selectedConverter = v!);
-                                _updateDBParams();
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildDropdown(
+                            "Device Profile",
+                            _selectedDeviceProfile,
+                            _deviceProfiles,
+                            (v) {
+                              setState(() => _selectedDeviceProfile = v!);
+                              _updateDBParams();
+                            },
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDropdown(
-                              "Device Profile",
-                              _selectedDeviceProfile,
-                              _deviceProfiles,
-                              (v) {
-                                setState(() => _selectedDeviceProfile = v!);
-                                _updateDBParams();
-                              },
-                            ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                            "External SG for LO",
+                            _selectedExternalSG,
+                            _externalSGs,
+                            (v) => setState(() => _selectedExternalSG = v!),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.settings_input_component,
-                                  size: 20,
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.7,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  "Internal LO Selection",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Switch(
-                                  value: _isInternalLO,
-                                  onChanged: (v) =>
-                                      setState(() => _isInternalLO = v),
-                                  activeColor: theme.colorScheme.primary,
-                                ),
-                              ],
-                            ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Spacer(),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTextField(
+                            label: "Nominal Input Power (dBm)",
+                            controller: _inputPowerController,
+                            icon: Icons.speed,
                           ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            child: Opacity(
-                              opacity: _isInternalLO ? 0.5 : 1.0,
-                              child: _buildDropdown(
-                                "External SG for LO",
-                                _selectedExternalSG,
-                                _externalSGs,
-                                (v) => setState(() => _selectedExternalSG = v!),
-                              ),
-                            ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildTextField(
+                            label: "Step Size for Gain (dB)",
+                            controller: _stepSizeController,
+                            icon: Icons.linear_scale,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTextField(
-                              label: "Nominal Input Power (dBm)",
-                              controller: _inputPowerController,
-                              icon: Icons.speed,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildTextField(
-                              label: "Step Size for Gain (dB)",
-                              controller: _stepSizeController,
-                              icon: Icons.linear_scale,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 24),
-              // Database Driven Parameters (Read Only)
-              Expanded(
-                flex: 2,
-                child: ContentCard(
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.storage, color: theme.colorScheme.primary),
-                          const SizedBox(width: 12),
-                          Text(
-                            "DATABASE PARAMETERS",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.grey.shade500,
-                              letterSpacing: 1.2,
-                            ),
+            ),
+            const SizedBox(width: 24),
+            // Database Driven Parameters (Read Only)
+            Expanded(
+              flex: 2,
+              child: ContentCard(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.storage, color: theme.colorScheme.primary),
+                        const SizedBox(width: 12),
+                        Text(
+                          "DATABASE PARAMETERS",
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.grey.shade500,
+                            letterSpacing: 1.2,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoRow(
-                        Icons.analytics_outlined,
-                        "SA Name",
-                        _saName,
-                      ),
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.settings_input_antenna,
-                        "SG Name",
-                        _sgName,
-                      ),
-                      const Divider(height: 24),
-                      _buildInfoRow(Icons.login, "Input Freq", _dbInputFreq),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(Icons.logout, "Output Freq", _dbOutputFreq),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(Icons.vibration, "LO Frequency", _dbLOFreq),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow(Icons.analytics_outlined, "SA Name", _saName),
+                    const Divider(height: 24),
+                    _buildInfoRow(
+                      Icons.settings_input_antenna,
+                      "SG Name",
+                      _sgName,
+                    ),
+                    const Divider(height: 24),
+                    _buildInfoRow(Icons.login, "Input Freq", _dbInputFreq),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(Icons.logout, "Output Freq", _dbOutputFreq),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(Icons.vibration, "LO Frequency", _dbLOFreq),
+                  ],
                 ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        // Loss Table Card
+        ContentCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.grid_on, color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Text(
+                    "CABLE LOSS CALIBRATION (dB)",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Table(
+                columnWidths: const {0: FlexColumnWidth(1.5)},
+                children: [
+                  _buildTableRow([
+                    'Cable',
+                    'At Input Freq',
+                    'At Output Freq',
+                    'At LO Freq',
+                  ], isHeader: true),
+                  _buildEditableLossRow(
+                    'Input Cable',
+                    _lossInputCableIn,
+                    null,
+                    null,
+                  ),
+                  _buildEditableLossRow(
+                    'Output Cable',
+                    _lossOutputCableIn,
+                    _lossOutputCableOut,
+                    _lossOutputCableLO,
+                  ),
+                  _buildEditableLossRow(
+                    'Ext LO Cable',
+                    null,
+                    null,
+                    _lossExtLOCableLO,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Loss Table Card
-          ContentCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.grid_on, color: theme.colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      "CABLE LOSS CALIBRATION (dB)",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.grey.shade500,
-                        letterSpacing: 1.2,
-                      ),
+        ),
+        const SizedBox(height: 24),
+        const SizedBox(height: 24),
+        // Spectrum Settings Card (GTx Style)
+        ContentCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.analytics, color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Text(
+                    "SPECTRUM SETTINGS",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1.2,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Table(
-                  columnWidths: const {0: FlexColumnWidth(1.5)},
-                  children: [
-                    _buildTableRow([
-                      'Cable',
-                      'At Input Freq',
-                      'At Output Freq',
-                      'At LO Freq',
-                    ], isHeader: true),
-                    _buildEditableLossRow(
-                      'Input Cable',
-                      _lossInputCableIn,
-                      null,
-                      null,
-                    ),
-                    _buildEditableLossRow(
-                      'Output Cable',
-                      _lossOutputCableIn,
-                      _lossOutputCableOut,
-                      _lossOutputCableLO,
-                    ),
-                    _buildEditableLossRow(
-                      'Ext LO Cable',
-                      null,
-                      null,
-                      _lossExtLOCableLO,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildSpectrumTabs(theme),
+            ],
           ),
-          const SizedBox(height: 24),
-          const SizedBox(height: 24),
-          // Spectrum Settings Card (GTx Style)
-          ContentCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.analytics, color: theme.colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      "SPECTRUM SETTINGS",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.grey.shade500,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildSpectrumTabs(theme),
-              ],
-            ),
-          ),
-          const SizedBox(height: 48),
-        ],
-      ),
+        ),
+        const SizedBox(height: 48),
+      ],
     );
   }
 
@@ -1090,7 +1120,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Expanded(
+              SizedBox(
+                height: 300,
                 child: ContentCard(
                   child: Column(
                     children: [
@@ -1169,13 +1200,11 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                     ],
                   ),
                 ),
-              Expanded(
-                child: ListView(
-                  children: activePort.tests
-                      .where((t) => t.status != "PENDING")
-                      .map((test) => _buildResultCard(test, theme))
-                      .toList(),
-                ),
+              Column(
+                children: activePort.tests
+                    .where((t) => t.status != "PENDING")
+                    .map((test) => _buildResultCard(test, theme))
+                    .toList(),
               ),
             ],
           ),
@@ -1502,8 +1531,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 _buildHelpItem(
                   theme,
                   'Reference LO',
-                  'You can choose between the internal converter LO or an external Signal Generator. Use the '
-                      'toggle in the configuration panel to select the appropriate source.',
+                  'Select the external Signal Generator to be used for the Local Oscillator (LO) reference.',
                 ),
                 const SizedBox(height: 24),
                 _buildHelpItem(
@@ -1543,7 +1571,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
   Widget _buildConnectionOverlay(ThemeData theme) {
     final activePort = _ports[_selectedPortIndex];
-    final isInputPort = activePort.name == "Input Port";
+    final isPhysicalInput = _selectedPortIndex == 4;
 
     return ContentCard(
       color: theme.colorScheme.primaryContainer.withOpacity(0.4),
@@ -1581,10 +1609,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           AspectRatio(
             aspectRatio: 3 / 1,
             child: InstrumentConnectionDiagram(
-              type: isInputPort
+              type: isPhysicalInput
                   ? DiagramType.converterSimple
                   : DiagramType.converterComplex,
               tsmOutputName: activePort.name,
+              inputPortName: _ports[4].name,
+              outputPortName: _ports[0].name,
             ),
           ),
         ],
@@ -1594,9 +1624,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 }
 
 class PortConfig {
-  final String name;
+  String name;
   final IconData icon;
-  final String instruction;
+  String instruction;
   final List<TestDefinition> tests;
   PortConfig({
     required this.name,

@@ -304,6 +304,14 @@ func (sa *SA) SetReferenceNominal() utils.CommandResponse {
 		ResultType: "Value",
 		Value:      refLevel,
 	}
+	resp.Result["MaxValue"] = utils.CommandResult{
+		ResultType: "Value",
+		Value:      maxValue,
+	}
+	resp.Result["MinValue"] = utils.CommandResult{
+		ResultType: "Value",
+		Value:      minValue,
+	}
 	return resp
 }
 
