@@ -55,6 +55,41 @@ func (q *Queries) clearTSMInternalLoss(ctx context.Context) error {
 	return err
 }
 
+const getAllResultsForConverter = `-- name: getAllResultsForConverter :many
+Select ID, Name, TestType, Date, Time, Results from "UpDownConverter" where "Name" like ?
+Order by "ID" Desc
+`
+
+func (q *Queries) getAllResultsForConverter(ctx context.Context, name string) ([]UpDownConverter, error) {
+	rows, err := q.db.QueryContext(ctx, getAllResultsForConverter, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UpDownConverter
+	for rows.Next() {
+		var i UpDownConverter
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.TestType,
+			&i.Date,
+			&i.Time,
+			&i.Results,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllTSMInternalLoss = `-- name: getAllTSMInternalLoss :many
 Select LossID, InputPort, OutputPort, PathMnemonic, MeasuredLosses, MeasurementCompleted from "TSMInternalLoss"
 Order by "InputPort" ASC
@@ -521,6 +556,31 @@ func (q *Queries) getTVACReferenceCableLosses(ctx context.Context, cablename str
 	return Loss, err
 }
 
+const getUpDownConverterResult = `-- name: getUpDownConverterResult :one
+Select ID, Name, TestType, Date, Time, Results from "UpDownConverter"
+where "TestType" like ? and "Name" like ?
+Order by "ID" Desc Limit 1
+`
+
+type getUpDownConverterResultParams struct {
+	TestType string
+	Name     string
+}
+
+func (q *Queries) getUpDownConverterResult(ctx context.Context, arg getUpDownConverterResultParams) (UpDownConverter, error) {
+	row := q.db.QueryRowContext(ctx, getUpDownConverterResult, arg.TestType, arg.Name)
+	var i UpDownConverter
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TestType,
+		&i.Date,
+		&i.Time,
+		&i.Results,
+	)
+	return i, err
+}
+
 const insertCableLossEntry = `-- name: insertCableLossEntry :exec
 Insert into "CableLosses" ("Date", "Time", "CableName", "CableLength", "Loss")
 Values (?,?,?,?,?)
@@ -668,6 +728,30 @@ func (q *Queries) insertTVACCableLossEntry(ctx context.Context, arg insertTVACCa
 		arg.TestPhase,
 		arg.Reference,
 		arg.Loss,
+	)
+	return err
+}
+
+const insertUpDownConverterResult = `-- name: insertUpDownConverterResult :exec
+Insert into "UpDownConverter" ("Name", "TestType", "Date", "Time", "Results")
+Values (?, ?, ?, ?, ?)
+`
+
+type insertUpDownConverterResultParams struct {
+	Name     string
+	TestType string
+	Date     sql.NullString
+	Time     sql.NullString
+	Results  string
+}
+
+func (q *Queries) insertUpDownConverterResult(ctx context.Context, arg insertUpDownConverterResultParams) error {
+	_, err := q.db.ExecContext(ctx, insertUpDownConverterResult,
+		arg.Name,
+		arg.TestType,
+		arg.Date,
+		arg.Time,
+		arg.Results,
 	)
 	return err
 }

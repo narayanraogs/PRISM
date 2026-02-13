@@ -130,4 +130,16 @@ WHERE "Date" = ? AND "Time" = ?;
 Select DISTINCT "TestPhase" from "Results"
 Order by "TestID" desc;
 
+-- name: insertUpDownConverterResult :exec
+Insert into "UpDownConverter" ("Name", "TestType", "Date", "Time", "Results")
+Values (?, ?, ?, ?, ?);
+
+-- name: getUpDownConverterResult :one
+Select * from "UpDownConverter"
+where "TestType" like ? and "Name" like ?
+Order by "ID" Desc Limit 1;
+
+-- name: getAllResultsForConverter :many
+Select * from "UpDownConverter" where "Name" like ?
+Order by "ID" Desc;
 

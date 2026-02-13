@@ -65,3 +65,12 @@ type TVACCableLoss struct {
 	Reference string
 	Loss      string
 }
+
+type UpDownConverter struct {
+	ID       int64
+	Name     string
+	TestType string
+	Date     sql.NullString
+	Time     sql.NullString
+	Results  string
+}

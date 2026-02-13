@@ -56,3 +56,12 @@ CREATE TABLE "TSMInternalLoss" (
     "MeasuredLosses" TEXT    NOT NULL,
     "MeasurementCompleted"	TEXT NOT NULL
 );
+
+CREATE TABLE "UpDownConverter" (
+	"ID"	INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+	"Name"	TEXT NOT NULL,
+	"TestType"	TEXT NOT NULL,
+	"Date"	TEXT,
+	"Time"	TEXT,
+	"Results"	TEXT NOT NULL
+)

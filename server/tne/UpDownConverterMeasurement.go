@@ -1,10 +1,12 @@
 package tne
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/resultsDB"
 	"strconv"
 	"strings"
 	"time"
@@ -24,7 +26,7 @@ type UpDownConverterMeasurement struct {
 	sgExt              driver.SG
 	currentStatus      [][]string
 	statusMonitor      chan RTStatus
-	measurementMonitor chan []string
+	measurementMonitor chan ConvertorResults
 	powerSpectrum      frequencyProfile
 	frequencySpectrum  frequencyProfile
 	inBandSpectrum     frequencyProfile
@@ -38,9 +40,67 @@ type frequencyProfile struct {
 	vbw  float64
 }
 
-func (udc *UpDownConverterMeasurement) GetStatusMonitor() (chan RTStatus, chan []string) {
+type ConvertorResults struct {
+	GainResults               bool
+	FrequencyResults          bool
+	HarmonicsResults          bool
+	SpuriousResults           bool
+	PowerOrLeakageResults     bool
+	PhaseNoiseResults         bool
+	PowerMatchingResults      bool
+	GainResultValue           GainResults
+	FrequencyResultValue      FrequencyResults
+	HarmonicResultValue       HarmonicResults
+	SpuriousResultValue       SpuriousResults
+	PowerOrLeakageResultValue PowerOrLeakageResults
+	PhaseNoiseResultValue     PhaseNoiseResults
+}
+
+type GainResults struct {
+	SetPower    []float64
+	OutputPower []float64
+	Gain        []float64
+	AverageGain float64
+}
+
+type FrequencyResults struct {
+	ExpectedFrequency float64
+	MeasuredFrequency float64
+	Deviation         float64
+}
+
+type HarmonicResults struct {
+	HarmonicNo        []int
+	HarmonicFrequency []string
+	CarrierLevel      []string
+	NoiseFloor        []float64
+}
+
+type SpuriousResults struct {
+	Frequency        []float64
+	MeasuredPowerdBm []float64
+	SpuriousLeveldBC []float64
+}
+
+type PowerOrLeakageResults struct {
+	Frequency float64
+	Power     float64
+}
+
+type PhaseNoiseResults struct {
+	Frequency  []float64
+	PhaseNoise []float64
+}
+
+type PowerMatchingResults struct {
+	InternalLOPowerMeasured float64
+	ExternalLOPowerMeasured float64
+	ExternalSGPowerSet      float64
+}
+
+func (udc *UpDownConverterMeasurement) GetStatusMonitor() (chan RTStatus, chan ConvertorResults) {
 	udc.statusMonitor = make(chan RTStatus, 20)
-	udc.measurementMonitor = make(chan []string, 20)
+	udc.measurementMonitor = make(chan ConvertorResults, 20)
 	return udc.statusMonitor, udc.measurementMonitor
 }
 
@@ -171,7 +231,26 @@ func (udc *UpDownConverterMeasurement) setStatus(message string) {
 	udc.statusMonitor <- measure
 }
 
+func (udc *UpDownConverterMeasurement) saveResults(result ConvertorResults, testType string) error {
+	var resultString string
+	data, err := json.MarshalIndent(result, "", " ")
+	if err != nil {
+		return err
+	}
+	resultString = string(data)
+
+	return resultsDB.InsertUpDownConverterResult(udc.converterName, testType, resultString)
+}
+
 func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, cable bool) {
+	var result ConvertorResults
+	result.GainResults = true
+	result.GainResultValue = GainResults{
+		SetPower:    make([]float64, 0),
+		OutputPower: make([]float64, 0),
+		Gain:        make([]float64, 0),
+	}
+
 	udc.setStatus("Gain Measurement Started")
 	var maxPower, minPower float64
 	if cable {
@@ -229,9 +308,7 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 		return
 	}
 	time.Sleep(1000 * time.Millisecond)
-	slNo := 1
-	slNoStr := strconv.Itoa(slNo)
-	row := make([]string, 0)
+
 	for powerSet := minPower + udc.inputCableLoss; powerSet <= maxPower+udc.inputCableLoss; powerSet = powerSet + stepSize {
 		if udc.stop {
 			udc.setError("Measurement Aborted by User")
@@ -258,25 +335,48 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 				return
 			}
 		}
-		PowerOutStr := fmt.Sprintf("%.3f", powerOut)
 		Gain := powerOut - referencePower
-		GainStr := fmt.Sprintf("%.3f", Gain)
-
-		row = []string{slNoStr, powerStr, PowerOutStr, GainStr}
-		udc.measurementMonitor <- row
-
-		slNo = slNo + 1
-		udc.currentStatus = append(udc.currentStatus, row)
+		result.GainResultValue.SetPower = append(result.GainResultValue.SetPower, powerSet)
+		result.GainResultValue.OutputPower = append(result.GainResultValue.OutputPower, powerOut)
+		result.GainResultValue.Gain = append(result.GainResultValue.Gain, Gain)
+		result.GainResultValue.AverageGain = mean(result.GainResultValue.Gain)
+		udc.measurementMonitor <- result
 		udc.setStatus("Completed Measurement for " + powerStr)
 	}
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
-	udc.setStatus("Gain Measurement Completed")
+	var err error
+	if cable {
+		err = udc.saveResults(result, "Output Port - Gain Measurement - Internal LO - Cable")
+	} else {
+		err = udc.saveResults(result, "Output Port - Gain Measurement - Internal LO - Radiated")
+	}
+	if err != nil {
+		udc.setError("Unable to Save Results")
+		return
+	}
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Gain Measurement Completed",
+	}
+	udc.statusMonitor <- measure
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
 }
 
+func mean(values []float64) float64 {
+	var sum float64
+	for _, value := range values {
+		sum += value
+	}
+	return sum / float64(len(values))
+}
+
 func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
+	var result ConvertorResults
+	result.FrequencyResults = true
+
 	udc.setStatus("Frequency Measurement Started")
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
@@ -347,19 +447,35 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 		return
 	}
 	freq_deviation := math.Abs(frequency - udc.converter.OutputFrequency)
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(udc.converter.OutputFrequency, 'f', 6, 64), strconv.FormatFloat(frequency, 'f', 6, 64), strconv.FormatFloat(freq_deviation, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.setStatus("Completed Measurement for Frequency")
+
+	result.FrequencyResultValue.ExpectedFrequency = udc.converter.OutputFrequency
+	result.FrequencyResultValue.MeasuredFrequency = frequency
+	result.FrequencyResultValue.Deviation = freq_deviation
+	udc.measurementMonitor <- result
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
-	udc.setStatus("Frequency Measurement Completed")
+	udc.saveResults(result, "Output Port - Frequency")
+
+	var measure = RTStatus{
+		Completed: true,
+		Success:   true,
+		Error:     false,
+		Message:   "Frequency Measurement Completed",
+	}
+	udc.statusMonitor <- measure
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
 }
 
 func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 	udc.setStatus("Harmonics Measurement Started")
+	var result ConvertorResults
+	result.HarmonicsResults = true
+	result.HarmonicResultValue = HarmonicResults{
+		HarmonicNo:        make([]int, 0),
+		HarmonicFrequency: make([]string, 0),
+		CarrierLevel:      make([]string, 0),
+		NoiseFloor:        make([]float64, 0),
+	}
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
 		udc.setError("Unable to communicate with SA")
@@ -413,12 +529,9 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 		udc.setError("Unable to operate SA in maxhold mode")
 		return
 	}
-	udc.sa.WaitForSweeps(5)
 	outputpower := response.Result["MarkerY"].Value
-	HarmonicPower := make([]float64, 0)
 
 	for i := 2; i < 5; i = i + 1 {
-		row := make([]string, 0)
 		harmonics := udc.converter.OutputFrequency * float64(i)
 		response = udc.sa.SetSpectrum(harmonics, udc.frequencySpectrum.span,
 			udc.frequencySpectrum.rbw, udc.frequencySpectrum.vbw)
@@ -431,11 +544,13 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 			udc.setError("carrier present fucntion error")
 			return
 		}
-		if !response.Result["carrier"].Bool {
-			HarmonicPower = append(HarmonicPower, 0.0)
-			row = append(row, strconv.Itoa(i+1), strconv.FormatFloat(harmonics, 'f', 6, 64), "NIL")
+		noiseFloor := response.Result["MinValue"].Value
+		if !response.Result["Carrier"].Bool {
+			result.HarmonicResultValue.HarmonicNo = append(result.HarmonicResultValue.HarmonicNo, i+1)
+			result.HarmonicResultValue.HarmonicFrequency = append(result.HarmonicResultValue.HarmonicFrequency, strconv.FormatFloat(harmonics, 'f', 6, 64))
+			result.HarmonicResultValue.CarrierLevel = append(result.HarmonicResultValue.CarrierLevel, "NIL")
+			result.HarmonicResultValue.NoiseFloor = append(result.HarmonicResultValue.NoiseFloor, noiseFloor)
 		} else {
-
 			response = udc.sa.PeakSearch(true, 1)
 			if !response.Success {
 				udc.setError("Unable to operate SA in maxhold mode")
@@ -447,19 +562,23 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 			lower := harmonics - (harmonics * 2 * 1e-6)
 			higher := harmonics + (harmonics * 2 * 1e-6)
 			if lower < harmfreq && harmfreq < higher {
-				HarmonicPower = append(HarmonicPower, (outputpower - harmpower))
-				row = append(row, strconv.Itoa(i+1), strconv.FormatFloat(harmonics, 'f', 6, 64), strconv.FormatFloat(HarmonicPower[i], 'f', 6, 64))
+				result.HarmonicResultValue.HarmonicNo = append(result.HarmonicResultValue.HarmonicNo, i+1)
+				result.HarmonicResultValue.HarmonicFrequency = append(result.HarmonicResultValue.HarmonicFrequency, strconv.FormatFloat(harmonics, 'f', 6, 64))
+				result.HarmonicResultValue.CarrierLevel = append(result.HarmonicResultValue.CarrierLevel, strconv.FormatFloat(outputpower-harmpower, 'f', 6, 64))
+				result.HarmonicResultValue.NoiseFloor = append(result.HarmonicResultValue.NoiseFloor, noiseFloor)
 			} else {
-				HarmonicPower = append(HarmonicPower, 0.0)
-				row = append(row, strconv.Itoa(i+1), strconv.FormatFloat(harmonics, 'f', 6, 64), "NIL")
+				result.HarmonicResultValue.HarmonicNo = append(result.HarmonicResultValue.HarmonicNo, i+1)
+				result.HarmonicResultValue.HarmonicFrequency = append(result.HarmonicResultValue.HarmonicFrequency, strconv.FormatFloat(harmonics, 'f', 6, 64))
+				result.HarmonicResultValue.CarrierLevel = append(result.HarmonicResultValue.CarrierLevel, "NIL")
+				result.HarmonicResultValue.NoiseFloor = append(result.HarmonicResultValue.NoiseFloor, noiseFloor)
 			}
 		}
-		udc.measurementMonitor <- row
+
+		udc.measurementMonitor <- result
 		udc.setStatus("Harmonics measurement completed for " + fmt.Sprintf("%.2f MHz", harmonics/1e6))
 	}
-	udc.setStatus("Completed Measurement for Harmonics")
 	udc.setStatus("Saving Result")
-	//udc.saveResults()
+	udc.saveResults(result, "Output Port - Harmonics Measurement")
 	udc.setStatus("Harmonics Measurement Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -538,7 +657,7 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	deviation_peaks := make([]float64, 0)
 	response = udc.sa.SetPeakThresholdAndExcursion(noiseFloor+10, 1)
 	if !response.Success {
-		udc.setError("excursion cannot be set")
+		udc.setError("Excursion cannot be set")
 		return
 	}
 	response = udc.sa.SetMaxHold()
@@ -553,6 +672,7 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 		return
 	}
 	prevFreq := response.Result["MarkerX"].Value
+	carrierPower := response.Result["MarkerY"].Value
 	for {
 		response = udc.sa.SetMarkerNextPeak(1)
 		if !response.Success {
