@@ -500,8 +500,15 @@ type UCDCMetadata struct {
 	DeviceProfiles   []string
 	DeviceMapping    map[string]DeviceProfileDetails
 	SignalGenerators []string
+	AvailableTests   []UCDCTestMetadata
 	OK               bool
 	Message          string
+}
+
+type UCDCTestMetadata struct {
+	Code        string
+	DisplayName string
+	Category    string
 }
 
 type UCDCDetails struct {
@@ -543,4 +550,20 @@ type SCPICommandResponse struct {
 	Response string
 	OK       bool
 	Message  string
+}
+
+type UCDCRequest struct {
+	ConverterName     string
+	DeviceProfile     string
+	ExternalSGName    string
+	InputCableLoss    float64
+	InputPower        float64
+	LOCableLoss       float64
+	OutputCableLoss   []float64
+	PowerSpectrum     GTxSpectrum
+	FrequencySpectrum GTxSpectrum
+	InBandSpectrum    GTxSpectrum
+	OutBandSpectrum   GTxSpectrum
+	StepSize          float64
+	TestsSelected     []string
 }

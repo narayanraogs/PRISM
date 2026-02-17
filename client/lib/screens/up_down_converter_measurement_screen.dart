@@ -126,52 +126,13 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   String _selectedExternalSG = 'SG-KEYSIGHT-01';
 
   // --- Port & Test Definitions ---
-  final List<PortConfig> _ports = [
-    PortConfig(
-      name: "Output Port",
-      icon: Icons.output,
-      instruction: "Connect Spectrum Analyzer to OUTPUT PORT.",
-      tests: [
-        TestDefinition("Gain Measurement", isSelected: true),
-        TestDefinition("Frequency Measurement", isSelected: true),
-        TestDefinition("Harmonics Measurement", isSelected: true),
-        TestDefinition("Spurious - In-Band", isSelected: true),
-        TestDefinition("Spurious - Out of Band", isSelected: true),
-        TestDefinition("LO Leakage", isSelected: false),
-        TestDefinition("Input Leakage", isSelected: false),
-      ],
-    ),
-    PortConfig(
-      name: "Output Monitor",
-      icon: Icons.monitor,
-      instruction: "Connect Spectrum Analyzer to OUTPUT MONITOR PORT.",
-      tests: [TestDefinition("Power Measurement", isSelected: true)],
-    ),
-    PortConfig(
-      name: "LO Monitor",
-      icon: Icons.settings_input_antenna,
-      instruction: "Connect Spectrum Analyzer to LO MONITOR PORT.",
-      tests: [
-        TestDefinition("Power Measurement", isSelected: true),
-        TestDefinition("Frequency Measurement", isSelected: true),
-        TestDefinition("Phase Noise Measurement", isSelected: true),
-      ],
-    ),
-    PortConfig(
-      name: "Input Monitor",
-      icon: Icons.input,
-      instruction: "Connect Spectrum Analyzer to INPUT MONITOR PORT.",
-      tests: [TestDefinition("Power Measurement", isSelected: true)],
-    ),
-    PortConfig(
-      name: "Input Port",
-      icon: Icons.login,
-      instruction: "Connect Spectrum Analyzer to INPUT PORT.",
-      tests: [TestDefinition("LO Leakage Measurement", isSelected: true)],
-    ),
-  ];
+  final List<PortConfig> _ports = [];
 
+  bool _isReportMode = false;
   final Map<String, dynamic> _mockResults = {};
+  StreamSubscription? _ucdcSubscription;
+  List<TestDefinition> _currentlyRunningTests = [];
+  int _currentBatchTestIndex = 0;
 
   @override
   void dispose() {
@@ -195,7 +156,44 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     _outBandSpanController.dispose();
     _outBandRBWController.dispose();
     _outBandVBWController.dispose();
+    _ucdcSubscription?.cancel();
     super.dispose();
+  }
+
+
+  void _handleUCDCEvent(dynamic event) {
+    if (event is RTStatus) {
+      _addLog(event.message);
+      if (event.error) {
+        _addLog("ERROR: ${event.message}");
+        setState(() {
+          if (_currentBatchTestIndex < _currentlyRunningTests.length) {
+            _currentlyRunningTests[_currentBatchTestIndex].status = "ERROR";
+          }
+          _isMeasuring = false;
+        });
+        _ucdcSubscription?.cancel();
+      } else if (event.completed) {
+        setState(() {
+          if (_currentBatchTestIndex < _currentlyRunningTests.length) {
+            _currentlyRunningTests[_currentBatchTestIndex].status = "COMPLETE";
+            _currentBatchTestIndex++;
+            _progress = _currentBatchTestIndex / _currentlyRunningTests.length;
+          }
+        });
+      }
+    } else if (event is ConvertorResults) {
+      setState(() {
+        // Use TestName as key for results mapping
+        _mockResults[event.testName] = event;
+
+        // Try to find the test by code (if server sends it) or by name
+        // Server currently sends DisplayName as TestName, which is fine as secondary key
+        if (_currentBatchTestIndex < _currentlyRunningTests.length) {
+          _currentlyRunningTests[_currentBatchTestIndex].status = "MEASURING";
+        }
+      });
+    }
   }
 
   @override
@@ -268,68 +266,81 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     final converterDetails = _metadata!.converterDetails[_selectedConverter];
     if (converterDetails == null) return;
 
-    // Up Converter: Output Frequency > Input Frequency
-    // Down Converter: Output Frequency < Input Frequency
-    bool isUpConverter =
-        converterDetails.outputFrequency > converterDetails.inputFrequency;
+    setState(() {
+      _ports.clear();
 
-    // --- Update Nomenclature ---
-    _ports[0].name = isUpConverter ? "RF Port" : "IF Port";
-    _ports[1].name = isUpConverter ? "RF Monitor" : "IF Monitor";
-    _ports[2].name = "LO Monitor"; // Always LO Monitor
-    _ports[3].name = isUpConverter ? "IF Monitor" : "RF Monitor";
-    _ports[4].name = isUpConverter ? "IF Port" : "RF Port";
+      final categoryStyles = {
+        "Output Port": {
+          "icon": Icons.output,
+          "instruction": "Connect SA to OUTPUT PORT.",
+        },
+        "Input Port": {
+          "icon": Icons.login,
+          "instruction": "Connect SA to INPUT PORT.",
+        },
+        "Output Monitor": {
+          "icon": Icons.monitor,
+          "instruction": "Connect SA to OUTPUT MONITOR PORT.",
+        },
+        "Input Monitor": {
+          "icon": Icons.input,
+          "instruction": "Connect SA to INPUT MONITOR PORT.",
+        },
+        "LO Monitor": {
+          "icon": Icons.settings_input_antenna,
+          "instruction": "Connect SA to LO MONITOR PORT.",
+        },
+      };
 
-    // --- Update Instructions ---
-    for (var port in _ports) {
-      port.instruction =
-          "Connect Spectrum Analyzer to ${port.name.toUpperCase()}.";
-    }
-
-    // --- Update Tests for Main Output Port (Hardware Output, index 0) ---
-    final mainOutputPort = _ports[0];
-    mainOutputPort.tests.clear();
-
-    if (isUpConverter) {
-      mainOutputPort.tests.addAll([
-        TestDefinition("Gain Measurement - Internal LO", isSelected: true),
-        TestDefinition("Gain Measurement - External LO", isSelected: true),
-      ]);
-    } else {
-      mainOutputPort.tests.addAll([
-        TestDefinition(
-          "Gain Measurement - Cable Mode Internal LO",
+      Map<String, List<TestDefinition>> categorizedTests = {};
+      for (var test in _metadata!.availableTests) {
+        if (!categorizedTests.containsKey(test.category)) {
+          categorizedTests[test.category] = [];
+        }
+        categorizedTests[test.category]!.add(TestDefinition(
+          test.displayName,
+          code: test.code,
           isSelected: true,
-        ),
-        TestDefinition(
-          "Gain Measurement - Radiated Mode Internal LO",
-          isSelected: true,
-        ),
-        TestDefinition(
-          "Gain Measurement - Cable Mode External LO",
-          isSelected: true,
-        ),
-        TestDefinition(
-          "Gain Measurement - Radiated Mode External LO",
-          isSelected: true,
-        ),
-      ]);
-    }
+        ));
+      }
 
-    // Add other common tests to physical output port
-    mainOutputPort.tests.addAll([
-      TestDefinition("Frequency Measurement", isSelected: true),
-      TestDefinition("Harmonics Measurement", isSelected: true),
-      TestDefinition("Spurious - In-Band", isSelected: true),
-      TestDefinition("Spurious - Out of Band", isSelected: true),
-      TestDefinition("LO Leakage", isSelected: false),
-      TestDefinition("Input Leakage", isSelected: false),
-    ]);
+      // Order ports predictably
+      final order = [
+        "Output Port",
+        "Output Monitor",
+        "LO Monitor",
+        "Input Monitor",
+        "Input Port"
+      ];
+
+      for (var cat in order) {
+        if (categorizedTests.containsKey(cat)) {
+          final style = categoryStyles[cat] ??
+              {
+                "icon": Icons.help_outline,
+                "instruction": "Connect SA to $cat.",
+              };
+          _ports.add(PortConfig(
+            name: cat,
+            icon: style["icon"] as IconData,
+            instruction: style["instruction"] as String,
+            tests: categorizedTests[cat]!,
+          ));
+        }
+      }
+
+      // Ensure index is valid
+      if (_selectedPortIndex >= _ports.length) {
+        _selectedPortIndex = 0;
+      }
+    });
   }
 
   void _abortBatch() {
     setState(() => _abortRequested = true);
-    _addLog("Abort requested. Stopping after current test...");
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.abortUCDC();
+    _addLog("Abort request sent to server.");
   }
 
   Future<void> _runBatch() async {
@@ -343,40 +354,63 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       _abortRequested = false;
       _progress = 0.0;
       _logs.clear();
+      _currentlyRunningTests = selectedTests;
+      _currentBatchTestIndex = 0;
+      for (var t in selectedTests) t.status = "PENDING";
     });
 
     _addLog("Starting batch measurement for ${activePort.name}...");
 
-    for (int i = 0; i < selectedTests.length; i++) {
-      if (_abortRequested) {
-        _addLog("Batch aborted by user.");
-        break;
-      }
-      final test = selectedTests[i];
-      setState(() => test.status = "MEASURING");
-      _addLog("Executing: ${test.name}");
+    final serverService = Provider.of<ServerService>(context, listen: false);
 
-      await Future.delayed(const Duration(seconds: 2));
+    final request = UCDCRequest(
+      converterName: _selectedConverter,
+      deviceProfile: _selectedDeviceProfile,
+      externalSGName: _selectedExternalSG,
+      inputCableLoss: double.tryParse(_lossInputCableIn.text) ?? 0.0,
+      inputPower: double.tryParse(_inputPowerController.text) ?? 0.0,
+      loCableLoss: double.tryParse(_lossExtLOCableLO.text) ?? 0.0,
+      outputCableLoss: [
+        double.tryParse(_lossOutputCableIn.text) ?? 0.0,
+        double.tryParse(_lossOutputCableOut.text) ?? 0.0,
+        double.tryParse(_lossOutputCableLO.text) ?? 0.0,
+      ],
+      powerSpectrum: GTxSpectrum(
+        span: double.tryParse(_powerSpanController.text) ?? 0.0,
+        rbw: double.tryParse(_powerRBWController.text) ?? 0.0,
+        vbw: double.tryParse(_powerVBWController.text) ?? 0.0,
+      ),
+      frequencySpectrum: GTxSpectrum(
+        span: double.tryParse(_freqSpanController.text) ?? 0.0,
+        rbw: double.tryParse(_freqRBWController.text) ?? 0.0,
+        vbw: double.tryParse(_freqVBWController.text) ?? 0.0,
+      ),
+      inBandSpectrum: GTxSpectrum(
+        span: double.tryParse(_inBandSpanController.text) ?? 0.0,
+        rbw: double.tryParse(_inBandRBWController.text) ?? 0.0,
+        vbw: double.tryParse(_inBandVBWController.text) ?? 0.0,
+      ),
+      outBandSpectrum: GTxSpectrum(
+        span: double.tryParse(_outBandSpanController.text) ?? 0.0,
+        rbw: double.tryParse(_outBandRBWController.text) ?? 0.0,
+        vbw: double.tryParse(_outBandVBWController.text) ?? 0.0,
+      ),
+      stepSize: double.tryParse(_stepSizeController.text) ?? 0.0,
+      testsSelected: selectedTests.map((t) => t.code).toList(),
+    );
 
-      if (test.name == "Gain Measurement") {
-        _mockResults[test.name] = _generateMockGainData();
-      } else if (test.name.contains("Frequency")) {
-        _mockResults[test.name] = "7250.000142 MHz";
-      } else if (test.name.contains("Power")) {
-        _mockResults[test.name] = "-12.45 dBm";
-      } else {
-        _mockResults[test.name] = "NIL / Passed";
-      }
-
-      setState(() {
-        test.status = "COMPLETE";
-        _progress = (i + 1) / selectedTests.length;
-      });
-      _addLog("Completed: ${test.name}");
-    }
-
-    setState(() => _isMeasuring = false);
-    _addLog("Batch completed for ${activePort.name}.");
+    _ucdcSubscription?.cancel();
+    _ucdcSubscription = serverService.connectUCDC(request).listen(
+      _handleUCDCEvent,
+      onError: (err) {
+        _addLog("Connection Error: $err");
+        setState(() => _isMeasuring = false);
+      },
+      onDone: () {
+        _addLog("Measurement session ended.");
+        setState(() => _isMeasuring = false);
+      },
+    );
   }
 
   List<Map<String, String>> _generateMockGainData() {
@@ -406,9 +440,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTopStat("CONVERTER", _selectedConverter),
+                _buildTopStat(_isReportMode ? "VIEWING" : "CONVERTER", _isReportMode ? "REPORTS" : _selectedConverter),
                 const SizedBox(width: 24),
-                _buildTopStat("PORT", _ports[_selectedPortIndex].name),
+                _buildTopStat(_isReportMode ? "SESSION" : "PORT", _isReportMode ? "Latest Completion" : _ports[_selectedPortIndex].name),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   onPressed: () => setState(
@@ -441,9 +475,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                               if (_showConnectionDiagram)
                                 _buildConnectionOverlay(theme),
                               const SizedBox(height: 16),
-                              _isConfigMode
-                                  ? _buildConfigurationView(theme)
-                                  : _buildMeasurementView(theme),
+                              if (_isReportMode)
+                                _buildReportView(theme)
+                              else if (_isConfigMode)
+                                _buildConfigurationView(theme)
+                              else
+                                _buildMeasurementView(theme),
                             ],
                           ),
                         ),
@@ -589,17 +626,63 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
               },
             ),
           ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: InkWell(
+              onTap: _isMeasuring ? null : () => setState(() => _isReportMode = !_isReportMode),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _isReportMode
+                      ? theme.colorScheme.primary.withOpacity(0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _isReportMode
+                        ? theme.colorScheme.primary.withOpacity(0.3)
+                        : Colors.transparent,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.picture_as_pdf,
+                      size: 20,
+                      color: _isReportMode
+                          ? theme.colorScheme.primary
+                          : Colors.grey.shade400,
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      "REPORTS",
+                      style: GoogleFonts.inter(
+                        fontWeight:
+                            _isReportMode ? FontWeight.bold : FontWeight.w500,
+                        color: _isReportMode
+                            ? theme.colorScheme.primary
+                            : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: ElevatedButton.icon(
-              onPressed: _isMeasuring
+              onPressed: (_isMeasuring || _isReportMode)
                   ? null
                   : () => setState(() => _isConfigMode = !_isConfigMode),
               icon: Icon(_isConfigMode ? Icons.analytics : Icons.settings),
               label: Text(
                 _isMeasuring
                     ? "BATCH IN PROGRESS"
-                    : (_isConfigMode ? "GO TO MEASUREMENT" : "GO TO SETUP"),
+                    : _isReportMode
+                        ? "EXIT REPORT MODE"
+                        : (_isConfigMode ? "GO TO MEASUREMENT" : "GO TO SETUP"),
               ),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
@@ -608,6 +691,241 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReportView(ThemeData theme) {
+    // Mock Data for UI demonstration
+    final mockSessions = [
+      {
+        "id": "1001",
+        "date": "2026-02-15",
+        "time": "14:30:22",
+        "operator": "Narayan Rao"
+      },
+      {
+        "id": "1002",
+        "date": "2026-02-14",
+        "time": "09:12:45",
+        "operator": "Admin"
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "REPORT GENERATOR",
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  "Select historical measurements to include in the final PDF report.",
+                  style: GoogleFonts.inter(
+                      color: Colors.grey.shade600, fontSize: 13),
+                ),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                _addLog("Generating PDF Report...");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("PDF Generation Started...")),
+                );
+              },
+              icon: const Icon(Icons.download),
+              label: const Text("DOWNLOAD ALL SELECTED"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Column: Sessions
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "COMPLETED SESSIONS",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...mockSessions.map((s) => _buildSessionCard(s, theme)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 32),
+            // Right Column: Details & Selection
+            Expanded(
+              flex: 3,
+              child: ContentCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.checklist, color: Colors.blue),
+                        const SizedBox(width: 12),
+                        Text(
+                          "SELECT TESTS TO EXPORT",
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 32),
+                    _buildReportCheckboxItem(
+                        "Output Port - Gain Measurement", true),
+                    _buildReportCheckboxItem(
+                        "Output Port - Frequency Measurement", true),
+                    _buildReportCheckboxItem(
+                        "Output Port - Harmonics Measurement", false),
+                    _buildReportCheckboxItem("LO Monitor - Phase Noise", true),
+                    _buildReportCheckboxItem("Input Monitor - Power", false),
+                    const SizedBox(height: 32),
+                    Text(
+                      "REPORT METADATA",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: "OPERATOR NAME",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: "REMARKS / OBSERVATIONS",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        prefixIcon: const Icon(Icons.comment_outlined),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionCard(Map<String, String> session, ThemeData theme) {
+    bool isSelected = session["id"] == "1001"; // Mock active selection
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary.withOpacity(0.3)
+              : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
+        ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  : Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_month,
+              size: 20,
+              color: isSelected ? theme.colorScheme.primary : Colors.grey,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Session #${session["id"]}",
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Text(
+                  "${session["date"]} • ${session["time"]}",
+                  style: GoogleFonts.inter(
+                      color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (isSelected)
+            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportCheckboxItem(String title, bool initialValue) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: CheckboxListTile(
+        value: initialValue,
+        onChanged: (val) {},
+        title: Text(title,
+            style:
+                GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+        controlAffinity: ListTileControlAffinity.leading,
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -1268,12 +1586,153 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           const Divider(color: Colors.white10, height: 1),
           Padding(
             padding: const EdgeInsets.all(24),
-            child: test.name == "Gain Measurement" && result is List
-                ? _buildGainResultTable(result as List<Map<String, String>>)
-                : _buildTextResult(result, test.status),
+            child: _buildDynamicResult(result, test),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDynamicResult(dynamic result, TestDefinition test) {
+    if (test.status == "MEASURING" && result == null) {
+      return Text(
+        "Measuring...",
+        style: GoogleFonts.robotoMono(fontSize: 18, color: Colors.blue.shade300),
+      );
+    }
+
+    if (result is! ConvertorResults) {
+      return Text(
+        result?.toString() ?? "Awaiting Data...",
+        style: GoogleFonts.robotoMono(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue.shade300,
+        ),
+      );
+    }
+
+    final res = result;
+    if (res.gainResults && res.gainResultValue != null) {
+      return _buildGainResultTable(res.gainResultValue!);
+    }
+    if (res.frequencyResults && res.frequencyResultValue != null) {
+      return _buildFrequencyResult(res.frequencyResultValue!);
+    }
+    if (res.harmonicsResults && res.harmonicResultValue != null) {
+      return _buildHarmonicResult(res.harmonicResultValue!);
+    }
+    if (res.spuriousResults && res.spuriousResultValue != null) {
+      return _buildSpuriousResult(res.spuriousResultValue!);
+    }
+    if (res.powerOrLeakageResults && res.powerOrLeakageResultValue != null) {
+      return _buildPowerOrLeakageResult(res.powerOrLeakageResultValue!);
+    }
+    if (res.phaseNoiseResults && res.phaseNoiseResultValue != null) {
+      return _buildPhaseNoiseResult(res.phaseNoiseResultValue!);
+    }
+
+    return Text(
+      "Result received: ${res.testName}",
+      style: GoogleFonts.robotoMono(fontSize: 16, color: Colors.blue.shade300),
+    );
+  }
+
+  Widget _buildFrequencyResult(FrequencyResults res) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _resultRow("Expected Freq", "${(res.expectedFrequency / 1e6).toStringAsFixed(6)} MHz"),
+        _resultRow("Measured Freq", "${(res.measuredFrequency / 1e6).toStringAsFixed(6)} MHz"),
+        _resultRow("Deviation", "${(res.deviation / 1e3).toStringAsFixed(3)} kHz", isError: res.deviation > 1000),
+      ],
+    );
+  }
+
+  Widget _buildPowerOrLeakageResult(PowerOrLeakageResults res) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _resultRow("Frequency", "${(res.frequency / 1e6).toStringAsFixed(2)} MHz"),
+        _resultRow("Measured Power", "${res.power.toStringAsFixed(2)} dBm"),
+      ],
+    );
+  }
+
+  Widget _resultRow(String label, String value, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+          Text(
+            value,
+            style: GoogleFonts.robotoMono(
+              color: isError ? Colors.red.shade300 : Colors.blue.shade300,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHarmonicResult(HarmonicResults res) {
+    return Table(
+      children: [
+        TableRow(
+          children: [
+            _tableHeader("Harmonic"),
+            _tableHeader("Frequency"),
+            _tableHeader("Level (dBc)"),
+          ],
+        ),
+        for (int i = 0; i < res.harmonicNo.length; i++)
+          TableRow(
+            children: [
+              _tableCell("${res.harmonicNo[i]}"),
+              _tableCell("${(double.parse(res.harmonicFrequency[i]) / 1e6).toStringAsFixed(2)} MHz"),
+              _tableCell(res.carrierLevel[i]),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSpuriousResult(SpuriousResults res) {
+    return Table(
+      children: [
+        TableRow(
+          children: [
+            _tableHeader("Frequency"),
+            _tableHeader("Level (dBm)"),
+            _tableHeader("dBC"),
+          ],
+        ),
+        for (int i = 0; i < res.frequency.length; i++)
+          TableRow(
+            children: [
+              _tableCell(
+                res.frequency[i] == "NIL"
+                    ? "NIL"
+                    : "${(double.parse(res.frequency[i]) / 1e6).toStringAsFixed(2)} MHz",
+              ),
+              _tableCell(res.measuredPowerdBm[i]),
+              _tableCell(res.spuriousLeveldBC[i]),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPhaseNoiseResult(PhaseNoiseResults res) {
+    return Column(
+      children: [
+        for (int i = 0; i < res.frequency.length; i++)
+          _resultRow("Offset ${res.frequency[i]}", "${res.phaseNoise[i]} dBc/Hz"),
+      ],
     );
   }
 
@@ -1311,7 +1770,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _buildGainResultTable(List<Map<String, String>> data) {
+  Widget _buildGainResultTable(GainResults res) {
     return Table(
       children: [
         TableRow(
@@ -1321,19 +1780,18 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             _tableHeader("Gain (dB)"),
           ],
         ),
-        ...data.map(
-          (row) => TableRow(
+        for (int i = 0; i < res.setPower.length; i++)
+          TableRow(
             children: [
-              _tableCell(row["input"]!),
-              _tableCell(row["output"]!),
+              _tableCell(res.setPower[i].toStringAsFixed(2)),
+              _tableCell(res.outputPower[i].toStringAsFixed(2)),
               _tableCell(
-                row["gain"]!,
+                res.gain[i].toStringAsFixed(2),
                 isBold: true,
                 color: Colors.blue.shade300,
               ),
             ],
           ),
-        ),
       ],
     );
   }
@@ -1638,7 +2096,8 @@ class PortConfig {
 
 class TestDefinition {
   final String name;
+  final String code;
   bool isSelected;
   String status;
-  TestDefinition(this.name, {this.isSelected = false, this.status = "PENDING"});
+  TestDefinition(this.name, {required this.code, this.isSelected = false, this.status = "PENDING"});
 }

@@ -12,6 +12,24 @@ import (
 	"time"
 )
 
+const (
+	UCDCGainInternalCable    = "UCDC_GAIN_INT_CABLE"
+	UCDCGainInternalRadiated = "UCDC_GAIN_INT_RAD"
+	UCDCFreqMeas             = "UCDC_FREQ_MEAS"
+	UCDCHarmonicMeas         = "UCDC_HARM_MEAS"
+	UCDCSpuriousInBand       = "UCDC_SPUR_IN_BAND"
+	UCDCSpuriousOutBand      = "UCDC_SPUR_OUT_BAND"
+	UCDCLOLeakage            = "UCDC_LO_LEAKAGE"
+	UCDCInputLeakage         = "UCDC_INPUT_LEAKAGE"
+	UCDCGainExternalCable    = "UCDC_GAIN_EXT_CABLE"
+	UCDCGainExternalRadiated = "UCDC_GAIN_EXT_RAD"
+	UCDCOutputMonPower       = "UCDC_OUT_MON_POWER"
+	UCDCInputMonPower        = "UCDC_IN_MON_POWER"
+	UCDCLOMonPower           = "UCDC_LO_MON_POWER"
+	UCDCLOMonPhaseNoise      = "UCDC_LO_MON_PN"
+	UCDCExtLOPowerMatch      = "UCDC_EXT_LO_MATCH"
+)
+
 type UpDownConverterMeasurement struct {
 	deviceProfile      string
 	externalSGName     string
@@ -41,6 +59,7 @@ type frequencyProfile struct {
 }
 
 type ConvertorResults struct {
+	TestName                  string
 	GainResults               bool
 	FrequencyResults          bool
 	HarmonicsResults          bool
@@ -54,6 +73,7 @@ type ConvertorResults struct {
 	SpuriousResultValue       SpuriousResults
 	PowerOrLeakageResultValue PowerOrLeakageResults
 	PhaseNoiseResultValue     PhaseNoiseResults
+	PowerMatchingResultValue  PowerMatchingResults
 }
 
 type GainResults struct {
@@ -77,9 +97,9 @@ type HarmonicResults struct {
 }
 
 type SpuriousResults struct {
-	Frequency        []float64
-	MeasuredPowerdBm []float64
-	SpuriousLeveldBC []float64
+	Frequency        []string
+	MeasuredPowerdBm []string
+	SpuriousLeveldBC []string
 }
 
 type PowerOrLeakageResults struct {
@@ -251,6 +271,12 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 		Gain:        make([]float64, 0),
 	}
 
+	if cable {
+		result.TestName = "Output Port - Gain Measurement - Internal LO - Cable"
+	} else {
+		result.TestName = "Output Port - Gain Measurement - Internal LO - Radiated"
+	}
+
 	udc.setStatus("Gain Measurement Started")
 	var maxPower, minPower float64
 	if cable {
@@ -376,6 +402,7 @@ func mean(values []float64) float64 {
 func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	var result ConvertorResults
 	result.FrequencyResults = true
+	result.TestName = "Output Port - Frequency Measurement"
 
 	udc.setStatus("Frequency Measurement Started")
 	response := udc.sa.SetAlignmentOff()
@@ -453,7 +480,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	result.FrequencyResultValue.Deviation = freq_deviation
 	udc.measurementMonitor <- result
 	udc.setStatus("Saving Results")
-	udc.saveResults(result, "Output Port - Frequency")
+	udc.saveResults(result, "Output Port - Frequency Measurement")
 
 	var measure = RTStatus{
 		Completed: true,
@@ -469,6 +496,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 	udc.setStatus("Harmonics Measurement Started")
 	var result ConvertorResults
+	result.TestName = "Output Port - Harmonics Measurement"
 	result.HarmonicsResults = true
 	result.HarmonicResultValue = HarmonicResults{
 		HarmonicNo:        make([]int, 0),
@@ -586,7 +614,18 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 
 func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	udc.setStatus("Spurious Measurement Started")
-
+	var result ConvertorResults
+	if inBand {
+		result.TestName = "Output Port - Spurious Measurement - In Band"
+	} else {
+		result.TestName = "Output Port - Spurious Measurement - Out of Band"
+	}
+	result.SpuriousResults = true
+	result.SpuriousResultValue = SpuriousResults{
+		Frequency:        make([]string, 0),
+		MeasuredPowerdBm: make([]string, 0),
+		SpuriousLeveldBC: make([]string, 0),
+	}
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
 		udc.setError("Unable to communicate with SA")
@@ -672,7 +711,6 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 		return
 	}
 	prevFreq := response.Result["MarkerX"].Value
-	carrierPower := response.Result["MarkerY"].Value
 	for {
 		response = udc.sa.SetMarkerNextPeak(1)
 		if !response.Success {
@@ -697,30 +735,41 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 			break
 		}
 	}
-	row := make([]string, 0)
 	for i := 0; i < len(power_peaks); i = i + 1 {
-		row = append(row, strconv.Itoa(i+1), strconv.FormatFloat(freq_peaks[i], 'f', 6, 64), strconv.FormatFloat(power_peaks[i], 'f', 6, 64), strconv.FormatFloat(deviation_peaks[i], 'f', 6, 64))
-		udc.currentStatus = append(udc.currentStatus, row)
-		udc.measurementMonitor <- row
+		result.SpuriousResultValue.Frequency = append(result.SpuriousResultValue.Frequency, strconv.FormatFloat(freq_peaks[i], 'f', 6, 64))
+		result.SpuriousResultValue.MeasuredPowerdBm = append(result.SpuriousResultValue.MeasuredPowerdBm, strconv.FormatFloat(power_peaks[i], 'f', 6, 64))
+		result.SpuriousResultValue.SpuriousLeveldBC = append(result.SpuriousResultValue.SpuriousLeveldBC, strconv.FormatFloat(deviation_peaks[i], 'f', 6, 64))
+		udc.measurementMonitor <- result
 	}
 
 	if len(power_peaks) == 0 {
-		row = append(row, "NIL", "NIL", "NIL", "NIL")
-		udc.currentStatus = append(udc.currentStatus, row)
-		udc.measurementMonitor <- row
+		result.SpuriousResultValue.Frequency = append(result.SpuriousResultValue.Frequency, "NIL")
+		result.SpuriousResultValue.MeasuredPowerdBm = append(result.SpuriousResultValue.MeasuredPowerdBm, "NIL")
+		result.SpuriousResultValue.SpuriousLeveldBC = append(result.SpuriousResultValue.SpuriousLeveldBC, "NIL")
+		udc.measurementMonitor <- result
 	}
 	udc.setStatus("Completed Measurement for Spurious")
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	if inBand {
+		udc.saveResults(result, "Output Port - Spurious Measurement - In Band")
+	} else {
+		udc.saveResults(result, "Output Port - Spurious Measurement - Out of Band")
+	}
 	udc.setStatus("Spurious Measurement Completed")
 
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
-
 }
 
-func (udc *UpDownConverterMeasurement) LoLeakageMeasurement() {
+func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 	udc.setStatus("LO Leakage Measurement Started")
+	var result ConvertorResults
+	result.TestName = "Output Port - LO Leakage Measurement"
+	result.PowerOrLeakageResults = true
+	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
+		Frequency: 0.0,
+		Power:     0.0,
+	}
 
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
@@ -759,14 +808,13 @@ func (udc *UpDownConverterMeasurement) LoLeakageMeasurement() {
 	time.Sleep(1000 * time.Millisecond)
 
 	Loleakage := response.Result["MaxValue"].Value + udc.outputCableLoss[2]
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(Loleakage, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.measurementMonitor <- row
+	result.PowerOrLeakageResultValue.Frequency = math.Abs(udc.converter.InputFrequency - udc.converter.OutputFrequency)
+	result.PowerOrLeakageResultValue.Power = Loleakage
+	udc.measurementMonitor <- result
 
 	udc.setStatus("Compelted Measurement for LO Leakage")
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	udc.saveResults(result, "Output Port - LO Leakage Measurement")
 	udc.setStatus("LO Leakage Measurement Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -774,6 +822,13 @@ func (udc *UpDownConverterMeasurement) LoLeakageMeasurement() {
 
 func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 	udc.setStatus("Input Leakage Measurement Started")
+	var result ConvertorResults
+	result.TestName = "Output Port - Input Leakage Measurement"
+	result.PowerOrLeakageResults = true
+	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
+		Frequency: 0.0,
+		Power:     0.0,
+	}
 
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
@@ -827,13 +882,12 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 		return
 	}
 	inputLeakage := response.Result["MaxValue"].Value + udc.outputCableLoss[1]
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(inputLeakage, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.measurementMonitor <- row
+	result.PowerOrLeakageResultValue.Frequency = udc.converter.InputFrequency
+	result.PowerOrLeakageResultValue.Power = inputLeakage
+	udc.measurementMonitor <- result
 	udc.setStatus("Completed Measurement for InputLeakage")
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	udc.saveResults(result, "Output Port - Input Leakage Measurement")
 	udc.setStatus("InputLeakage Measurement Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -842,12 +896,22 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float64, cable bool) {
 	udc.setStatus("Convertor Gain Measurement with External LO Started")
 	var maxPower, minPower float64
+	var result ConvertorResults
+	result.GainResults = true
+	result.GainResultValue = GainResults{
+		SetPower:    make([]float64, 0),
+		OutputPower: make([]float64, 0),
+		Gain:        make([]float64, 0),
+		AverageGain: 0.0,
+	}
 	if cable {
 		maxPower = udc.converter.MaxPowerCable
 		minPower = udc.converter.MinPowerCable
+		result.TestName = "Output Port - Gain Measurement - External LO - Cable"
 	} else {
 		maxPower = udc.converter.MaxPowerRadiated.Float64
 		minPower = udc.converter.MinPowerRadiated.Float64
+		result.TestName = "Output Port - Gain Measurement - External LO - Radiated"
 	}
 
 	response := udc.sa.SetAlignmentOff()
@@ -865,9 +929,8 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		udc.setError("Unable to communicate with SG")
 		return
 	}
-	//Lo Power to be taken from Database
-	loPower, ok := 0.0, true
-	if !ok {
+	loPower, err := udc.getExtLOPower()
+	if err != nil {
 		udc.setError("Ext LO Power Matching to be done before Gain Measurement with Ext LO")
 		return
 	}
@@ -924,9 +987,7 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		return
 	}
 	time.Sleep(1000 * time.Millisecond)
-	slNo := 1
 	for powerSet := minPower + udc.inputCableLoss; powerSet <= maxPower+udc.inputCableLoss; powerSet = powerSet + stepSize {
-		row := make([]string, 0)
 		if udc.stop {
 			udc.setError("Measurement Aborted by User")
 			return
@@ -953,17 +1014,20 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 				return
 			}
 		}
-		PowerOutStr := fmt.Sprintf("%.3f", powerOut)
-		slNoStr := strconv.Itoa(slNo)
-		slNo = slNo + 1
 		Gain := powerOut - referencePower
-		GainStr := fmt.Sprintf("%.3f", Gain)
-		row = append(row, slNoStr, powerStr, PowerOutStr, GainStr)
-		udc.currentStatus = append(udc.currentStatus, row)
+		result.GainResultValue.SetPower = append(result.GainResultValue.SetPower, powerSet)
+		result.GainResultValue.OutputPower = append(result.GainResultValue.OutputPower, powerOut)
+		result.GainResultValue.Gain = append(result.GainResultValue.Gain, Gain)
+		result.GainResultValue.AverageGain = mean(result.GainResultValue.Gain)
+		udc.measurementMonitor <- result
 		udc.setStatus("Completed Measurement for " + powerStr)
 	}
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	if cable {
+		udc.saveResults(result, "Output Port - Gain Measurement - External LO - Cable")
+	} else {
+		udc.saveResults(result, "Output Port - Gain Measurement - External LO - Radiated")
+	}
 	udc.setStatus("Gain Measurement with Ext LO Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -975,7 +1039,17 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(output bool) {
 	} else {
 		udc.setStatus("Input Monitor Power Measurement Started")
 	}
-
+	var result ConvertorResults
+	result.PowerMatchingResults = true
+	if output {
+		result.TestName = "Output Monitor Port - Power Measurement"
+	} else {
+		result.TestName = "Input Monitor Port - Power Measurement"
+	}
+	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
+		Frequency: 0.0,
+		Power:     0.0,
+	}
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
 		udc.setError("Unable to communicate with SA")
@@ -1038,16 +1112,20 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(output bool) {
 	}
 	udc.sa.WaitForSweeps(5)
 	outputLeakage := response.Result["MarkerY"].Value + udc.outputCableLoss[0]
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(outputLeakage, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.measurementMonitor <- row
-	udc.setStatus("Completed Measurement for Output Monitor Power")
-	udc.setStatus("Saving Results")
-	//udc.saveResults()
 	if output {
+		result.PowerOrLeakageResultValue.Frequency = udc.converter.OutputFrequency
+	} else {
+		result.PowerOrLeakageResultValue.Frequency = udc.converter.InputFrequency
+	}
+	result.PowerOrLeakageResultValue.Power = outputLeakage
+	udc.measurementMonitor <- result
+	udc.setStatus("Completed Measurement for Monitor Power")
+	udc.setStatus("Saving Results")
+	if output {
+		udc.saveResults(result, "Output Monitor Port - Power Measurement")
 		udc.setStatus("Output Monitor Power Measurement Completed")
 	} else {
+		udc.saveResults(result, "Input Monitor Port - Power Measurement")
 		udc.setStatus("Input Monitor Power Measurement Completed")
 	}
 	close(udc.statusMonitor)
@@ -1056,6 +1134,19 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(output bool) {
 
 func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 	udc.setStatus("LO MON Port Frequency & Power Measurement Started")
+	var result ConvertorResults
+	result.TestName = "LO MON Port Frequency & Power Measurement"
+	result.PowerOrLeakageResults = true
+	result.FrequencyResults = true
+	result.FrequencyResultValue = FrequencyResults{
+		ExpectedFrequency: 0.0,
+		MeasuredFrequency: 0.0,
+		Deviation:         0.0,
+	}
+	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
+		Frequency: 0.0,
+		Power:     0.0,
+	}
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
 		udc.setError("Unable to communicate with SA")
@@ -1104,13 +1195,15 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 		return
 	}
 	freqDeviation := math.Abs(frequency - math.Abs(udc.converter.InputFrequency-udc.converter.OutputFrequency))
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(math.Abs(udc.converter.InputFrequency-udc.converter.OutputFrequency), 'f', 6, 64), strconv.FormatFloat(frequency, 'f', 6, 64), strconv.FormatFloat(freqDeviation, 'f', 6, 64), strconv.FormatFloat(LOMonPower, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.measurementMonitor <- row
+	result.FrequencyResultValue.ExpectedFrequency = math.Abs(udc.converter.InputFrequency - udc.converter.OutputFrequency)
+	result.FrequencyResultValue.MeasuredFrequency = frequency
+	result.FrequencyResultValue.Deviation = freqDeviation
+	result.PowerOrLeakageResultValue.Frequency = frequency
+	result.PowerOrLeakageResultValue.Power = LOMonPower
+	udc.measurementMonitor <- result
 	udc.setStatus("Completed Measurement for LO Mon Power and Frequency")
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	udc.saveResults(result, "LO MON Port - Frequency & Power Measurement")
 	udc.setStatus("LO Mon Power & Frequency Measurement Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -1118,6 +1211,13 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 
 func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	udc.setStatus("LO Mon Port Phase Noise Measurement Started")
+	var result ConvertorResults
+	result.TestName = "LO Mon Port Phase Noise Measurement"
+	result.PhaseNoiseResults = true
+	result.PhaseNoiseResultValue = PhaseNoiseResults{
+		Frequency:  make([]float64, 0),
+		PhaseNoise: make([]float64, 0),
+	}
 
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
@@ -1157,7 +1257,6 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 
 	j := 0
 	for i := 1000; i < 1000000; i = i * 10 {
-		row := make([]string, 0)
 		response = udc.sa.SetMarkerValuePhaseNoise(float64(i), 1)
 		if !response.Success {
 			udc.setError("Marker cannot be set in phase noise mode")
@@ -1177,15 +1276,15 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 			}
 		}
 		phaseNoise = append(phaseNoise, phase)
-		row = append(row, strconv.Itoa(j+1), strconv.FormatFloat(phaseNoise[j], 'f', 6, 64), strconv.Itoa(i))
-		udc.currentStatus = append(udc.currentStatus, row)
-		udc.measurementMonitor <- row
+		result.PhaseNoiseResultValue.Frequency = append(result.PhaseNoiseResultValue.Frequency, float64(i))
+		result.PhaseNoiseResultValue.PhaseNoise = append(result.PhaseNoiseResultValue.PhaseNoise, phase)
+		udc.measurementMonitor <- result
 		j = j + 1
 	}
 	time.Sleep(1000 * time.Millisecond)
 	udc.setStatus("Completed Measurement for LO Mon Phase Noise")
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	udc.saveResults(result, "LO MON Port - Phase Noise Measurement")
 	udc.setStatus("LO Mon Phase Noise Measurement Completed")
 	close(udc.statusMonitor)
 	close(udc.measurementMonitor)
@@ -1193,6 +1292,14 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 
 func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	udc.setStatus("External LO Power Matching started")
+	var result ConvertorResults
+	result.TestName = "Output Port - Ext LO Power Matching"
+	result.PowerMatchingResults = true
+	result.PowerMatchingResultValue = PowerMatchingResults{
+		InternalLOPowerMeasured: 0.0,
+		ExternalLOPowerMeasured: 0.0,
+		ExternalSGPowerSet:      0.0,
+	}
 	response := udc.sa.SetAlignmentOff()
 	if !response.Success {
 		udc.setError("Unable to communicate with SA")
@@ -1203,9 +1310,8 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 		udc.setError("Unable to communicate with SG")
 		return
 	}
-	//todo: LO Power from Database
-	loPower, ok := 0.0, true
-	if !ok {
+	loPower, err := udc.getLOPower()
+	if err != nil {
 		udc.setError("LO Power Measurement has to be completed before Ext LO Power Matching")
 		return
 	}
@@ -1250,8 +1356,10 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	}
 	ExtLoPower := response.Result["MarkerY"].Value
 	powerDev := loPower - ExtLoPower - udc.loCableLoss
+	powerSet := 0.0
 	for math.Abs(powerDev) <= 0.1 {
 		response = udc.sgExt.SetPower(loPower + powerDev + udc.loCableLoss)
+		powerSet = loPower + powerDev + udc.loCableLoss
 		if !response.Success {
 			udc.setError("Unable to communicate with SG")
 			return
@@ -1265,13 +1373,39 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 		powerDev = loPower - i - udc.loCableLoss
 		ExtLoPower = i + udc.loCableLoss
 	}
-	row := make([]string, 0)
-	row = append(row, strconv.Itoa(1), strconv.FormatFloat(ExtLoPower, 'f', 6, 64))
-	udc.currentStatus = append(udc.currentStatus, row)
-	udc.measurementMonitor <- row
+	result.PowerMatchingResultValue.InternalLOPowerMeasured = loPower
+	result.PowerMatchingResultValue.ExternalLOPowerMeasured = ExtLoPower
+	result.PowerMatchingResultValue.ExternalSGPowerSet = powerSet
+	udc.measurementMonitor <- result
 	udc.setStatus("Saving Results")
-	//udc.saveResults()
+	udc.saveResults(result, "External LO Power Matching")
 	udc.setStatus("External LO Power Matching Completed")
 	close(udc.measurementMonitor)
 	close(udc.statusMonitor)
+}
+
+func (udc *UpDownConverterMeasurement) getLOPower() (float64, error) {
+	result, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, "LO MON Port - Frequency & Power Measurement")
+	if err != nil {
+		return 0.0, err
+	}
+	var res ConvertorResults
+	err = json.Unmarshal([]byte(result.Results), &res)
+	if err != nil {
+		return 0.0, err
+	}
+	return res.PowerOrLeakageResultValue.Power, nil
+}
+
+func (udc *UpDownConverterMeasurement) getExtLOPower() (float64, error) {
+	result, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, "External LO Power Matching")
+	if err != nil {
+		return 0.0, err
+	}
+	var res ConvertorResults
+	err = json.Unmarshal([]byte(result.Results), &res)
+	if err != nil {
+		return 0.0, err
+	}
+	return res.PowerMatchingResultValue.ExternalSGPowerSet, nil
 }

@@ -482,6 +482,25 @@ class UCDCDetails {
     );
   }
 }
+class UCDCTestMetadata {
+  final String code;
+  final String displayName;
+  final String category;
+
+  UCDCTestMetadata({
+    required this.code,
+    required this.displayName,
+    required this.category,
+  });
+
+  factory UCDCTestMetadata.fromJson(Map<String, dynamic> json) {
+    return UCDCTestMetadata(
+      code: json['Code'] ?? '',
+      displayName: json['DisplayName'] ?? '',
+      category: json['Category'] ?? '',
+    );
+  }
+}
 
 class UCDCMetadata {
   final List<String> converters;
@@ -489,6 +508,7 @@ class UCDCMetadata {
   final List<String> deviceProfiles;
   final Map<String, DeviceProfileDetails> deviceMapping;
   final List<String> signalGenerators;
+  final List<UCDCTestMetadata> availableTests;
   final bool ok;
   final String message;
 
@@ -498,6 +518,7 @@ class UCDCMetadata {
     required this.deviceProfiles,
     required this.deviceMapping,
     required this.signalGenerators,
+    required this.availableTests,
     required this.ok,
     required this.message,
   });
@@ -523,6 +544,10 @@ class UCDCMetadata {
       deviceProfiles: List<String>.from(json['DeviceProfiles'] ?? []),
       deviceMapping: deviceMappingMap,
       signalGenerators: List<String>.from(json['SignalGenerators'] ?? []),
+      availableTests: (json['AvailableTests'] as List?)
+              ?.map((e) => UCDCTestMetadata.fromJson(e))
+              .toList() ??
+          [],
       ok: json['OK'] ?? false,
       message: json['Message'] ?? '',
     );
@@ -1650,6 +1675,258 @@ class GTxResult {
       phaseNoiseAt1Mhz: (json['PhaseNoiseAt1Mhz'] as num?)?.toDouble() ?? 0.0,
       phaseNoiseMeasurementCompleted:
           json['PhaseNoiseMeasurementCompleted'] ?? false,
+    );
+  }
+}
+
+class UCDCRequest {
+  final String converterName;
+  final String deviceProfile;
+  final String externalSGName;
+  final double inputCableLoss;
+  final double inputPower;
+  final double loCableLoss;
+  final List<double> outputCableLoss;
+  final GTxSpectrum powerSpectrum;
+  final GTxSpectrum frequencySpectrum;
+  final GTxSpectrum inBandSpectrum;
+  final GTxSpectrum outBandSpectrum;
+  final double stepSize;
+  final List<String> testsSelected;
+
+  UCDCRequest({
+    required this.converterName,
+    required this.deviceProfile,
+    required this.externalSGName,
+    required this.inputCableLoss,
+    required this.inputPower,
+    required this.loCableLoss,
+    required this.outputCableLoss,
+    required this.powerSpectrum,
+    required this.frequencySpectrum,
+    required this.inBandSpectrum,
+    required this.outBandSpectrum,
+    required this.stepSize,
+    required this.testsSelected,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'ConverterName': converterName,
+    'DeviceProfile': deviceProfile,
+    'ExternalSGName': externalSGName,
+    'InputCableLoss': inputCableLoss,
+    'InputPower': inputPower,
+    'LOCableLoss': loCableLoss,
+    'OutputCableLoss': outputCableLoss,
+    'PowerSpectrum': powerSpectrum.toJson(),
+    'FrequencySpectrum': frequencySpectrum.toJson(),
+    'InBandSpectrum': inBandSpectrum.toJson(),
+    'OutBandSpectrum': outBandSpectrum.toJson(),
+    'StepSize': stepSize,
+    'TestsSelected': testsSelected,
+  };
+}
+
+class ConvertorResults {
+  final String testName;
+  final bool gainResults;
+  final bool frequencyResults;
+  final bool harmonicsResults;
+  final bool spuriousResults;
+  final bool powerOrLeakageResults;
+  final bool phaseNoiseResults;
+  final bool powerMatchingResults;
+  final GainResults? gainResultValue;
+  final FrequencyResults? frequencyResultValue;
+  final HarmonicResults? harmonicResultValue;
+  final SpuriousResults? spuriousResultValue;
+  final PowerOrLeakageResults? powerOrLeakageResultValue;
+  final PhaseNoiseResults? phaseNoiseResultValue;
+  final PowerMatchingResults? powerMatchingResultValue;
+
+  ConvertorResults({
+    required this.testName,
+    required this.gainResults,
+    required this.frequencyResults,
+    required this.harmonicsResults,
+    required this.spuriousResults,
+    required this.powerOrLeakageResults,
+    required this.phaseNoiseResults,
+    required this.powerMatchingResults,
+    this.gainResultValue,
+    this.frequencyResultValue,
+    this.harmonicResultValue,
+    this.spuriousResultValue,
+    this.powerOrLeakageResultValue,
+    this.phaseNoiseResultValue,
+    this.powerMatchingResultValue,
+  });
+
+  factory ConvertorResults.fromJson(Map<String, dynamic> json) {
+    return ConvertorResults(
+      testName: json['TestName'] ?? '',
+      gainResults: json['GainResults'] ?? false,
+      frequencyResults: json['FrequencyResults'] ?? false,
+      harmonicsResults: json['HarmonicsResults'] ?? false,
+      spuriousResults: json['SpuriousResults'] ?? false,
+      powerOrLeakageResults: json['PowerOrLeakageResults'] ?? false,
+      phaseNoiseResults: json['PhaseNoiseResults'] ?? false,
+      powerMatchingResults: json['PowerMatchingResults'] ?? false,
+      gainResultValue: json['GainResultValue'] != null
+          ? GainResults.fromJson(json['GainResultValue'])
+          : null,
+      frequencyResultValue: json['FrequencyResultValue'] != null
+          ? FrequencyResults.fromJson(json['FrequencyResultValue'])
+          : null,
+      harmonicResultValue: json['HarmonicResultValue'] != null
+          ? HarmonicResults.fromJson(json['HarmonicResultValue'])
+          : null,
+      spuriousResultValue: json['SpuriousResultValue'] != null
+          ? SpuriousResults.fromJson(json['SpuriousResultValue'])
+          : null,
+      powerOrLeakageResultValue: json['PowerOrLeakageResultValue'] != null
+          ? PowerOrLeakageResults.fromJson(json['PowerOrLeakageResultValue'])
+          : null,
+      phaseNoiseResultValue: json['PhaseNoiseResultValue'] != null
+          ? PhaseNoiseResults.fromJson(json['PhaseNoiseResultValue'])
+          : null,
+      powerMatchingResultValue: json['PowerMatchingResultValue'] != null
+          ? PowerMatchingResults.fromJson(json['PowerMatchingResultValue'])
+          : null,
+    );
+  }
+}
+
+class GainResults {
+  final List<double> setPower;
+  final List<double> outputPower;
+  final List<double> gain;
+  final double averageGain;
+
+  GainResults({
+    required this.setPower,
+    required this.outputPower,
+    required this.gain,
+    required this.averageGain,
+  });
+
+  factory GainResults.fromJson(Map<String, dynamic> json) {
+    return GainResults(
+      setPower: (json['SetPower'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      outputPower: (json['OutputPower'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      gain: (json['Gain'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      averageGain: (json['AverageGain'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class FrequencyResults {
+  final double expectedFrequency;
+  final double measuredFrequency;
+  final double deviation;
+
+  FrequencyResults({
+    required this.expectedFrequency,
+    required this.measuredFrequency,
+    required this.deviation,
+  });
+
+  factory FrequencyResults.fromJson(Map<String, dynamic> json) {
+    return FrequencyResults(
+      expectedFrequency: (json['ExpectedFrequency'] as num?)?.toDouble() ?? 0.0,
+      measuredFrequency: (json['MeasuredFrequency'] as num?)?.toDouble() ?? 0.0,
+      deviation: (json['Deviation'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class HarmonicResults {
+  final List<int> harmonicNo;
+  final List<String> harmonicFrequency;
+  final List<String> carrierLevel;
+  final List<double> noiseFloor;
+
+  HarmonicResults({
+    required this.harmonicNo,
+    required this.harmonicFrequency,
+    required this.carrierLevel,
+    required this.noiseFloor,
+  });
+
+  factory HarmonicResults.fromJson(Map<String, dynamic> json) {
+    return HarmonicResults(
+      harmonicNo: (json['HarmonicNo'] as List?)?.map((e) => (e as num).toInt()).toList() ?? [],
+      harmonicFrequency: List<String>.from(json['HarmonicFrequency'] ?? []),
+      carrierLevel: List<String>.from(json['CarrierLevel'] ?? []),
+      noiseFloor: (json['NoiseFloor'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+    );
+  }
+}
+
+class SpuriousResults {
+  final List<String> frequency;
+  final List<String> measuredPowerdBm;
+  final List<String> spuriousLeveldBC;
+
+  SpuriousResults({
+    required this.frequency,
+    required this.measuredPowerdBm,
+    required this.spuriousLeveldBC,
+  });
+
+  factory SpuriousResults.fromJson(Map<String, dynamic> json) {
+    return SpuriousResults(
+      frequency: List<String>.from(json['Frequency'] ?? []),
+      measuredPowerdBm: List<String>.from(json['MeasuredPowerdBm'] ?? []),
+      spuriousLeveldBC: List<String>.from(json['SpuriousLeveldBC'] ?? []),
+    );
+  }
+}
+
+class PowerOrLeakageResults {
+  final double frequency;
+  final double power;
+
+  PowerOrLeakageResults({required this.frequency, required this.power});
+
+  factory PowerOrLeakageResults.fromJson(Map<String, dynamic> json) {
+    return PowerOrLeakageResults(
+      frequency: (json['Frequency'] as num?)?.toDouble() ?? 0.0,
+      power: (json['Power'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class PhaseNoiseResults {
+  final List<double> frequency;
+  final List<double> phaseNoise;
+
+  PhaseNoiseResults({required this.frequency, required this.phaseNoise});
+
+  factory PhaseNoiseResults.fromJson(Map<String, dynamic> json) {
+    return PhaseNoiseResults(
+      frequency: (json['Frequency'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      phaseNoise: (json['PhaseNoise'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+    );
+  }
+}
+
+class PowerMatchingResults {
+  final double internalLOPowerMeasured;
+  final double externalLOPowerMeasured;
+  final double externalSGPowerSet;
+
+  PowerMatchingResults({
+    required this.internalLOPowerMeasured,
+    required this.externalLOPowerMeasured,
+    required this.externalSGPowerSet,
+  });
+
+  factory PowerMatchingResults.fromJson(Map<String, dynamic> json) {
+    return PowerMatchingResults(
+      internalLOPowerMeasured: (json['InternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
+      externalLOPowerMeasured: (json['ExternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
+      externalSGPowerSet: (json['ExternalSGPowerSet'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -3076,6 +3353,35 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  WebSocketChannel? _ucdcChannel;
+
+  Stream<dynamic> connectUCDC(UCDCRequest request) {
+    String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
+    String url = '$protocol://$host/upDownConverterMeasurement';
+
+    _ucdcChannel = WebSocketChannel.connect(Uri.parse(url));
+    _ucdcChannel!.sink.add(jsonEncode(request.toJson()));
+
+    return _ucdcChannel!.stream.map((data) {
+      final decoded = jsonDecode(data);
+      if (decoded.containsKey('testName') || decoded.containsKey('TestName')) {
+        return ConvertorResults.fromJson(decoded);
+      } else {
+        return RTStatus.fromJson(decoded);
+      }
+    });
+  }
+
+  void abortUCDC() {
+    _ucdcChannel?.sink.add('abort');
+  }
+
+  void closeUCDC() {
+    _ucdcChannel?.sink.close();
+    _ucdcChannel = null;
+  }
+
   WebSocketChannel? _gtxTneChannel;
 
   Stream<dynamic> connectGTxTne(GTxTneRequest request) {
@@ -3140,6 +3446,7 @@ class ServerService extends ChangeNotifier {
     _stabilityChannel?.sink.close();
     _tsmInternalLossChannel?.sink.close();
     _gtxTneChannel?.sink.close();
+    _ucdcChannel?.sink.close();
     _scpiChannel?.sink.close();
     super.dispose();
   }

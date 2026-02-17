@@ -7,6 +7,7 @@ import (
 	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/resultsDB"
+	"prismServer/tne"
 	"prismServer/utils"
 	"slices"
 	"strings"
@@ -542,6 +543,28 @@ func getUCDCMetadata() UCDCMetadata {
 		return resp
 	}
 	resp.SignalGenerators = sg
+	resp.AvailableTests = []UCDCTestMetadata{
+		{Code: tne.UCDCGainInternalCable, DisplayName: "Gain Measurement - Internal LO (Cable)", Category: "Output Port"},
+		{Code: tne.UCDCGainInternalRadiated, DisplayName: "Gain Measurement - Internal LO (Radiated)", Category: "Output Port"},
+		{Code: tne.UCDCFreqMeas, DisplayName: "Frequency Measurement", Category: "Output Port"},
+		{Code: tne.UCDCHarmonicMeas, DisplayName: "Harmonics Measurement", Category: "Output Port"},
+		{Code: tne.UCDCSpuriousInBand, DisplayName: "Spurious - In-Band", Category: "Output Port"},
+		{Code: tne.UCDCSpuriousOutBand, DisplayName: "Spurious - Out of Band", Category: "Output Port"},
+		{Code: tne.UCDCLOLeakage, DisplayName: "LO Leakage", Category: "Output Port"},
+		{Code: tne.UCDCInputLeakage, DisplayName: "Input Leakage", Category: "Output Port"},
+		{Code: tne.UCDCGainExternalCable, DisplayName: "Gain Measurement - External LO (Cable)", Category: "Output Port"},
+		{Code: tne.UCDCGainExternalRadiated, DisplayName: "Gain Measurement - External LO (Radiated)", Category: "Output Port"},
+		{Code: tne.UCDCExtLOPowerMatch, DisplayName: "External LO Power Matching", Category: "Output Port"},
+
+		{Code: tne.UCDCLOLeakage, DisplayName: "LO Leakage", Category: "Input Port"},
+
+		{Code: tne.UCDCOutputMonPower, DisplayName: "Power Measurement", Category: "Output Monitor"},
+
+		{Code: tne.UCDCInputMonPower, DisplayName: "Power Measurement", Category: "Input Monitor"},
+
+		{Code: tne.UCDCLOMonPower, DisplayName: "Power & Frequency Measurement", Category: "LO Monitor"},
+		{Code: tne.UCDCLOMonPhaseNoise, DisplayName: "Phase Noise Measurement", Category: "LO Monitor"},
+	}
 	resp.OK = true
 	resp.Message = "Successfully got UCDC metadata"
 	return resp
