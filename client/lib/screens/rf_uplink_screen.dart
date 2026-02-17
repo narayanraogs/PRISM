@@ -796,11 +796,15 @@ class _RFUplinkFormState extends State<RFUplinkForm> {
           child: ElevatedButton.icon(
             onPressed: _selectedConfig == null
                 ? null
-                : () {
+                    String category = _expressUplink ? "Fast" : "Full";
+                    if (_doppler) {
+                      category += "-Doppler";
+                    }
+
                     final tests = [
                       TestDescription(
-                        testName: 'RF Uplink',
-                        testCategory: 'RF',
+                        testName: 'RFUplink',
+                        testCategory: category,
                         configuration: _selectedConfig,
                         extraParameters: [
                           'NominalPower;${_powerController.text}',

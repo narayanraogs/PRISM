@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net/http"
 	"prismServer/executeTest"
 	"prismServer/logger"
 	"strconv"
@@ -11,17 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func startTests(c *gin.Context) {
-	var req StartTestsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, Ack{OK: false, Message: "Invalid Request"})
-		return
-	}
-
-	// For now just acknowledge
-	c.IndentedJSON(http.StatusOK, Ack{OK: true, Message: "Tests Started Successfully"})
-}
 
 func testProgress(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)

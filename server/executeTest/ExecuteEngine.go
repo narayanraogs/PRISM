@@ -41,6 +41,7 @@ func NewTestExecutor(init Initializer, params map[string]interface{}, input chan
 	ctx.Progress.TestName = init.TestName
 	ctx.Progress.Configuration = init.ConfigName
 	ctx.Ui = &UserInteraction{}
+	ctx.Ctx = context.Background()
 	e.context = &ctx
 	e.test.Initialize(init, e.context)
 	err := e.test.SetParameters(params)
@@ -60,6 +61,7 @@ func (e *Engine) setRollbackDetails(details map[string]utils.CommandResponse) {
 }
 
 func (e *Engine) Execute(ctx context.Context) error {
+	e.context.Ctx = ctx
 	defer close(e.context.UpdateChannel)
 	defer e.executeRollbacks()
 

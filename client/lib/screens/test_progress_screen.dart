@@ -1011,11 +1011,25 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                       ),
                     )
                   else
-                    Text(
-                      resp.ui.prompt,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                    Focus(
+                      key: ValueKey(resp.ui.prompt),
+                      focusNode: _confirmationFocusNode,
+                      autofocus: true,
+                      onKeyEvent: (node, event) {
+                        if (event is KeyDownEvent &&
+                            (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                          _handleInput('CONFIRM');
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
+                      child: Text(
+                        resp.ui.prompt,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                 ] else if (_isCompleted) ...[

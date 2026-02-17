@@ -49,6 +49,7 @@ type ExecutionContext struct {
 	Ui            *UserInteraction
 	UpdateChannel chan interface{}
 	TestIndex     int
+	Ctx           context.Context
 }
 
 type Initializer struct {
@@ -121,7 +122,12 @@ func (ctx *ExecutionContext) AskForInput(prompt string, defaultValue string, tim
 	ctx.Ui.UserConfirmation = false
 	ctx.UpdateChannel <- *ctx.Ui
 
-	response := <-ctx.InputChannel
+	var response string
+	select {
+	case response = <-ctx.InputChannel:
+	case <-ctx.Ctx.Done():
+		response = "ABORTED"
+	}
 
 	ctx.Ui.Prompt = ""
 	ctx.Ui.DefaultValue = ""
@@ -139,7 +145,12 @@ func (ctx *ExecutionContext) AskForConfirmation(prompt string, timeout int) bool
 	ctx.Ui.UserConfirmation = true
 	ctx.UpdateChannel <- *ctx.Ui
 
-	response := <-ctx.InputChannel
+	var response string
+	select {
+	case response = <-ctx.InputChannel:
+	case <-ctx.Ctx.Done():
+		response = "TIMEOUT"
+	}
 
 	ctx.Ui.Prompt = ""
 	ctx.Ui.TimeoutSecs = 0
