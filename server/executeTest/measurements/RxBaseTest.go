@@ -172,19 +172,9 @@ func (test *rxBaseTest) enableDopplerCompensation(runner *StepRunner) {
 
 func (test *rxBaseTest) setDopplerCompensation(runner *StepRunner, timeOffset int, freqs []int, extFreqs []int, times []int) {
 	gtx := test.ctx.Selected.GTx
-
 	runner.Exec(setGTxDopplerCompensationTable(gtx, timeOffset, freqs, extFreqs, times))
 	runner.Exec(setGTxEnableDoppler(gtx, test.component))
 	runner.Exec(setGTxDopplerCompensationEnable(gtx))
-
-	if strings.EqualFold(test.rxSpec.ModulationScheme, "CDMA") { //todo: should be removed for cortex but not for ttcp
-		offset := float64(freqs[0])
-		freq := float64(test.config.IntermediateFrequency.Int64)
-		offsetChipRate := (offset / freq) * test.rxSpec.CodeRateInMcps.Float64
-		chipRateNew := test.rxSpec.CodeRateInMcps.Float64 + offsetChipRate
-		runner.Exec(setGTxIdleOff(gtx))
-		runner.Exec(setGTxChipRateDSSS(gtx, chipRateNew))
-	}
 }
 
 func (test *rxBaseTest) setupSAForUplink(runner *StepRunner) {

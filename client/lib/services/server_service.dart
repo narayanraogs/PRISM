@@ -482,6 +482,7 @@ class UCDCDetails {
     );
   }
 }
+
 class UCDCTestMetadata {
   final String code;
   final String displayName;
@@ -544,7 +545,8 @@ class UCDCMetadata {
       deviceProfiles: List<String>.from(json['DeviceProfiles'] ?? []),
       deviceMapping: deviceMappingMap,
       signalGenerators: List<String>.from(json['SignalGenerators'] ?? []),
-      availableTests: (json['AvailableTests'] as List?)
+      availableTests:
+          (json['AvailableTests'] as List?)
               ?.map((e) => UCDCTestMetadata.fromJson(e))
               .toList() ??
           [],
@@ -1812,9 +1814,19 @@ class GainResults {
 
   factory GainResults.fromJson(Map<String, dynamic> json) {
     return GainResults(
-      setPower: (json['SetPower'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
-      outputPower: (json['OutputPower'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
-      gain: (json['Gain'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      setPower:
+          (json['SetPower'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      outputPower:
+          (json['OutputPower'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      gain:
+          (json['Gain'] as List?)?.map((e) => (e as num).toDouble()).toList() ??
+          [],
       averageGain: (json['AverageGain'] as num?)?.toDouble() ?? 0.0,
     );
   }
@@ -1855,10 +1867,18 @@ class HarmonicResults {
 
   factory HarmonicResults.fromJson(Map<String, dynamic> json) {
     return HarmonicResults(
-      harmonicNo: (json['HarmonicNo'] as List?)?.map((e) => (e as num).toInt()).toList() ?? [],
+      harmonicNo:
+          (json['HarmonicNo'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          [],
       harmonicFrequency: List<String>.from(json['HarmonicFrequency'] ?? []),
       carrierLevel: List<String>.from(json['CarrierLevel'] ?? []),
-      noiseFloor: (json['NoiseFloor'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      noiseFloor:
+          (json['NoiseFloor'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
     );
   }
 }
@@ -1905,8 +1925,16 @@ class PhaseNoiseResults {
 
   factory PhaseNoiseResults.fromJson(Map<String, dynamic> json) {
     return PhaseNoiseResults(
-      frequency: (json['Frequency'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
-      phaseNoise: (json['PhaseNoise'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      frequency:
+          (json['Frequency'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+      phaseNoise:
+          (json['PhaseNoise'] as List?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
     );
   }
 }
@@ -1924,9 +1952,12 @@ class PowerMatchingResults {
 
   factory PowerMatchingResults.fromJson(Map<String, dynamic> json) {
     return PowerMatchingResults(
-      internalLOPowerMeasured: (json['InternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
-      externalLOPowerMeasured: (json['ExternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
-      externalSGPowerSet: (json['ExternalSGPowerSet'] as num?)?.toDouble() ?? 0.0,
+      internalLOPowerMeasured:
+          (json['InternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
+      externalLOPowerMeasured:
+          (json['ExternalLOPowerMeasured'] as num?)?.toDouble() ?? 0.0,
+      externalSGPowerSet:
+          (json['ExternalSGPowerSet'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -2787,6 +2818,28 @@ class ServerService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error fetching Cable Loss Details: $e');
+    }
+    return null;
+  }
+
+  Future<ReportsResponse?> fetchReportsMetadata() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getResultMetadata';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return ReportsResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Reports Metadata: $e');
     }
     return null;
   }

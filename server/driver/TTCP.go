@@ -10,7 +10,6 @@ import (
 	"prismServer/utils"
 	"strconv"
 	"strings"
-	"time"
 )
 
 //go:embed instructions/TTCPCommands.csv
@@ -694,7 +693,7 @@ func (device *ttcp) setIdlePatternOff() utils.CommandResponse {
 	}
 	return device.setModulationOn("IFM-1")
 }
-
+/*
 func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []int, extendedFrequencies []int, times []int) utils.CommandResponse {
 	var mnemonics = make([]string, 0)
 	var arguments = make([]string, 0)
@@ -762,6 +761,96 @@ func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []in
 		sequence = sequence + 1
 	}
 	fmt.Println("After Upklinking table", time.Now())
+	return getSuccessResponse()
+}*/
+
+func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []int, extendedFrequencies []int, times []int) utils.CommandResponse {
+	var mnemonics = make([]string, 0)
+	var arguments = make([]string, 0)
+
+	mnemonics = append(mnemonics, "getIdlePattern")
+	arguments = append(arguments, "")
+	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
+
+	response := device.getDeviceTime()
+	if !response.Success {
+		return response
+	}
+
+	sequence := 0
+	deviceTime := response.Result["Time"].Integer
+	requiredTime := deviceTime + timeOffset
+	completeTimes := times
+	completeFrequencies := frequencies
+	completeExtendedFrequencies := extendedFrequencies
+	tableAddress := 0x101
+	repeat := true
+	for repeat {
+		var tempTime = make([]int, 0)
+		var tempFreq = make([]int, 0)
+		var tempExtFreq = make([]int, 0)
+		if sequence > 0 {
+			tableAddress = 0x102
+		}
+		if len(completeTimes) > 4000 {
+			tempTime = append(tempTime, completeTimes[:4000]...)
+			tempFreq = append(tempFreq, completeFrequencies[:4000]...)
+			tempExtFreq = append(tempExtFreq, completeExtendedFrequencies[:4000]...)
+			completeTimes = completeTimes[4000:]
+			completeFrequencies = completeFrequencies[4000:]
+			completeExtendedFrequencies = completeExtendedFrequencies[4000:]
+		} else {
+			tempTime = append(tempTime, completeTimes...)
+			tempFreq = append(tempFreq, completeFrequencies...)
+			tempExtFreq = append(tempExtFreq, completeExtendedFrequencies...)
+			repeat = false
+		}
+		packet := make([]byte, 0)
+		packet = append(packet, utils.GetByteArrayForInt(1234567890)...)
+		packet = append(packet, utils.GetByteArrayForInt(0)...)
+		packet = append(packet, utils.GetByteArrayForInt(1)...)
+		packet = append(packet, utils.GetByteArrayForInt(tableAddress)...)
+		packet = append(packet, utils.GetByteArrayForInt(requiredTime)...)
+		packet = append(packet, utils.GetByteArrayForInt(0)...)
+		packet = append(packet, utils.GetByteArrayForInt(sequence)...)
+		packet = append(packet, utils.GetByteArrayForInt(0)...)
+		if sequence == 0 {
+			packet = append(packet, utils.GetByteArrayForInt(0x1040)...)
+			packet = append(packet, utils.GetByteArrayForFloat(1)...)
+			packet = append(packet, utils.GetByteArrayForFloat(0)...)
+			packet = append(packet, utils.GetByteArrayForFloat(0)...)
+			packet = append(packet, utils.GetByteArrayForInt(0x1010)...)
+			packet = append(packet, utils.GetByteArrayForFloat(0)...)
+			packet = append(packet, utils.GetByteArrayForFloat(utils.Config.TestRelated.ChipDopplerRate)...)
+			packet = append(packet, utils.GetByteArrayForFloat(0)...)
+		} else {
+			for i := 0; i < 8; i++ {
+				packet = append(packet, utils.GetByteArrayForInt(0)...)
+			}
+		}
+		for i := 0; i < 25; i++ {
+			packet = append(packet, utils.GetByteArrayForInt(0)...)
+		}
+		packet = append(packet, utils.GetByteArrayForInt(len(tempFreq))...)
+
+		for i := 0; i < len(tempFreq); i++ {
+			packet = append(packet, utils.GetByteArrayForInt(tempTime[i])...)
+			packet = append(packet, utils.GetByteArrayForInt(tempFreq[i])...)
+			packet = append(packet, utils.GetByteArrayForInt(tempExtFreq[i])...)
+		}
+		packet = append(packet, utils.GetByteArrayForInt(-1234567890)...)
+		length := len(packet)
+		lengthBytes := utils.GetByteArrayForInt(length)
+		for i := 0; i < 4; i++ {
+			packet[4+i] = lengthBytes[i]
+		}
+		cmds[0].Packet = packet
+		retVal := device.communicate(cmds, "Doppler")
+		if retVal == nil {
+			return getErrorResponse("Unable to communicate with Doppler Port")
+		}
+		sequence = sequence + 1
+	}
 	return getSuccessResponse()
 }
 

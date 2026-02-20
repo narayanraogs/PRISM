@@ -121,7 +121,8 @@ class _RootPageState extends State<RootPage> {
           if (index == 11) return const GTxCharacterizationScreen();
           if (index == 12) return const UpDownConverterScreen();
           if (index == 13) return const LinkLossScreen();
-          if (index == 14) return const ViewReportsScreen();
+          if (index == 14)
+            return ViewReportsScreen(isActive: _selectedIndex == 14);
           if (index == 15) return const StabilityReportsScreen();
           if (index == 16) return const InsightsScreen();
 

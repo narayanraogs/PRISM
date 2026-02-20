@@ -12,7 +12,8 @@ import 'package:prism_client/widgets/screen_header.dart';
 import '../services/server_service.dart';
 
 class ViewReportsScreen extends StatefulWidget {
-  const ViewReportsScreen({super.key});
+  final bool isActive;
+  const ViewReportsScreen({super.key, this.isActive = true});
 
   @override
   State<ViewReportsScreen> createState() => _ViewReportsScreenState();
@@ -63,6 +64,15 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
     });
   }
 
+  @override
+  void didUpdateWidget(ViewReportsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      // Screen became active again, fetch new data
+      _fetchData();
+    }
+  }
+
   DateTime _parseDateTime(String date, String time) {
     try {
       // Input can be: "12-SEP-2025" "15:10:33" OR "12-09-2025" "15:10:33"
@@ -93,14 +103,14 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
     }
   }
 
-  void _fetchData() {
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     final service = Provider.of<ServerService>(context, listen: false);
-    final response = service.status.bootstrapData?.reportsData;
+    final response = await service.fetchReportsMetadata();
 
     if (response != null && response.ok) {
       debugPrint('ViewReportsScreen: Using Bootstrapped Metadata');
@@ -137,7 +147,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
       _applyFilters();
       setState(() => _isLoading = false);
     } else {
-      debugPrint('ViewReportsScreen: Bootstrapped Metadata NOT FOUND');
+      debugPrint('ViewReportsScreen: Failed to fetch results from server');
       setState(() {
         _errorMessage = 'Failed to fetch results';
         _isLoading = false;
@@ -421,6 +431,8 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _buildRefreshButton(theme),
+                const SizedBox(width: 12),
                 _buildDateRangePicker(theme),
                 const SizedBox(width: 12),
                 _buildHelpTrigger(theme),
@@ -626,6 +638,33 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton(ThemeData theme) {
+    return InkWell(
+      onTap: _fetchData,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.refresh, size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              'Refresh',
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),
