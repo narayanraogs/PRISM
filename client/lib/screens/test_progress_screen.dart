@@ -21,6 +21,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
 
   bool _isCompleted = false;
   bool _isAborting = false;
+  bool _aborted = false;
 
   Timer? _countdownTimer;
   int _totalTimeout = 0;
@@ -78,37 +79,52 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
   }
 
   void _handleAbort() {
+    void performAbort(BuildContext dc) {
+      Navigator.pop(dc);
+      setState(() {
+        _isAborting = true;
+        _aborted = true;
+      });
+      Provider.of<ServerService>(context, listen: false).sendAbort();
+    }
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Abort Test Execution?'),
-        content: const Text(
-          'Are you sure you want to stop all currently running tests? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+      builder: (dialogContext) => Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+              performAbort(dialogContext);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+              Navigator.pop(dialogContext);
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: AlertDialog(
+          title: const Text('Abort Test Execution?'),
+          content: const Text(
+            'Are you sure you want to stop all currently running tests? This action cannot be undone.',
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isAborting = true;
-              });
-              final serverService = Provider.of<ServerService>(
-                context,
-                listen: false,
-              );
-              serverService.sendAbort();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
             ),
-            child: const Text('ABORT'),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: () => performAbort(dialogContext),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('ABORT'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -993,14 +1009,22 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (resp.ui.userInput)
+                  if (resp.ui.userInput) ...[
+                    Text(
+                      resp.ui.prompt,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
-                      width: 400,
+                      width: 500,
                       child: TextFormField(
                         controller: _inputController,
                         autofocus: true,
                         decoration: InputDecoration(
-                          hintText: resp.ui.prompt,
+                          hintText: 'Enter value here...',
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -1009,8 +1033,8 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                         ),
                         onFieldSubmitted: (v) => _handleInput(v),
                       ),
-                    )
-                  else
+                    ),
+                  ] else
                     Focus(
                       key: ValueKey(resp.ui.prompt),
                       focusNode: _confirmationFocusNode,
@@ -1018,7 +1042,8 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                       onKeyEvent: (node, event) {
                         if (event is KeyDownEvent &&
                             (event.logicalKey == LogicalKeyboardKey.enter ||
-                                event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                                event.logicalKey ==
+                                    LogicalKeyboardKey.numpadEnter)) {
                           _handleInput('CONFIRM');
                           return KeyEventResult.handled;
                         }
@@ -1033,18 +1058,20 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                       ),
                     ),
                 ] else if (_isCompleted) ...[
-                  const Row(
+                  Row(
                     children: [
                       Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.green,
+                        _aborted
+                            ? Icons.cancel_outlined
+                            : Icons.check_circle_outline,
+                        color: _aborted ? Colors.orange : Colors.green,
                         size: 20,
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        'TESTS COMPLETED',
+                        _aborted ? 'TESTS ABORTED' : 'TESTS COMPLETED',
                         style: TextStyle(
-                          color: Colors.green,
+                          color: _aborted ? Colors.orange : Colors.green,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -1052,9 +1079,11 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'All steps in the sequence have finished execution.',
-                    style: TextStyle(fontSize: 14),
+                  Text(
+                    _aborted
+                        ? 'The test sequence was stopped by the user.'
+                        : 'All steps in the sequence have finished execution.',
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ] else ...[
                   const Row(
@@ -1115,40 +1144,13 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                   ),
                   child: Text(resp.ui.userConfirmation ? 'CONFIRM' : 'SUBMIT'),
                 ),
-                if (resp.ui.userConfirmation) ...[
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                    onPressed: () => _handleInput('REJECT'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('REJECT'),
-                  ),
-                ],
               ],
               if (!_isCompleted) ...[
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _isAborting ? null : _handleAbort,
-                  icon: _isAborting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.stop_circle_outlined, size: 18),
-                  label: Text(_isAborting ? 'ABORTING...' : 'ABORT'),
+                  icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                  label: Text(_isAborting ? 'ABORT SENT' : 'ABORT'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade600,
                     foregroundColor: Colors.white,
@@ -1163,7 +1165,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                 ),
               ] else ...[
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pop(widget.tests),
                   icon: const Icon(Icons.close),
                   label: const Text('DISMISS'),
                   style: ElevatedButton.styleFrom(

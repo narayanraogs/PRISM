@@ -82,7 +82,7 @@ func (test *baseTest) readRollback(runner *StepRunner) {
 	})
 }
 
-func (test *baseTest) Rollback() error {
+func (test *baseTest) rollback() error {
 	if !test.rollbackRequired {
 		return nil
 	}

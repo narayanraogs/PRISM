@@ -31,10 +31,17 @@ func (test *rxCommandDynamic) Initialize(init executeTest.Initializer, ctx *exec
 }
 
 func (test *rxCommandDynamic) DBValidate() error {
-	err := test.validateAndPrepare(test.readFrequencyProfile)
+	err := test.validateAndPrepare(nil)
 	if err != nil {
 		return err
 	}
+	if strings.EqualFold(test.rxSpec.ModulationScheme, "CDMA") {
+		err = test.readFrequencyProfile()
+		if err != nil {
+			return err
+		}
+	}
+
 	if strings.Contains(test.testCategory, "Doppler") {
 		test.report.AddTestInformation("Doppler Enabled", "true")
 		test.report.AddTestInformation("Total Entrues", fmt.Sprintf("%d", len(test.dopplerFrequencies)))

@@ -36,6 +36,10 @@ func (test *txBaseTest) validateAndPrepare(readExtraData func() error) error {
 	return nil
 }
 
+func (test *txBaseTest) Rollback() error {
+	return test.baseTest.rollback()
+}
+
 func (test *txBaseTest) prepareSteps(descriptions []string) {
 	test.ctx.Progress.MeasurementSteps = make([]string, 0)
 	test.ctx.Progress.MeasurementSteps = append(test.ctx.Progress.MeasurementSteps, descriptions...)

@@ -51,7 +51,7 @@ class AppNotifications {
           margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 4),
           action: SnackBarAction(
-            label: 'VIEW',
+            label: 'DISMISS',
             textColor: Colors.white,
             onPressed: () {
               // We can't easily trigger the notification panel from here

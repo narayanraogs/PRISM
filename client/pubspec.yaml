@@ -126,4 +126,8 @@ flutter:
     - family: Share Tech Mono
       fonts:
         - asset: assets/google_fonts/ShareTechMono-Regular.ttf
+    - family: Noto Sans Symbols
+      fonts:
+        - asset: assets/google_fonts/NotoSansSymbols-Regular.ttf
+          weight: 400
 

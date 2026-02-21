@@ -325,12 +325,26 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ],
           ),
-          if (_showNotifications)
+          if (_showNotifications) ...[
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showNotifications = false;
+                });
+                context.read<NotificationService>().markAllAsRead();
+              },
+              child: Container(
+                color: Colors.transparent,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
             Positioned(
               right: 16,
               bottom: 44, // Just above the status bar
               child: _buildNotificationCenter(context),
             ),
+          ],
         ],
       ),
     );

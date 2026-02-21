@@ -50,6 +50,10 @@ func (test *pulseBaseTest) validateAndPrepare(downlink bool, readExtraData func(
 	return nil
 }
 
+func (test *pulseBaseTest) Rollback() error {
+	return test.baseTest.rollback()
+}
+
 func (test *pulseBaseTest) prepareSteps(descriptions []string) {
 	test.ctx.Progress.MeasurementSteps = make([]string, 0)
 	test.ctx.Progress.MeasurementSteps = append(test.ctx.Progress.MeasurementSteps, descriptions...)

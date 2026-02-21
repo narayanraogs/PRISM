@@ -77,7 +77,7 @@ class _TestScreenState extends State<TestScreen> {
     });
   }
 
-  void _startTest() {
+  Future<void> _startTest() async {
     if (_selectedTests.isEmpty) {
       AppNotifications.showError(context, 'Please select at least one test');
       return;
@@ -92,12 +92,31 @@ class _TestScreenState extends State<TestScreen> {
       );
     }).toList();
 
-    Navigator.of(context).push(
+    final result = await Navigator.of(context).push<Set<TestDescription>>(
       MaterialPageRoute(builder: (context) => TestProgressScreen(tests: tests)),
     );
 
-    _remarkController.clear();
-    _selectedTests.clear();
+    if (result != null) {
+      setState(() {
+        _selectedTests.clear();
+        _selectedTests.addAll(result);
+        _remarkController.clear();
+      });
+    }
+  }
+
+  void _selectAll() {
+    if (_selectedConfig == null) return;
+    final tests = _allTests!.tests[_selectedConfig] ?? [];
+    setState(() {
+      _selectedTests.addAll(tests);
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedTests.clear();
+    });
   }
 
   @override
@@ -149,9 +168,14 @@ class _TestScreenState extends State<TestScreen> {
   Widget _buildHeader(ThemeData theme) {
     return ScreenHeader(
       title: 'Test Executive',
-      subtitle: 'Select category, configuration and tests to begin',
+      subtitle: _selectedTests.isEmpty
+          ? 'Select category, configuration and tests to begin'
+          : 'Selected ${_selectedTests.length} tests ready for execution',
       icon: Icons.assignment_outlined,
-      trailing: _buildHelpTrigger(theme),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_buildHelpTrigger(theme)],
+      ),
     );
   }
 
@@ -363,14 +387,48 @@ class _TestScreenState extends State<TestScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'SUMMARY',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 12,
-                                color: theme.colorScheme.primary,
-                                letterSpacing: 1.5,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'SUMMARY',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                    color: theme.colorScheme.primary,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                if (_selectedConfig != null)
+                                  Row(
+                                    children: [
+                                      TextButton(
+                                        onPressed: _selectAll,
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                        ),
+                                        child: const Text('SELECT ALL'),
+                                      ),
+                                      const Text(
+                                        '|',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                      TextButton(
+                                        onPressed: _clearSelection,
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                        ),
+                                        child: const Text('CLEAR'),
+                                      ),
+                                    ],
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 16),
                             _buildSummaryItem(

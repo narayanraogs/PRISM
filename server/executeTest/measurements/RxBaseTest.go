@@ -139,6 +139,19 @@ func (test *rxBaseTest) setTSMPathForSA(runner *StepRunner) {
 	}
 }
 
+func (test *rxBaseTest) Rollback() error {
+	if !test.rollbackRequired {
+		return nil
+	}
+	tsm := test.ctx.Selected.TSM
+	gtx := test.ctx.Selected.GTx
+	setTSMPath(tsm, test.tsm.TerminateUplink.String)
+	gtx.SetIdlePatternOff()
+	setGTxModulationOff(gtx, test.component)
+	setGTxCarrierOff(gtx, test.component)
+	return test.baseTest.rollback()
+}
+
 func (test *rxBaseTest) removeRFLink(runner *StepRunner) {
 	runner.Run("Removing RF Link", true, func() {
 		test.removeRFLinkWithoutRun(runner)

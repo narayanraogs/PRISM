@@ -98,6 +98,8 @@ func (test *rxLockDynamic) measure(runner *StepRunner) error {
 		test.success("Locked")
 	})
 
+	test.removeRFLink(runner)
+
 	if !runner.Describe && len(rows) > 0 {
 		var strRows = make([][]string, 0)
 		header := rows[0].ToHeader()

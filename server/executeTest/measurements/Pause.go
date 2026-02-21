@@ -27,6 +27,10 @@ func (test *pause) Initialize(init executeTest.Initializer, ctx *executeTest.Exe
 	test.getInstruments()
 }
 
+func (test *pause) Rollback() error {
+	return test.baseTest.rollback()
+}
+
 func (test *pause) DBValidate() error {
 	descriptions := test.describe(context.Background())
 	test.prepareSteps(descriptions)
