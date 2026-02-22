@@ -108,6 +108,11 @@ flutter:
           weight: 700
         - asset: assets/google_fonts/Outfit-Black.ttf
           weight: 900
+    - family: Roboto
+      fonts:
+        - asset: assets/google_fonts/Roboto-Regular.ttf
+        - asset: assets/google_fonts/Roboto-Bold.ttf
+          weight: 700
     - family: Roboto Mono
       fonts:
         - asset: assets/google_fonts/RobotoMono-Regular.ttf
