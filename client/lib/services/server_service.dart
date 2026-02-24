@@ -1731,6 +1731,7 @@ class UCDCRequest {
 
 class ConvertorResults {
   final String testName;
+  final String testCode;
   final bool gainResults;
   final bool frequencyResults;
   final bool harmonicsResults;
@@ -1748,6 +1749,7 @@ class ConvertorResults {
 
   ConvertorResults({
     required this.testName,
+    required this.testCode,
     required this.gainResults,
     required this.frequencyResults,
     required this.harmonicsResults,
@@ -1767,6 +1769,7 @@ class ConvertorResults {
   factory ConvertorResults.fromJson(Map<String, dynamic> json) {
     return ConvertorResults(
       testName: json['TestName'] ?? '',
+      testCode: json['TestCode'] ?? '',
       gainResults: json['GainResults'] ?? false,
       frequencyResults: json['FrequencyResults'] ?? false,
       harmonicsResults: json['HarmonicsResults'] ?? false,
@@ -1795,6 +1798,53 @@ class ConvertorResults {
       powerMatchingResultValue: json['PowerMatchingResultValue'] != null
           ? PowerMatchingResults.fromJson(json['PowerMatchingResultValue'])
           : null,
+    );
+  }
+}
+
+class UCDCResultEntry {
+  final int id;
+  final String name;
+  final String testType;
+  final String date;
+  final String time;
+  final ConvertorResults results;
+
+  UCDCResultEntry({
+    required this.id,
+    required this.name,
+    required this.testType,
+    required this.date,
+    required this.time,
+    required this.results,
+  });
+
+  factory UCDCResultEntry.fromJson(Map<String, dynamic> json) {
+    return UCDCResultEntry(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      testType: json['testType'] ?? '',
+      date: json['date'] ?? '',
+      time: json['time'] ?? '',
+      results: ConvertorResults.fromJson(json['results'] ?? {}),
+    );
+  }
+}
+
+class UCDCHistoryResponse {
+  final bool ok;
+  final List<UCDCResultEntry> history;
+
+  UCDCHistoryResponse({required this.ok, required this.history});
+
+  factory UCDCHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return UCDCHistoryResponse(
+      ok: json['ok'] ?? false,
+      history:
+          (json['history'] as List?)
+              ?.map((e) => UCDCResultEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }
@@ -3486,6 +3536,21 @@ class ServerService extends ChangeNotifier {
   void closeSCPI() {
     _scpiChannel?.sink.close();
     _scpiChannel = null;
+  }
+
+  Future<UCDCHistoryResponse> getUCDCResults(String name) async {
+    String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    String protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : web.window.location.protocol.replaceAll(':', '');
+    final response = await http.get(
+      Uri.parse('$protocol://$host/getUCDCResults?name=$name'),
+    );
+    if (response.statusCode == 200) {
+      return UCDCHistoryResponse.fromJson(jsonDecode(response.body));
+    } else {
+      return UCDCHistoryResponse(ok: false, history: []);
+    }
   }
 
   @override

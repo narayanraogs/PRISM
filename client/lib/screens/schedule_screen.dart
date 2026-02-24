@@ -114,15 +114,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   void _addPause() {
     if (_scheduledTests.isNotEmpty &&
-        _scheduledTests.last.extraParameters.contains('Type:Pause')) {
+        _scheduledTests.last.testName == 'Pause') {
       AppNotifications.showError(context, 'Consecutive pauses are not allowed');
       return;
     }
     setState(() {
       _scheduledTests.add(
         TestDescription(
-          testName: 'PAUSE',
-          testCategory: 'Utility',
+          testName: 'Pause',
+          testCategory: '',
           extraParameters: ['Type:Pause'],
         ),
       );
@@ -673,7 +673,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final item = _scheduledTests[index];
-                      if (item.extraParameters.contains('Type:Pause')) {
+                      if (item.testName == 'Pause') {
                         return _buildPauseRow(index, theme);
                       }
                       return _buildScheduleRow(index, item, theme);

@@ -982,21 +982,36 @@ class _RemoveLinkFormState extends State<RemoveLinkForm> {
             onPressed: (_selectedConfig == null && !_removeAll)
                 ? null
                 : () {
-                    final tests = [
-                      TestDescription(
-                        testName: _removeAll
-                            ? 'Remove All Links'
-                            : 'Remove Link',
-                        testCategory: 'RF',
-                        configuration: _selectedConfig,
-                        extraParameters: _removeAll ? ['RemoveAll:true'] : [],
-                      ),
-                    ];
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => TestProgressScreen(tests: tests),
-                      ),
-                    );
+                    final List<TestDescription> tests = [];
+                    if (_removeAll) {
+                      final configs = widget.linkStatus?.removeConfigs ?? [];
+                      for (final config in configs) {
+                        tests.add(
+                          TestDescription(
+                            testName: 'RFUplinkRemoval',
+                            testCategory: '',
+                            configuration: config,
+                          ),
+                        );
+                      }
+                    } else {
+                      tests.add(
+                        TestDescription(
+                          testName: 'RFUplinkRemoval',
+                          testCategory: '',
+                          configuration: _selectedConfig,
+                        ),
+                      );
+                    }
+
+                    if (tests.isNotEmpty) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              TestProgressScreen(tests: tests),
+                        ),
+                      );
+                    }
                   },
             icon: const Icon(Icons.delete_forever),
             label: const Text(
@@ -1046,8 +1061,10 @@ class _RoutePathFormState extends State<RoutePathForm> {
   String? _selectedConfig;
   String? _selectedPath;
   String? _selectedMnemonic;
+  bool _isUserDefinedRoute = false;
   final TextEditingController _attn1Controller = TextEditingController();
   final TextEditingController _attn2Controller = TextEditingController();
+  final TextEditingController _userMnemonicController = TextEditingController();
 
   @override
   void initState() {
@@ -1061,6 +1078,14 @@ class _RoutePathFormState extends State<RoutePathForm> {
     if (widget.linkStatus != oldWidget.linkStatus) {
       _updateValues();
     }
+  }
+
+  @override
+  void dispose() {
+    _attn1Controller.dispose();
+    _attn2Controller.dispose();
+    _userMnemonicController.dispose();
+    super.dispose();
   }
 
   void _updateValues() {
@@ -1197,22 +1222,30 @@ class _RoutePathFormState extends State<RoutePathForm> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           value: _selectedPath,
-          items: (_selectedConfig != null && widget.metaData != null)
-              ? (widget.metaData!.configPathInformation[_selectedConfig] ?? [])
-                    .map((p) {
-                      return DropdownMenuItem(
-                        value: p.path,
-                        child: Text('${p.path} (${p.mnemonic})'),
-                      );
-                    })
-                    .toList()
-              : [],
+          items: [
+            if (_selectedConfig != null && widget.metaData != null)
+              ...(widget.metaData!.configPathInformation[_selectedConfig] ?? [])
+                  .map((p) {
+                    return DropdownMenuItem(
+                      value: p.path,
+                      child: Text('${p.path} (${p.mnemonic})'),
+                    );
+                  }),
+            const DropdownMenuItem(
+              value: 'USER_DEFINED',
+              child: Text('User Defined Route...'),
+            ),
+          ],
           onChanged: (val) {
             setState(() {
               _selectedPath = val;
-              if (val != null &&
+              if (val == 'USER_DEFINED') {
+                _isUserDefinedRoute = true;
+                _selectedMnemonic = null;
+              } else if (val != null &&
                   _selectedConfig != null &&
                   widget.metaData != null) {
+                _isUserDefinedRoute = false;
                 final paths =
                     widget.metaData!.configPathInformation[_selectedConfig];
                 if (paths != null) {
@@ -1223,6 +1256,20 @@ class _RoutePathFormState extends State<RoutePathForm> {
             });
           },
         ),
+        if (_isUserDefinedRoute) ...[
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _userMnemonicController,
+            decoration: InputDecoration(
+              labelText: 'User Defined Mnemonic',
+              hintText: 'Enter mnemonic directly',
+              prefixIcon: const Icon(Icons.edit_note),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         Row(
           children: [
@@ -1284,16 +1331,23 @@ class _RoutePathFormState extends State<RoutePathForm> {
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: (_selectedMnemonic == null)
+            onPressed:
+                (_selectedMnemonic == null &&
+                    (!_isUserDefinedRoute ||
+                        _userMnemonicController.text.isEmpty))
                 ? null
                 : () async {
                     final serverService = Provider.of<ServerService>(
                       context,
                       listen: false,
                     );
+                    final String mnemonic = _isUserDefinedRoute
+                        ? _userMnemonicController.text
+                        : _selectedMnemonic!;
+
                     final ack = await serverService.setTSMRoute(
                       widget.selectedTSM,
-                      _selectedMnemonic!,
+                      mnemonic,
                     );
 
                     if (mounted) {

@@ -26,6 +26,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   bool _abortRequested = false;
   bool _isHelpOpen = false;
   bool _showConnectionDiagram = false;
+  bool _isReportMode = false;
+  int? _selectedReportId;
+  List<UCDCResultEntry> _history = [];
+  bool _isLoadingHistory = false;
 
   // --- Real Data from Server ---
   UCDCMetadata? _metadata;
@@ -128,7 +132,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   // --- Port & Test Definitions ---
   final List<PortConfig> _ports = [];
 
-  bool _isReportMode = false;
   final Map<String, dynamic> _mockResults = {};
   StreamSubscription? _ucdcSubscription;
   List<TestDefinition> _currentlyRunningTests = [];
@@ -160,7 +163,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     super.dispose();
   }
 
-
   void _handleUCDCEvent(dynamic event) {
     if (event is RTStatus) {
       _addLog(event.message);
@@ -184,11 +186,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       }
     } else if (event is ConvertorResults) {
       setState(() {
-        // Use TestName as key for results mapping
-        _mockResults[event.testName] = event;
+        // Use TestCode as primary key for results mapping, fall back to TestName
+        final key = event.testCode.isNotEmpty ? event.testCode : event.testName;
+        _mockResults[key] = event;
 
-        // Try to find the test by code (if server sends it) or by name
-        // Server currently sends DisplayName as TestName, which is fine as secondary key
         if (_currentBatchTestIndex < _currentlyRunningTests.length) {
           _currentlyRunningTests[_currentBatchTestIndex].status = "MEASURING";
         }
@@ -221,7 +222,26 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         if (_externalSGs.isNotEmpty) _selectedExternalSG = _externalSGs.first;
 
         _updateDBParams();
+        _fetchHistory();
       });
+    }
+  }
+
+  Future<void> _fetchHistory() async {
+    if (_selectedConverter.isEmpty) return;
+    setState(() => _isLoadingHistory = true);
+    try {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      final response = await serverService.getUCDCResults(_selectedConverter);
+      if (response.ok) {
+        setState(() {
+          _history = response.history;
+        });
+      }
+    } catch (e) {
+      _addLog("Error fetching history: $e");
+    } finally {
+      setState(() => _isLoadingHistory = false);
     }
   }
 
@@ -292,16 +312,24 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         },
       };
 
+      final bool isUpConverter =
+          converterDetails.outputFrequency > converterDetails.inputFrequency;
+
       Map<String, List<TestDefinition>> categorizedTests = {};
       for (var test in _metadata!.availableTests) {
+        // Filter out radiated gain tests for UpConverters as requested
+        if (isUpConverter &&
+            (test.code == "UCDC_GAIN_INT_RAD" ||
+                test.code == "UCDC_GAIN_EXT_RAD")) {
+          continue;
+        }
+
         if (!categorizedTests.containsKey(test.category)) {
           categorizedTests[test.category] = [];
         }
-        categorizedTests[test.category]!.add(TestDefinition(
-          test.displayName,
-          code: test.code,
-          isSelected: true,
-        ));
+        categorizedTests[test.category]!.add(
+          TestDefinition(test.displayName, code: test.code, isSelected: true),
+        );
       }
 
       // Order ports predictably
@@ -310,22 +338,25 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         "Output Monitor",
         "LO Monitor",
         "Input Monitor",
-        "Input Port"
+        "Input Port",
       ];
 
       for (var cat in order) {
         if (categorizedTests.containsKey(cat)) {
-          final style = categoryStyles[cat] ??
+          final style =
+              categoryStyles[cat] ??
               {
                 "icon": Icons.help_outline,
                 "instruction": "Connect SA to $cat.",
               };
-          _ports.add(PortConfig(
-            name: cat,
-            icon: style["icon"] as IconData,
-            instruction: style["instruction"] as String,
-            tests: categorizedTests[cat]!,
-          ));
+          _ports.add(
+            PortConfig(
+              name: cat,
+              icon: style["icon"] as IconData,
+              instruction: style["instruction"] as String,
+              tests: categorizedTests[cat]!,
+            ),
+          );
         }
       }
 
@@ -400,17 +431,19 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
 
     _ucdcSubscription?.cancel();
-    _ucdcSubscription = serverService.connectUCDC(request).listen(
-      _handleUCDCEvent,
-      onError: (err) {
-        _addLog("Connection Error: $err");
-        setState(() => _isMeasuring = false);
-      },
-      onDone: () {
-        _addLog("Measurement session ended.");
-        setState(() => _isMeasuring = false);
-      },
-    );
+    _ucdcSubscription = serverService
+        .connectUCDC(request)
+        .listen(
+          _handleUCDCEvent,
+          onError: (err) {
+            _addLog("Connection Error: $err");
+            setState(() => _isMeasuring = false);
+          },
+          onDone: () {
+            _addLog("Measurement session ended.");
+            setState(() => _isMeasuring = false);
+          },
+        );
   }
 
   List<Map<String, String>> _generateMockGainData() {
@@ -440,9 +473,17 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTopStat(_isReportMode ? "VIEWING" : "CONVERTER", _isReportMode ? "REPORTS" : _selectedConverter),
+                _buildTopStat(
+                  _isReportMode ? "VIEWING" : "CONVERTER",
+                  _isReportMode ? "REPORTS" : _selectedConverter,
+                ),
                 const SizedBox(width: 24),
-                _buildTopStat(_isReportMode ? "SESSION" : "PORT", _isReportMode ? "Latest Completion" : _ports[_selectedPortIndex].name),
+                _buildTopStat(
+                  _isReportMode ? "SESSION" : "PORT",
+                  _isReportMode
+                      ? "Latest Completion"
+                      : _ports[_selectedPortIndex].name,
+                ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   onPressed: () => setState(
@@ -630,7 +671,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: InkWell(
-              onTap: _isMeasuring ? null : () => setState(() => _isReportMode = !_isReportMode),
+              onTap: _isMeasuring
+                  ? null
+                  : () {
+                      setState(() => _isReportMode = !_isReportMode);
+                      if (_isReportMode) _fetchHistory();
+                    },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(16),
@@ -658,8 +704,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                     Text(
                       "REPORTS",
                       style: GoogleFonts.inter(
-                        fontWeight:
-                            _isReportMode ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: _isReportMode
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         color: _isReportMode
                             ? theme.colorScheme.primary
                             : Colors.black87,
@@ -681,8 +728,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 _isMeasuring
                     ? "BATCH IN PROGRESS"
                     : _isReportMode
-                        ? "EXIT REPORT MODE"
-                        : (_isConfigMode ? "GO TO MEASUREMENT" : "GO TO SETUP"),
+                    ? "EXIT REPORT MODE"
+                    : (_isConfigMode ? "GO TO MEASUREMENT" : "GO TO SETUP"),
               ),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
@@ -696,22 +743,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Widget _buildReportView(ThemeData theme) {
-    // Mock Data for UI demonstration
-    final mockSessions = [
-      {
-        "id": "1001",
-        "date": "2026-02-15",
-        "time": "14:30:22",
-        "operator": "Narayan Rao"
-      },
-      {
-        "id": "1002",
-        "date": "2026-02-14",
-        "time": "09:12:45",
-        "operator": "Admin"
-      },
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -730,9 +761,11 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   ),
                 ),
                 Text(
-                  "Select historical measurements to include in the final PDF report.",
+                  "Historical measurements for $_selectedConverter",
                   style: GoogleFonts.inter(
-                      color: Colors.grey.shade600, fontSize: 13),
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -744,14 +777,17 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 );
               },
               icon: const Icon(Icons.download),
-              label: const Text("DOWNLOAD ALL SELECTED"),
+              label: const Text("EXPORT ALL DATA"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -776,7 +812,22 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...mockSessions.map((s) => _buildSessionCard(s, theme)),
+                  if (_isLoadingHistory)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (_history.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text("No history found"),
+                      ),
+                    )
+                  else
+                    ..._history.map((s) => _buildSessionCard(s, theme)),
                 ],
               ),
             ),
@@ -784,63 +835,31 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             // Right Column: Details & Selection
             Expanded(
               flex: 3,
-              child: ContentCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.checklist, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Text(
-                          "SELECT TESTS TO EXPORT",
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+              child: _selectedReportId != null
+                  ? _buildSessionDetails(theme)
+                  : ContentCard(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.analytics_outlined,
+                              size: 48,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "SELECT A SESSION TO VIEW RESULTS",
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const Divider(height: 32),
-                    _buildReportCheckboxItem(
-                        "Output Port - Gain Measurement", true),
-                    _buildReportCheckboxItem(
-                        "Output Port - Frequency Measurement", true),
-                    _buildReportCheckboxItem(
-                        "Output Port - Harmonics Measurement", false),
-                    _buildReportCheckboxItem("LO Monitor - Phase Noise", true),
-                    _buildReportCheckboxItem("Input Monitor - Power", false),
-                    const SizedBox(height: 32),
-                    Text(
-                      "REPORT METADATA",
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.grey,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "OPERATOR NAME",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.person_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: "REMARKS / OBSERVATIONS",
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.comment_outlined),
-                      ),
-                      maxLines: 3,
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -848,84 +867,93 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _buildSessionCard(Map<String, String> session, ThemeData theme) {
-    bool isSelected = session["id"] == "1001"; // Mock active selection
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isSelected
-              ? theme.colorScheme.primary.withOpacity(0.3)
-              : Colors.grey.shade200,
-          width: isSelected ? 2 : 1,
+  Widget _buildSessionDetails(ThemeData theme) {
+    final session = _history.firstWhere((s) => s.id == _selectedReportId);
+    return Column(
+      children: [
+        _buildDynamicResult(
+          session.results,
+          TestDefinition(
+            session.testType,
+            code: session.results.testCode,
+            status: "COMPLETE",
+          ),
         ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4))
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.1)
-                  : Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.calendar_month,
-              size: 20,
-              color: isSelected ? theme.colorScheme.primary : Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Session #${session["id"]}",
-                  style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  "${session["date"]} • ${session["time"]}",
-                  style: GoogleFonts.inter(
-                      color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          if (isSelected)
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildReportCheckboxItem(String title, bool initialValue) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: CheckboxListTile(
-        value: initialValue,
-        onChanged: (val) {},
-        title: Text(title,
-            style:
-                GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
-        controlAffinity: ListTileControlAffinity.leading,
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _buildSessionCard(UCDCResultEntry session, ThemeData theme) {
+    bool isSelected = session.id == _selectedReportId;
+
+    return InkWell(
+      onTap: () => setState(() => _selectedReportId = session.id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary.withOpacity(0.3)
+                : Colors.grey.shade200,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    : Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.calendar_month,
+                size: 20,
+                color: isSelected ? theme.colorScheme.primary : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.testType,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    "${session.date} • ${session.time}",
+                    style: GoogleFonts.inter(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }
@@ -1049,8 +1077,13 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                             _selectedConverter,
                             _converters,
                             (v) {
-                              setState(() => _selectedConverter = v!);
+                              setState(() {
+                                _selectedConverter = v!;
+                                _selectedReportId = null;
+                                _history = [];
+                              });
                               _updateDBParams();
+                              _fetchHistory();
                             },
                           ),
                         ),
@@ -1534,7 +1567,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   // --- Helper Methods ---
 
   Widget _buildResultCard(TestDefinition test, ThemeData theme) {
-    final result = _mockResults[test.name];
+    // Try to find result by code first, then by name
+    final result = _mockResults[test.code] ?? _mockResults[test.name];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1597,7 +1631,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     if (test.status == "MEASURING" && result == null) {
       return Text(
         "Measuring...",
-        style: GoogleFonts.robotoMono(fontSize: 18, color: Colors.blue.shade300),
+        style: GoogleFonts.robotoMono(
+          fontSize: 18,
+          color: Colors.blue.shade300,
+        ),
       );
     }
 
@@ -1642,9 +1679,19 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _resultRow("Expected Freq", "${(res.expectedFrequency / 1e6).toStringAsFixed(6)} MHz"),
-        _resultRow("Measured Freq", "${(res.measuredFrequency / 1e6).toStringAsFixed(6)} MHz"),
-        _resultRow("Deviation", "${(res.deviation / 1e3).toStringAsFixed(3)} kHz", isError: res.deviation > 1000),
+        _resultRow(
+          "Expected Freq",
+          "${(res.expectedFrequency / 1e6).toStringAsFixed(6)} MHz",
+        ),
+        _resultRow(
+          "Measured Freq",
+          "${(res.measuredFrequency / 1e6).toStringAsFixed(6)} MHz",
+        ),
+        _resultRow(
+          "Deviation",
+          "${(res.deviation / 1e3).toStringAsFixed(3)} kHz",
+          isError: res.deviation > 1000,
+        ),
       ],
     );
   }
@@ -1653,7 +1700,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _resultRow("Frequency", "${(res.frequency / 1e6).toStringAsFixed(2)} MHz"),
+        _resultRow(
+          "Frequency",
+          "${(res.frequency / 1e6).toStringAsFixed(2)} MHz",
+        ),
         _resultRow("Measured Power", "${res.power.toStringAsFixed(2)} dBm"),
       ],
     );
@@ -1665,7 +1715,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+          Text(
+            label,
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+          ),
           Text(
             value,
             style: GoogleFonts.robotoMono(
@@ -1693,7 +1746,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           TableRow(
             children: [
               _tableCell("${res.harmonicNo[i]}"),
-              _tableCell("${(double.parse(res.harmonicFrequency[i]) / 1e6).toStringAsFixed(2)} MHz"),
+              _tableCell(
+                "${(double.parse(res.harmonicFrequency[i]) / 1e6).toStringAsFixed(2)} MHz",
+              ),
               _tableCell(res.carrierLevel[i]),
             ],
           ),
@@ -1731,7 +1786,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     return Column(
       children: [
         for (int i = 0; i < res.frequency.length; i++)
-          _resultRow("Offset ${res.frequency[i]}", "${res.phaseNoise[i]} dBc/Hz"),
+          _resultRow(
+            "Offset ${res.frequency[i]}",
+            "${res.phaseNoise[i]} dBc/Hz",
+          ),
       ],
     );
   }
@@ -2099,5 +2157,10 @@ class TestDefinition {
   final String code;
   bool isSelected;
   String status;
-  TestDefinition(this.name, {required this.code, this.isSelected = false, this.status = "PENDING"});
+  TestDefinition(
+    this.name, {
+    required this.code,
+    this.isSelected = false,
+    this.status = "PENDING",
+  });
 }

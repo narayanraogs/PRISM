@@ -60,6 +60,7 @@ type frequencyProfile struct {
 
 type ConvertorResults struct {
 	TestName                  string
+	TestCode                  string
 	GainResults               bool
 	FrequencyResults          bool
 	HarmonicsResults          bool
@@ -273,8 +274,10 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 
 	if cable {
 		result.TestName = "Output Port - Gain Measurement - Internal LO - Cable"
+		result.TestCode = UCDCGainInternalCable
 	} else {
 		result.TestName = "Output Port - Gain Measurement - Internal LO - Radiated"
+		result.TestCode = UCDCGainInternalRadiated
 	}
 
 	udc.setStatus("Gain Measurement Started")
@@ -403,6 +406,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	var result ConvertorResults
 	result.FrequencyResults = true
 	result.TestName = "Output Port - Frequency Measurement"
+	result.TestCode = UCDCFreqMeas
 
 	udc.setStatus("Frequency Measurement Started")
 	response := udc.sa.SetAlignmentOff()
@@ -497,6 +501,7 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 	udc.setStatus("Harmonics Measurement Started")
 	var result ConvertorResults
 	result.TestName = "Output Port - Harmonics Measurement"
+	result.TestCode = UCDCHarmonicMeas
 	result.HarmonicsResults = true
 	result.HarmonicResultValue = HarmonicResults{
 		HarmonicNo:        make([]int, 0),
@@ -617,8 +622,10 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	var result ConvertorResults
 	if inBand {
 		result.TestName = "Output Port - Spurious Measurement - In Band"
+		result.TestCode = UCDCSpuriousInBand
 	} else {
 		result.TestName = "Output Port - Spurious Measurement - Out of Band"
+		result.TestCode = UCDCSpuriousOutBand
 	}
 	result.SpuriousResults = true
 	result.SpuriousResultValue = SpuriousResults{
@@ -765,6 +772,7 @@ func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 	udc.setStatus("LO Leakage Measurement Started")
 	var result ConvertorResults
 	result.TestName = "Output Port - LO Leakage Measurement"
+	result.TestCode = UCDCLOLeakage
 	result.PowerOrLeakageResults = true
 	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
 		Frequency: 0.0,
@@ -824,6 +832,7 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 	udc.setStatus("Input Leakage Measurement Started")
 	var result ConvertorResults
 	result.TestName = "Output Port - Input Leakage Measurement"
+	result.TestCode = UCDCInputLeakage
 	result.PowerOrLeakageResults = true
 	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
 		Frequency: 0.0,
@@ -908,10 +917,12 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		maxPower = udc.converter.MaxPowerCable
 		minPower = udc.converter.MinPowerCable
 		result.TestName = "Output Port - Gain Measurement - External LO - Cable"
+		result.TestCode = UCDCGainExternalCable
 	} else {
 		maxPower = udc.converter.MaxPowerRadiated.Float64
 		minPower = udc.converter.MinPowerRadiated.Float64
 		result.TestName = "Output Port - Gain Measurement - External LO - Radiated"
+		result.TestCode = UCDCGainExternalRadiated
 	}
 
 	response := udc.sa.SetAlignmentOff()
@@ -1043,8 +1054,10 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(output bool) {
 	result.PowerMatchingResults = true
 	if output {
 		result.TestName = "Output Monitor Port - Power Measurement"
+		result.TestCode = UCDCOutputMonPower
 	} else {
 		result.TestName = "Input Monitor Port - Power Measurement"
+		result.TestCode = UCDCInputMonPower
 	}
 	result.PowerOrLeakageResultValue = PowerOrLeakageResults{
 		Frequency: 0.0,
@@ -1136,6 +1149,7 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 	udc.setStatus("LO MON Port Frequency & Power Measurement Started")
 	var result ConvertorResults
 	result.TestName = "LO MON Port Frequency & Power Measurement"
+	result.TestCode = UCDCLOMonPower
 	result.PowerOrLeakageResults = true
 	result.FrequencyResults = true
 	result.FrequencyResultValue = FrequencyResults{
@@ -1213,6 +1227,7 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	udc.setStatus("LO Mon Port Phase Noise Measurement Started")
 	var result ConvertorResults
 	result.TestName = "LO Mon Port Phase Noise Measurement"
+	result.TestCode = UCDCLOMonPhaseNoise
 	result.PhaseNoiseResults = true
 	result.PhaseNoiseResultValue = PhaseNoiseResults{
 		Frequency:  make([]float64, 0),
@@ -1294,6 +1309,7 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	udc.setStatus("External LO Power Matching started")
 	var result ConvertorResults
 	result.TestName = "Output Port - Ext LO Power Matching"
+	result.TestCode = UCDCExtLOPowerMatch
 	result.PowerMatchingResults = true
 	result.PowerMatchingResultValue = PowerMatchingResults{
 		InternalLOPowerMeasured: 0.0,

@@ -1,10 +1,61 @@
 package server
 
 import (
+	"encoding/json"
+	"net/http"
+	"prismServer/resultsDB"
 	"prismServer/tne"
 
 	"github.com/gin-gonic/gin"
 )
+
+func getUCDCResults(c *gin.Context) {
+	name := c.Query("name")
+	if name == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"ok": false, "message": "name is required"})
+		return
+	}
+
+	history, err := resultsDB.GetAllResultsForConverter(name)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"ok": false, "message": "Failed to get history"})
+		return
+	}
+
+	type ResultEntry struct {
+		ID       int64                `json:"id"`
+		Name     string               `json:"name"`
+		TestType string               `json:"testType"`
+		Date     string               `json:"date"`
+		Time     string               `json:"time"`
+		Results  tne.ConvertorResults `json:"results"`
+	}
+
+	var resp struct {
+		OK      bool          `json:"ok"`
+		History []ResultEntry `json:"history"`
+	}
+	resp.OK = true
+	resp.History = make([]ResultEntry, 0)
+
+	for _, h := range history {
+		var res tne.ConvertorResults
+		err := json.Unmarshal([]byte(h.Results), &res)
+		if err != nil {
+			continue
+		}
+		resp.History = append(resp.History, ResultEntry{
+			ID:       h.ID,
+			Name:     h.Name,
+			TestType: h.TestType,
+			Date:     h.Date.String,
+			Time:     h.Time.String,
+			Results:  res,
+		})
+	}
+
+	c.IndentedJSON(http.StatusOK, resp)
+}
 
 func upDownConverterMeasurement(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -51,35 +102,35 @@ func upDownConverterMeasurement(c *gin.Context) {
 		sts, results := uc.GetStatusMonitor()
 		switch test {
 		case tne.UCDCGainInternalCable:
-			uc.OutputGainMeasurement(req.StepSize, true)
+			go uc.OutputGainMeasurement(req.StepSize, true)
 		case tne.UCDCGainInternalRadiated:
-			uc.OutputGainMeasurement(req.StepSize, false)
+			go uc.OutputGainMeasurement(req.StepSize, false)
 		case tne.UCDCFreqMeas:
-			uc.OutputFrequencyMeasurement()
+			go uc.OutputFrequencyMeasurement()
 		case tne.UCDCHarmonicMeas:
-			uc.OutputHarmonicsMeasurement()
+			go uc.OutputHarmonicsMeasurement()
 		case tne.UCDCSpuriousInBand:
-			uc.OutputSpuriousMeasurement(true)
+			go uc.OutputSpuriousMeasurement(true)
 		case tne.UCDCSpuriousOutBand:
-			uc.OutputSpuriousMeasurement(false)
+			go uc.OutputSpuriousMeasurement(false)
 		case tne.UCDCLOLeakage:
-			uc.LOLeakageMeasurement()
+			go uc.LOLeakageMeasurement()
 		case tne.UCDCInputLeakage:
-			uc.OutputInputLeakageMeasurement()
+			go uc.OutputInputLeakageMeasurement()
 		case tne.UCDCGainExternalCable:
-			uc.OutputExtLOGainMeasurement(req.StepSize, true)
+			go uc.OutputExtLOGainMeasurement(req.StepSize, true)
 		case tne.UCDCGainExternalRadiated:
-			uc.OutputExtLOGainMeasurement(req.StepSize, false)
+			go uc.OutputExtLOGainMeasurement(req.StepSize, false)
 		case tne.UCDCOutputMonPower:
-			uc.MonitorPowerMeasurement(true)
+			go uc.MonitorPowerMeasurement(true)
 		case tne.UCDCInputMonPower:
-			uc.MonitorPowerMeasurement(false)
+			go uc.MonitorPowerMeasurement(false)
 		case tne.UCDCLOMonPower:
-			uc.LOMonFreqPowerMeasurement()
+			go uc.LOMonFreqPowerMeasurement()
 		case tne.UCDCLOMonPhaseNoise:
-			uc.LOMonPhaseNoiseMeasurement()
+			go uc.LOMonPhaseNoiseMeasurement()
 		case tne.UCDCExtLOPowerMatch:
-			uc.ExtLOPowerMatch()
+			go uc.ExtLOPowerMatch()
 		}
 
 		done := false
