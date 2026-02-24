@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'package:prism_client/services/server_service.dart';
 import 'package:provider/provider.dart';
@@ -197,28 +199,125 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     });
   }
 
-  void _handleCsvUpload() {
-    // In a real app, use file_picker. For mock, we'll just populate a sequence.
-    setState(() {
-      _sequence = [
-        ScpiSequenceCommand(command: '*RST', delayMs: 1000, isQuery: false),
-        ScpiSequenceCommand(
-          command: 'FREQ:CENT 1GHZ',
-          delayMs: 500,
-          isQuery: false,
-        ),
-        ScpiSequenceCommand(command: '*IDN?', delayMs: 200, isQuery: true),
-        ScpiSequenceCommand(command: 'MEAS:POW?', delayMs: 1000, isQuery: true),
-      ];
-      _logs.insert(
-        0,
-        ScpiLogEntry(
-          timestamp: DateTime.now(),
-          type: 'SENT',
-          message: "CSV Loaded: 4 commands identified.",
-        ),
+  List<String> _parseCsvLine(String line) {
+    List<String> result = [];
+    StringBuffer current = StringBuffer();
+    bool inQuotes = false;
+
+    for (int i = 0; i < line.length; i++) {
+      String c = line[i];
+      if (c == '"') {
+        inQuotes = !inQuotes;
+      } else if (c == ',' && !inQuotes) {
+        result.add(current.toString().trim());
+        current.clear();
+      } else {
+        current.write(c);
+      }
+    }
+    result.add(current.toString().trim());
+    return result;
+  }
+
+  Future<void> _handleCsvUpload() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        withData: true,
       );
-    });
+
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final csvString = utf8.decode(bytes);
+
+        List<ScpiSequenceCommand> parsedSequence = [];
+        int errorCount = 0;
+        final lines = const LineSplitter().convert(csvString);
+
+        if (lines.isEmpty) return;
+
+        // Skip header if it exists
+        int startIndex = 0;
+        if (lines[0].toLowerCase().contains('command') ||
+            lines[0].toLowerCase().contains('delay') ||
+            lines[0].toLowerCase().contains('read') ||
+            lines[0].toLowerCase().contains('write') ||
+            lines[0].toLowerCase().contains('sl')) {
+          startIndex = 1;
+        }
+
+        for (int i = startIndex; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (line.isEmpty) continue;
+
+          List<String> fields = _parseCsvLine(line);
+          if (fields.length >= 4) {
+            String command = fields[1];
+            String delayStr = fields[2];
+            String rwStr = fields[3];
+
+            int delayMs = int.tryParse(delayStr) ?? 0;
+            // Interpret read/write
+            final lowerRw = rwStr.toLowerCase();
+            bool isQuery = lowerRw.contains('read') || lowerRw == 'r';
+
+            if (command.isNotEmpty) {
+              parsedSequence.add(
+                ScpiSequenceCommand(
+                  command: command,
+                  delayMs: delayMs,
+                  isQuery: isQuery,
+                ),
+              );
+            } else {
+              errorCount++;
+            }
+          } else {
+            errorCount++;
+          }
+        }
+
+        if (parsedSequence.isNotEmpty) {
+          setState(() {
+            _sequence = parsedSequence;
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: 'SENT',
+                message:
+                    "CSV Loaded: ${_sequence.length} commands identified.${errorCount > 0 ? " ($errorCount lines failed parsing)" : ""}",
+              ),
+            );
+          });
+        } else {
+          setState(() {
+            _logs.insert(
+              0,
+              ScpiLogEntry(
+                timestamp: DateTime.now(),
+                type: 'ERROR',
+                message: "Failed to parse CSV: No valid commands found.",
+              ),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _logs.insert(
+            0,
+            ScpiLogEntry(
+              timestamp: DateTime.now(),
+              type: 'ERROR',
+              message: "Error loading CSV: $e",
+            ),
+          );
+        });
+      }
+    }
   }
 
   Future<void> _executeSequence() async {

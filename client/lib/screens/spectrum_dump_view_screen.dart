@@ -41,7 +41,21 @@ class _SpectrumDumpViewScreenState extends State<SpectrumDumpViewScreen> {
   @override
   void initState() {
     super.initState();
-    _imageBytes = base64Decode(widget.base64Image);
+    try {
+      String cleanBase64 = widget.base64Image;
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.split(',').last;
+      }
+      cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s+'), '');
+      int padding = cleanBase64.length % 4;
+      if (padding != 0) {
+        cleanBase64 += '=' * (4 - padding);
+      }
+      _imageBytes = base64Decode(cleanBase64);
+    } catch (e) {
+      debugPrint('Error decoding base64 image: $e');
+      _imageBytes = Uint8List(0);
+    }
   }
 
   @override
@@ -263,10 +277,34 @@ class _SpectrumDumpViewScreenState extends State<SpectrumDumpViewScreen> {
                         children: [
                           // The Image
                           Positioned.fill(
-                            child: Image.memory(
-                              _imageBytes,
-                              fit: BoxFit.contain,
-                            ),
+                            child: _imageBytes.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'Failed to decode image data',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  )
+                                : Image.memory(
+                                    _imageBytes,
+                                    fit: BoxFit.contain,
+                                    gaplessPlayback: true,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Image render error:\n$error',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(color: Colors.red),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                           ),
                           // The Drawing Layer
                           Positioned.fill(

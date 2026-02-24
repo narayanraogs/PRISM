@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -455,6 +456,24 @@ class _MonitorScreenState extends State<MonitorScreen> {
   Widget _buildImageMonitor(MonitorResponse data) {
     if (data.image.isEmpty)
       return const Center(child: Text('Waiting for image...'));
+      
+    Uint8List imageBytes;
+    try {
+      String cleanBase64 = data.image;
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.split(',').last;
+      }
+      cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s+'), '');
+      int padding = cleanBase64.length % 4;
+      if (padding != 0) {
+        cleanBase64 += '=' * (4 - padding);
+      }
+      imageBytes = base64Decode(cleanBase64);
+    } catch (e) {
+      debugPrint('Error decoding base64 image: $e');
+      imageBytes = Uint8List(0);
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.black,
@@ -464,11 +483,34 @@ class _MonitorScreenState extends State<MonitorScreen> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.memory(
-              base64Decode(data.image),
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-            ),
+            child: imageBytes.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Failed to decode image data',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  )
+                : Image.memory(
+                    imageBytes,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Image render error:\n$error',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
           if (_lastUpdateTime != null)
             Positioned(
