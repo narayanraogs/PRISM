@@ -1165,7 +1165,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                 ),
               ] else ...[
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(widget.tests),
+                  onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                   label: const Text('DISMISS'),
                   style: ElevatedButton.styleFrom(

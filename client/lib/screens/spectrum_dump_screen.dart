@@ -6,13 +6,20 @@ import 'package:prism_client/services/notification_service.dart';
 import 'package:prism_client/screens/spectrum_dump_view_screen.dart';
 
 class SpectrumDumpScreen extends StatefulWidget {
-  const SpectrumDumpScreen({super.key});
+  final bool isActive;
+  const SpectrumDumpScreen({super.key, this.isActive = true});
 
   @override
   State<SpectrumDumpScreen> createState() => _SpectrumDumpScreenState();
 }
 
 class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
+  @override
+  void didUpdateWidget(SpectrumDumpScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // No WebSocket to close here yet, but added for consistency with IndexedStack pattern
+  }
+
   SpectrumDumpMetadata? _metadata;
   bool _isLoading = true;
   bool _isHelpOpen = false;

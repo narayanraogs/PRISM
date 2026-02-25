@@ -9,13 +9,20 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
 
 class TestScreen extends StatefulWidget {
-  const TestScreen({super.key});
+  final bool isActive;
+  const TestScreen({super.key, this.isActive = true});
 
   @override
   State<TestScreen> createState() => _TestScreenState();
 }
 
 class _TestScreenState extends State<TestScreen> {
+  @override
+  void didUpdateWidget(TestScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // No WebSocket to close here yet, but added for consistency with IndexedStack pattern
+  }
+
   int _selectedCategoryIndex = 0;
   bool _isHelpOpen = false;
   AllTests? _allTests;
@@ -92,14 +99,13 @@ class _TestScreenState extends State<TestScreen> {
       );
     }).toList();
 
-    final result = await Navigator.of(context).push<Set<TestDescription>>(
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => TestProgressScreen(tests: tests)),
     );
 
-    if (result != null) {
+    if (mounted) {
       setState(() {
         _selectedTests.clear();
-        _selectedTests.addAll(result);
         _remarkController.clear();
       });
     }

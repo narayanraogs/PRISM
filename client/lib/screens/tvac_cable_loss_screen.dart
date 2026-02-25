@@ -9,13 +9,23 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class TVACCableLossScreen extends StatefulWidget {
-  const TVACCableLossScreen({super.key});
+  final bool isActive;
+  const TVACCableLossScreen({super.key, this.isActive = true});
 
   @override
   State<TVACCableLossScreen> createState() => _TVACCableLossScreenState();
 }
 
 class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
+  @override
+  void didUpdateWidget(TVACCableLossScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeTVACCableLoss();
+    }
+  }
+
   // Form Controllers
   final TextEditingController _cableNameController = TextEditingController();
   final TextEditingController _cycleNameController = TextEditingController();
@@ -233,6 +243,15 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
             }
           },
         );
+  }
+
+  @override
+  void dispose() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeTVACCableLoss();
+    _cableNameController.dispose();
+    _cycleNameController.dispose();
+    super.dispose();
   }
 
   @override

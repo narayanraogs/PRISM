@@ -10,13 +10,20 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
 
 class RFUplinkScreen extends StatefulWidget {
-  const RFUplinkScreen({super.key});
+  final bool isActive;
+  const RFUplinkScreen({super.key, this.isActive = true});
 
   @override
   State<RFUplinkScreen> createState() => _RFUplinkScreenState();
 }
 
 class _RFUplinkScreenState extends State<RFUplinkScreen> {
+  @override
+  void didUpdateWidget(RFUplinkScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // No WebSocket to close here yet, but added for consistency with IndexedStack pattern
+  }
+
   int _selectedOperation = 0; // 0: RF Uplink, 1: Remove Link, 2: Route Path
   bool _isHelpOpen = false;
   RFUplinkMetaData? _metaData;

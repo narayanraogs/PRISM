@@ -26,12 +26,14 @@ class StabilityReportsScreen extends StatefulWidget {
 class ParameterData {
   final String name;
   final List<DataPoint> points;
+  final List<DataPoint> displayPoints;
   final double min;
   final double max;
 
   ParameterData({
     required this.name,
     required this.points,
+    required this.displayPoints,
     required this.min,
     required this.max,
   });
@@ -147,6 +149,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           _loadedData[param] = ParameterData(
             name: param,
             points: points,
+            displayPoints: points.length > 2000
+                ? lttb(points, 2000)
+                : List.from(points),
             min: minY - (maxY == minY ? 1.0 : (maxY - minY) * 0.1),
             max: maxY + (maxY == minY ? 1.0 : (maxY - minY) * 0.1),
           );
@@ -696,12 +701,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
 
     // Param 1
     final data1 = _loadedData[_selectedParams[0]]!;
-    final displayPoints1 = data1.points.length > 2000
-        ? lttb(data1.points, 2000)
-        : data1.points;
     barData.add(
       LineChartBarData(
-        spots: displayPoints1.map((p) => FlSpot(p.x, p.y)).toList(),
+        spots: data1.displayPoints.map((p) => FlSpot(p.x, p.y)).toList(),
         isCurved: true,
         curveSmoothness: 0.1,
         color: Colors.indigo,
@@ -717,12 +719,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
     // Param 2 (Normalized)
     if (_selectedParams.length > 1) {
       final data2 = _loadedData[_selectedParams[1]]!;
-      final displayPoints2 = data2.points.length > 2000
-          ? lttb(data2.points, 2000)
-          : data2.points;
       barData.add(
         LineChartBarData(
-          spots: displayPoints2
+          spots: data2.displayPoints
               .map(
                 (p) => FlSpot(p.x, _normalize(p.y, y2Min, y2Max, y1Min, y1Max)),
               )

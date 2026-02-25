@@ -34,13 +34,23 @@ class ScpiSequenceCommand {
 }
 
 class ScpiCommanderScreen extends StatefulWidget {
-  const ScpiCommanderScreen({super.key});
+  final bool isActive;
+  const ScpiCommanderScreen({super.key, this.isActive = true});
 
   @override
   State<ScpiCommanderScreen> createState() => _ScpiCommanderScreenState();
 }
 
 class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
+  @override
+  void didUpdateWidget(ScpiCommanderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeSCPI();
+    }
+  }
+
   // State Variables
   String? _selectedDevice;
   final TextEditingController _ipController = TextEditingController();
@@ -65,6 +75,8 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
 
   @override
   void dispose() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeSCPI();
     _ipController.dispose();
     _portController.dispose();
     _commandController.dispose();

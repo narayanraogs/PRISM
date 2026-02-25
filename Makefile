@@ -13,7 +13,7 @@ all: deploy-client server
 
 # Provision to build only the client (includes cleaning and building)
 client: clean-client-build
-	cd client && flutter build web --wasm --no-web-resources-cdn
+	cd client && flutter build web --no-web-resources-cdn
 
 # Provision to build only the server
 server:

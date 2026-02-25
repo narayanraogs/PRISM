@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"prismServer/logger"
 	"prismServer/resultsDB"
@@ -33,6 +34,7 @@ func stability(c *gin.Context) {
 	stab = *utilities.NewStability()
 	inputChan := stab.GetDataChannel()
 	for _, param := range req.Parameters {
+		fmt.Printf("%+v\n", param)
 		switch param.InstrumentType {
 		case "SA":
 			centerFreq := param.ExtraDetails["centerFrequency"].(float64)
@@ -40,7 +42,10 @@ func stability(c *gin.Context) {
 			rbw := param.ExtraDetails["rbw"].(float64)
 			vbw := param.ExtraDetails["vbw"].(float64)
 			autoRef := param.ExtraDetails["autoRefLevel"].(bool)
-			refLevel := param.ExtraDetails["refLevel"].(float64)
+			var refLevel = 0.0
+			if !autoRef {
+				refLevel = param.ExtraDetails["refLevel"].(float64)
+			}
 			stab.AddSA(param.Description, param.Instrument, param.Parameter, centerFreq, span, rbw, vbw, refLevel, autoRef)
 		case "PM":
 			freq := param.ExtraDetails["frequencyHz"].(float64)

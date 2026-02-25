@@ -2596,6 +2596,7 @@ class ServerService extends ChangeNotifier {
     final url = _getWsUrl();
     debugPrint('Connecting to WebSocket at: $url');
     try {
+      _channel?.sink.close();
       _channel = WebSocketChannel.connect(Uri.parse(url));
       _channel!.stream.listen(
         (data) {
@@ -2792,6 +2793,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/testProgress';
 
+    _progressChannel?.sink.close();
     _progressChannel = WebSocketChannel.connect(Uri.parse(url));
 
     // Send initial request
@@ -2833,6 +2835,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/monitor';
 
+    _monitorChannel?.sink.close();
     _monitorChannel = WebSocketChannel.connect(Uri.parse(url));
 
     // Send initial request
@@ -2957,6 +2960,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureCableLoss';
 
+    _cableLossChannel?.sink.close();
     _cableLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _cableLossChannel!.sink.add(jsonEncode(request));
 
@@ -2976,6 +2980,11 @@ class ServerService extends ChangeNotifier {
     }
   }
 
+  void closeCableLoss() {
+    _cableLossChannel?.sink.close();
+    _cableLossChannel = null;
+  }
+
   WebSocketChannel? _stabilityChannel;
 
   Stream<StabilityResponse> connectStability(
@@ -2991,6 +3000,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/stability';
 
+    _stabilityChannel?.sink.close();
     _stabilityChannel = WebSocketChannel.connect(Uri.parse(url));
 
     // Send initial request
@@ -3084,6 +3094,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureAttn';
 
+    _attnChannel?.sink.close();
     _attnChannel = WebSocketChannel.connect(Uri.parse(url));
     _attnChannel!.sink.add(jsonEncode(request));
 
@@ -3101,6 +3112,11 @@ class ServerService extends ChangeNotifier {
     if (_attnChannel != null) {
       _attnChannel!.sink.add('abort');
     }
+  }
+
+  void closeAttn() {
+    _attnChannel?.sink.close();
+    _attnChannel = null;
   }
 
   Future<ReadSpectrumResponse?> dumpSpectrum(String sa) async {
@@ -3235,6 +3251,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTSMInternalLoss';
 
+    _tsmInternalLossChannel?.sink.close();
     _tsmInternalLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _tsmInternalLossChannel!.sink.add(jsonEncode(request.toJson()));
 
@@ -3264,6 +3281,11 @@ class ServerService extends ChangeNotifier {
     }
   }
 
+  void closeTSMInternalLoss() {
+    _tsmInternalLossChannel?.sink.close();
+    _tsmInternalLossChannel = null;
+  }
+
   Stream<MeasurementStatus> streamTVACCableLossAction(
     Map<String, dynamic> request,
   ) {
@@ -3271,6 +3293,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTVACCableLoss';
 
+    _tvacCableLossChannel?.sink.close();
     _tvacCableLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _tvacCableLossChannel!.sink.add(jsonEncode(request));
 
@@ -3288,6 +3311,11 @@ class ServerService extends ChangeNotifier {
     if (_tvacCableLossChannel != null) {
       _tvacCableLossChannel!.sink.add('abort');
     }
+  }
+
+  void closeTVACCableLoss() {
+    _tvacCableLossChannel?.sink.close();
+    _tvacCableLossChannel = null;
   }
 
   Future<ConfigsForLossResponse?> fetchConfigsForLoss(
@@ -3463,6 +3491,7 @@ class ServerService extends ChangeNotifier {
     String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     String url = '$protocol://$host/upDownConverterMeasurement';
 
+    _ucdcChannel?.sink.close();
     _ucdcChannel = WebSocketChannel.connect(Uri.parse(url));
     _ucdcChannel!.sink.add(jsonEncode(request.toJson()));
 
@@ -3492,6 +3521,7 @@ class ServerService extends ChangeNotifier {
     String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     String url = '$protocol://$host/conductGTxTne';
 
+    _gtxTneChannel?.sink.close();
     _gtxTneChannel = WebSocketChannel.connect(Uri.parse(url));
     _gtxTneChannel!.sink.add(jsonEncode(request.toJson()));
 
@@ -3521,6 +3551,7 @@ class ServerService extends ChangeNotifier {
     String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     String url = '$protocol://$host/scpi';
 
+    _scpiChannel?.sink.close();
     _scpiChannel = WebSocketChannel.connect(Uri.parse(url));
     _scpiChannel!.sink.add(jsonEncode(request.toJson()));
 

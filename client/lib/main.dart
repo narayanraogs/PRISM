@@ -107,19 +107,26 @@ class _RootPageState extends State<RootPage> {
         children: _titles.asMap().entries.map((entry) {
           final index = entry.key;
           final title = entry.value;
-          if (index == 0) return const RFUplinkScreen();
-          if (index == 1) return const TestScreen();
+          if (index == 0) return RFUplinkScreen(isActive: _selectedIndex == 0);
+          if (index == 1) return TestScreen(isActive: _selectedIndex == 1);
           if (index == 2) return const ScheduleScreen();
-          if (index == 3) return const StabilityScreen();
-          if (index == 4) return const SpectrumDumpScreen();
+          if (index == 3) return StabilityScreen(isActive: _selectedIndex == 3);
+          if (index == 4)
+            return SpectrumDumpScreen(isActive: _selectedIndex == 4);
           if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
-          if (index == 6) return const TVACCableLossScreen();
-          if (index == 7) return const ScpiCommanderScreen();
-          if (index == 8) return const CableLossScreen();
-          if (index == 9) return const AttenuationScreen();
-          if (index == 10) return const TSMInternalPathLossScreen();
-          if (index == 11) return const GTxCharacterizationScreen();
-          if (index == 12) return const UpDownConverterScreen();
+          if (index == 6)
+            return TVACCableLossScreen(isActive: _selectedIndex == 6);
+          if (index == 7)
+            return ScpiCommanderScreen(isActive: _selectedIndex == 7);
+          if (index == 8) return CableLossScreen(isActive: _selectedIndex == 8);
+          if (index == 9)
+            return AttenuationScreen(isActive: _selectedIndex == 9);
+          if (index == 10)
+            return TSMInternalPathLossScreen(isActive: _selectedIndex == 10);
+          if (index == 11)
+            return GTxCharacterizationScreen(isActive: _selectedIndex == 11);
+          if (index == 12)
+            return UpDownConverterScreen(isActive: _selectedIndex == 12);
           if (index == 13) return const LinkLossScreen();
           if (index == 14)
             return ViewReportsScreen(isActive: _selectedIndex == 14);

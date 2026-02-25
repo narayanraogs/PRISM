@@ -9,13 +9,23 @@ import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class CableLossScreen extends StatefulWidget {
-  const CableLossScreen({super.key});
+  final bool isActive;
+  const CableLossScreen({super.key, this.isActive = true});
 
   @override
   State<CableLossScreen> createState() => _CableLossScreenState();
 }
 
 class _CableLossScreenState extends State<CableLossScreen> {
+  @override
+  void didUpdateWidget(CableLossScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeCableLoss();
+    }
+  }
+
   // Form Controllers
   final TextEditingController _cableNameController = TextEditingController();
   final TextEditingController _lengthController = TextEditingController();
@@ -365,6 +375,15 @@ class _CableLossScreenState extends State<CableLossScreen> {
             );
           },
         );
+  }
+
+  @override
+  void dispose() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeCableLoss();
+    _cableNameController.dispose();
+    _lengthController.dispose();
+    super.dispose();
   }
 
   @override

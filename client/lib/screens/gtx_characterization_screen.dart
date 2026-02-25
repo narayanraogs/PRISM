@@ -8,7 +8,8 @@ import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class GTxCharacterizationScreen extends StatefulWidget {
-  const GTxCharacterizationScreen({super.key});
+  final bool isActive;
+  const GTxCharacterizationScreen({super.key, this.isActive = true});
 
   @override
   State<GTxCharacterizationScreen> createState() =>
@@ -16,6 +17,15 @@ class GTxCharacterizationScreen extends StatefulWidget {
 }
 
 class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
+  @override
+  void didUpdateWidget(GTxCharacterizationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeGTxTne();
+    }
+  }
+
   // Data from Server
   GTxMeasurementMetadata? _metadata;
   List<String> _profiles = [];
@@ -62,6 +72,8 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeGTxTne();
     _cableLossController.dispose();
     _ifController.dispose();
     _subCarFreqController.dispose();

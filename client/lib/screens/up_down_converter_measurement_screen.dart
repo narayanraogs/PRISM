@@ -8,13 +8,23 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class UpDownConverterScreen extends StatefulWidget {
-  const UpDownConverterScreen({super.key});
+  final bool isActive;
+  const UpDownConverterScreen({super.key, this.isActive = true});
 
   @override
   State<UpDownConverterScreen> createState() => _UpDownConverterScreenState();
 }
 
 class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
+  @override
+  void didUpdateWidget(UpDownConverterScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeUCDC();
+    }
+  }
+
   // --- UI State ---
   bool _isConfigMode = true;
   int _selectedPortIndex = 0;
@@ -160,6 +170,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     _outBandRBWController.dispose();
     _outBandVBWController.dispose();
     _ucdcSubscription?.cancel();
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeUCDC();
     super.dispose();
   }
 

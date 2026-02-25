@@ -10,13 +10,23 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class AttenuationScreen extends StatefulWidget {
-  const AttenuationScreen({super.key});
+  final bool isActive;
+  const AttenuationScreen({super.key, this.isActive = true});
 
   @override
   State<AttenuationScreen> createState() => _AttenuationScreenState();
 }
 
 class _AttenuationScreenState extends State<AttenuationScreen> {
+  @override
+  void didUpdateWidget(AttenuationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeAttn();
+    }
+  }
+
   // Selection State
   String _selectedInstrument = 'TSM'; // TSM, GTx, SG
 
@@ -253,6 +263,8 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
   @override
   void dispose() {
     _attnSubscription?.cancel();
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeAttn();
     _minValueController.dispose();
     _maxValueController.dispose();
     _stepSizeController.dispose();

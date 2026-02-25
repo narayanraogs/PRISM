@@ -32,6 +32,12 @@ class ParameterBuffer {
   final String parameter;
   final List<StabilityDataUpdate> rawData = [];
   final List<DataPoint> points = [];
+
+  // Cache for downsampled points and FlSpots to avoid object churn
+  List<DataPoint> displayPoints = [];
+  List<FlSpot> displaySpots = [];
+  bool _isDirty = false;
+
   double min = double.infinity;
   double max = double.negativeInfinity;
   double maxJump = 0;
@@ -49,17 +55,49 @@ class ParameterBuffer {
         1000.0;
     final y = update.value;
 
+    // Ignore invalid data early
+    if (x.isNaN || y.isNaN) return;
+
     if (points.isNotEmpty) {
       final jump = (y - points.last.y).abs();
       if (jump > maxJump) maxJump = jump;
     }
 
-    points.add(DataPoint(x, y));
+    // Deduplicate x-axis values to prevent fl_chart from hanging
+    if (points.isNotEmpty && points.last.x >= x) {
+      points.add(DataPoint(points.last.x + 0.001, y));
+    } else {
+      points.add(DataPoint(x, y));
+    }
 
-    if (y < min) min = y;
-    if (y > max) max = y;
+    _isDirty = true;
+
+    if (y < min || min == double.infinity) min = y;
+    if (y > max || max == double.negativeInfinity) max = y;
     count++;
   }
+
+  /// Recalculates display points only if new data has arrived.
+  /// This should be called outside the build() method to prevent frame drops.
+  void refreshDisplayPoints(int threshold) {
+    if (!_isDirty && displaySpots.isNotEmpty) return;
+
+    displayPoints = points.length > threshold
+        ? lttb(points, threshold)
+        : List.from(points);
+
+    // Convert to FlSpots once and cache to avoid object churn in build()
+    displaySpots = displayPoints.map((p) => FlSpot(p.x, p.y)).toList();
+    _isDirty = false;
+  }
+
+  // Safe bounds for fl_chart to prevent infinite loops in grid calculation
+  double get minBound => (min == double.infinity || min.isNaN)
+      ? -0.1
+      : (min == max ? min - 0.1 : min);
+  double get maxBound => (max == double.negativeInfinity || max.isNaN)
+      ? 0.1
+      : (min == max ? max + 0.1 : max);
 
   double get delta => (count < 2) ? 0 : (max - min);
   double get latest => points.isEmpty ? 0 : points.last.y;
@@ -105,9 +143,15 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
       }
     });
 
-    // Refresh UI every 500ms for smoothness
-    _uiTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (mounted) setState(() {});
+    // Refresh UI every 1000ms for smoothness and lower CPU usage
+    _uiTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      if (mounted) {
+        // Run heavy math here (outside of build method)
+        for (var buffer in _buffers.values) {
+          buffer.refreshDisplayPoints(500); // Downsample to 500 points
+        }
+        setState(() {});
+      }
     });
   }
 
@@ -308,10 +352,12 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
 
   Widget _buildDynamicGrid(ThemeData theme) {
     if (_focusedParameter != null) {
-      final param = widget.parameters.firstWhere((p) => p.description == _focusedParameter);
+      final param = widget.parameters.firstWhere(
+        (p) => p.description == _focusedParameter,
+      );
       final index = widget.parameters.indexOf(param);
       final buffer = _buffers[param.description]!;
-      
+
       return Column(
         children: [
           Row(
@@ -323,8 +369,13 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.grey.shade700,
                   backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const Spacer(),
@@ -341,7 +392,13 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: _buildChartCard(theme, param, buffer, index, isFocused: true),
+            child: _buildChartCard(
+              theme,
+              param,
+              buffer,
+              index,
+              isFocused: true,
+            ),
           ),
         ],
       );
@@ -375,13 +432,6 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
     int index, {
     bool isFocused = false,
   }) {
-    // Generate downsampled points for display
-    final displayPoints = buffer.points.length > 1000
-        ? lttb(buffer.points, 1000)
-        : buffer.points;
-
-    final spots = displayPoints.map((p) => FlSpot(p.x, p.y)).toList();
-
     // Use distinct colors for each parameter
     final List<Color> chartColors = [
       Colors.blue,
@@ -462,12 +512,16 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                           });
                         },
                         icon: Icon(
-                          isFocused ? Icons.close_fullscreen_rounded : Icons.open_in_full_rounded,
+                          isFocused
+                              ? Icons.close_fullscreen_rounded
+                              : Icons.open_in_full_rounded,
                           size: 20,
                           color: Colors.grey.shade400,
                         ),
                         style: IconButton.styleFrom(
-                          hoverColor: theme.colorScheme.primary.withOpacity(0.05),
+                          hoverColor: theme.colorScheme.primary.withOpacity(
+                            0.05,
+                          ),
                         ),
                       ),
                     ],
@@ -491,8 +545,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: true,
-                  horizontalInterval: 1,
-                  verticalInterval: 60, // Grid every minute
+                  drawHorizontalLine: true,
+                  // Disable dynamic grid interval calculation if range is near zero
+                  horizontalInterval: (buffer.max - buffer.min).abs() < 0.001
+                      ? 1.0
+                      : null,
                   getDrawingHorizontalLine: (value) =>
                       FlLine(color: Colors.grey.shade100, strokeWidth: 1),
                   getDrawingVerticalLine: (value) =>
@@ -537,11 +594,17 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                 ),
                 borderData: FlBorderData(show: false),
                 minX: buffer.points.isEmpty ? 0 : buffer.points.first.x,
-                maxX: buffer.points.isEmpty ? 10 : buffer.points.last.x,
+                maxX: buffer.points.isEmpty
+                    ? 10
+                    : (buffer.points.last.x <= buffer.points.first.x
+                          ? buffer.points.first.x + 1
+                          : buffer.points.last.x),
+                minY: buffer.minBound,
+                maxY: buffer.maxBound,
                 lineBarsData: [
                   LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
+                    spots: buffer.displaySpots,
+                    isCurved: false,
                     color: color,
                     barWidth: 2,
                     isStrokeCapRound: true,
@@ -579,7 +642,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
               _buildMiniMetric('MIN', buffer.min.toStringAsFixed(3), theme),
               _buildMiniMetric('MAX', buffer.max.toStringAsFixed(3), theme),
               _buildMiniMetric('ΔMAX', buffer.delta.toStringAsFixed(3), theme),
-              _buildMiniMetric('δMAX', buffer.maxJump.toStringAsFixed(3), theme),
+              _buildMiniMetric(
+                'δMAX',
+                buffer.maxJump.toStringAsFixed(3),
+                theme,
+              ),
             ],
           ),
         ],

@@ -7,7 +7,8 @@ import '../services/server_service.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
 class TSMInternalPathLossScreen extends StatefulWidget {
-  const TSMInternalPathLossScreen({super.key});
+  final bool isActive;
+  const TSMInternalPathLossScreen({super.key, this.isActive = true});
 
   @override
   State<TSMInternalPathLossScreen> createState() =>
@@ -15,6 +16,15 @@ class TSMInternalPathLossScreen extends StatefulWidget {
 }
 
 class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
+  @override
+  void didUpdateWidget(TSMInternalPathLossScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeTSMInternalLoss();
+    }
+  }
+
   // State Variables
   String _selectedProfile = "";
   String _selectedChannel = "A";
@@ -101,6 +111,13 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     } else {
       _selectedOutputPort = null;
     }
+  }
+
+  @override
+  void dispose() {
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeTSMInternalLoss();
+    super.dispose();
   }
 
   @override

@@ -9,13 +9,23 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 class StabilityScreen extends StatefulWidget {
-  const StabilityScreen({super.key});
+  final bool isActive;
+  const StabilityScreen({super.key, this.isActive = true});
 
   @override
   State<StabilityScreen> createState() => _StabilityScreenState();
 }
 
 class _StabilityScreenState extends State<StabilityScreen> {
+  @override
+  void didUpdateWidget(StabilityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      serverService.closeStability();
+    }
+  }
+
   StabilityMetadata? _metadata;
   bool _isLoading = true;
   bool _isHelpOpen = false;
@@ -979,6 +989,9 @@ class _StabilityScreenState extends State<StabilityScreen> {
     _pmFrequencyController.dispose();
     _tmMnemonicController.dispose();
     _profileNameController.dispose();
+
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    serverService.closeStability();
     super.dispose();
   }
 
