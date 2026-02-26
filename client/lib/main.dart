@@ -24,6 +24,7 @@ import 'package:prism_client/services/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:prism_client/screens/scpi_commander_screen.dart';
 import 'package:prism_client/screens/insights_screen.dart';
+import 'package:prism_client/screens/path_loss_planner_screen.dart';
 
 void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -73,6 +74,7 @@ class _RootPageState extends State<RootPage> {
     'TVAC Cable Calibration',
     'SCPI Commander',
     'Cable Loss Measurement',
+    'Path Loss Planner',
     'Attenuation',
     'TSM Internal Path Loss',
     'GTx Characterization',
@@ -120,18 +122,20 @@ class _RootPageState extends State<RootPage> {
             return ScpiCommanderScreen(isActive: _selectedIndex == 7);
           if (index == 8) return CableLossScreen(isActive: _selectedIndex == 8);
           if (index == 9)
-            return AttenuationScreen(isActive: _selectedIndex == 9);
+            return PathLossPlannerScreen(isActive: _selectedIndex == 9);
           if (index == 10)
-            return TSMInternalPathLossScreen(isActive: _selectedIndex == 10);
+            return AttenuationScreen(isActive: _selectedIndex == 10);
           if (index == 11)
-            return GTxCharacterizationScreen(isActive: _selectedIndex == 11);
+            return TSMInternalPathLossScreen(isActive: _selectedIndex == 11);
           if (index == 12)
-            return UpDownConverterScreen(isActive: _selectedIndex == 12);
-          if (index == 13) return const LinkLossScreen();
-          if (index == 14)
-            return ViewReportsScreen(isActive: _selectedIndex == 14);
-          if (index == 15) return const StabilityReportsScreen();
-          if (index == 16) return const InsightsScreen();
+            return GTxCharacterizationScreen(isActive: _selectedIndex == 12);
+          if (index == 13)
+            return UpDownConverterScreen(isActive: _selectedIndex == 13);
+          if (index == 14) return const LinkLossScreen();
+          if (index == 15)
+            return ViewReportsScreen(isActive: _selectedIndex == 15);
+          if (index == 16) return const StabilityReportsScreen();
+          if (index == 17) return const InsightsScreen();
 
           return GenericScreen(title: title);
         }).toList(),

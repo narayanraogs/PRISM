@@ -71,3 +71,9 @@ func regenerateReport(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, Ack{OK: true, Message: report})
 
 }
+
+func getStabilityReports(c *gin.Context) {
+	var resp StabilityReportsMetadata
+	resp = getStabilityReportsMetadata()
+	c.JSON(200, resp)
+}

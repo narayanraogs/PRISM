@@ -473,6 +473,7 @@ func (q *Queries) getStabilityPoints(ctx context.Context, arg getStabilityPoints
 
 const getStabilitySessions = `-- name: getStabilitySessions :many
 Select "ID", "Date", "Time" from "Stability"
+Order by "ID" DESC
 `
 
 func (q *Queries) getStabilitySessions(ctx context.Context) ([]Stability, error) {

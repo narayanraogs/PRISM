@@ -100,6 +100,12 @@ class _MainLayoutState extends State<MainLayout> {
       category: 'T&E',
     ),
     NavigationItem(
+      label: 'Path Loss Planner',
+      icon: Icons.map_outlined,
+      selectedIcon: Icons.map,
+      category: 'T&E',
+    ),
+    NavigationItem(
       label: 'Attenuation',
       icon: Icons.import_export,
       selectedIcon: Icons.import_export,

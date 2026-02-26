@@ -579,10 +579,11 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 45,
+                      reservedSize:
+                          50, // Slightly increased to accommodate extra digit
                       getTitlesWidget: (value, meta) {
                         return Text(
-                          value.toStringAsFixed(1),
+                          value.toStringAsFixed(2),
                           style: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 10,

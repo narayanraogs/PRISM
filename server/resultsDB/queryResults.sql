@@ -93,7 +93,8 @@ Insert into "Stability" ("Date", "Time")
 Values (?, ?) Returning "ID";
 
 -- name: getStabilitySessions :many
-Select "ID", "Date", "Time" from "Stability";
+Select "ID", "Date", "Time" from "Stability"
+Order by "ID" DESC;
 
 -- name: insertStabilityPoints :exec
 Insert into "StabilityValues" ("StabilityID", "TimeStampInteger", "TimeStamp", "Description", "Value")

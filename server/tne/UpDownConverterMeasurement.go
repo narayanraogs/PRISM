@@ -159,15 +159,18 @@ func (udc *UpDownConverterMeasurement) Init(deviceProfile string, externalSGName
 
 func (udc *UpDownConverterMeasurement) SetInputCableLoss(inputCableLoss float64, inputPower float64) {
 	udc.inputPower = inputPower
-	udc.inputCableLoss = inputCableLoss
+	udc.inputCableLoss = math.Abs(inputCableLoss)
 }
 
 func (udc *UpDownConverterMeasurement) SetOutputCableLoss(outputCableLoss []float64) {
-	udc.outputCableLoss = outputCableLoss
+	udc.outputCableLoss = make([]float64, len(outputCableLoss))
+	for i := range outputCableLoss {
+		udc.outputCableLoss[i] = math.Abs(outputCableLoss[i])
+	}
 }
 
 func (udc *UpDownConverterMeasurement) SetLOCableLoss(LOCableLoss float64) {
-	udc.loCableLoss = LOCableLoss
+	udc.loCableLoss = math.Abs(LOCableLoss)
 }
 
 func (udc *UpDownConverterMeasurement) SetPowerSpectrum(span float64, rbw float64, vbw float64) {
@@ -338,15 +341,22 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 	}
 	time.Sleep(1000 * time.Millisecond)
 
-	for powerSet := minPower + udc.inputCableLoss; powerSet <= maxPower+udc.inputCableLoss; powerSet = powerSet + stepSize {
+	for powerSet := minPower; powerSet <= maxPower; powerSet = powerSet + stepSize {
+		powerSetCompensated := powerSet + udc.inputCableLoss
 		if udc.stop {
 			udc.setError("Measurement Aborted by User")
 			return
 		}
 		powerStr := fmt.Sprintf("%.3f", powerSet)
-		response = udc.sg.SetPower(powerSet)
+		response = udc.sg.SetPower(powerSetCompensated)
 		if !response.Success {
 			udc.setError("SG Power Cannot be set to " + powerStr)
+			return
+		}
+		time.Sleep(1000 * time.Millisecond)
+		response = udc.sa.SetReferenceNominal()
+		if !response.Success {
+			udc.setError("Carrier Not found")
 			return
 		}
 		time.Sleep(1000 * time.Millisecond)
@@ -356,8 +366,8 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 			udc.setError("SA Power Cannot be read")
 			return
 		}
-		powerOut := response.Result["MarkerY"].Value + udc.outputCableLoss[0]
-		if powerSet == minPower+udc.inputCableLoss || powerSet == maxPower+udc.inputCableLoss {
+		powerOut := response.Result["MarkerY"].Value + udc.outputCableLoss[1]
+		if powerSet == minPower || powerSet == maxPower {
 			response = udc.sa.GetSpectrumDump()
 			if !response.Success {
 				udc.setError("Unable to get spectrum dump")
@@ -471,7 +481,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 		udc.setError("Unable to get frequency in counter mode")
 		return
 	}
-	frequency := response.Result["MarkerX"].Value
+	frequency := response.Result["Frequency"].Value
 	response = udc.sa.GetSpectrumDump()
 	if !response.Success {
 		udc.setError("Unable to get spectrum dump")
@@ -701,7 +711,7 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	power_peaks := make([]float64, 0)
 	freq_peaks := make([]float64, 0)
 	deviation_peaks := make([]float64, 0)
-	response = udc.sa.SetPeakThresholdAndExcursion(noiseFloor+10, 1)
+	response = udc.sa.SetPeakThresholdAndExcursion(noiseFloor+15, 1)
 	if !response.Success {
 		udc.setError("Excursion cannot be set")
 		return
@@ -998,15 +1008,23 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		return
 	}
 	time.Sleep(1000 * time.Millisecond)
-	for powerSet := minPower + udc.inputCableLoss; powerSet <= maxPower+udc.inputCableLoss; powerSet = powerSet + stepSize {
+	for powerSet := minPower; powerSet <= maxPower; powerSet = powerSet + stepSize {
 		if udc.stop {
 			udc.setError("Measurement Aborted by User")
 			return
 		}
+		powerSetCompensated := powerSet + udc.inputCableLoss
 		powerStr := fmt.Sprintf("%.3f", powerSet)
-		response = udc.sg.SetPower(powerSet)
+		response = udc.sg.SetPower(powerSetCompensated)
 		if !response.Success {
 			udc.setError("SG Power Cannot be set to " + powerStr)
+			return
+		}
+
+		time.Sleep(1000 * time.Millisecond)
+		response = udc.sa.SetReferenceNominal()
+		if !response.Success {
+			udc.setError("Carrier Not found")
 			return
 		}
 
@@ -1017,8 +1035,8 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 			udc.setError("SA Power Cannot be read")
 			return
 		}
-		powerOut := response.Result["MarkerY"].Value + udc.outputCableLoss[0]
-		if powerSet == minPower+udc.inputCableLoss || powerSet == maxPower+udc.inputCableLoss {
+		powerOut := response.Result["MarkerY"].Value + udc.outputCableLoss[1]
+		if powerSet == minPower || powerSet == maxPower {
 			response = udc.sa.GetSpectrumDump()
 			if !response.Success {
 				udc.setError("Unable to get spectrum dump")

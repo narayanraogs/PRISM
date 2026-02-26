@@ -37,6 +37,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
   bool _isMeasuring = false;
   bool _isLoading = true;
   String _measuringStatus = '';
+  List<String> _measuringLogs = [];
   bool _showConnections = false;
   bool _isHelpOpen = false;
 
@@ -226,6 +227,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
       setState(() {
         _isMeasuring = true;
         _measuringStatus = 'Zeroing Power Meter...';
+        _measuringLogs = [
+          '[${DateTime.now().toString().split(' ')[1].split('.')[0]}] Zeroing Power Meter...',
+        ];
       });
 
       final request = {
@@ -245,6 +249,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
             (status) {
               setState(() {
                 _measuringStatus = status.message;
+                _measuringLogs.insert(
+                  0,
+                  "[${DateTime.now().toString().split(' ')[1].split('.')[0]}] ${status.message}",
+                );
               });
 
               if (status.completed) {
@@ -320,6 +328,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
     setState(() {
       _isMeasuring = true;
       _measuringStatus = 'Initializing Measurement...';
+      _measuringLogs = [
+        '[${DateTime.now().toString().split(' ')[1].split('.')[0]}] Initializing Measurement...',
+      ];
     });
 
     final request = {
@@ -337,6 +348,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
           (status) {
             setState(() {
               _measuringStatus = status.message;
+              _measuringLogs.insert(
+                0,
+                "[${DateTime.now().toString().split(' ')[1].split('.')[0]}] ${status.message}",
+              );
             });
 
             if (status.completed) {
@@ -1037,8 +1052,12 @@ class _CableLossScreenState extends State<CableLossScreen> {
     }
 
     final plotRecord = _selectedPlotRecord!;
-    final spots = List.generate(plotRecord.measurements.length, (i) {
-      return FlSpot(i.toDouble(), plotRecord.measurements[i].loss);
+    final sortedMeasurements = List<MeasurementPoint>.from(
+      plotRecord.measurements,
+    )..sort((a, b) => a.frequency.compareTo(b.frequency));
+
+    final spots = List.generate(sortedMeasurements.length, (i) {
+      return FlSpot(i.toDouble(), sortedMeasurements[i].loss);
     });
 
     return ContentCard(
@@ -1096,11 +1115,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
                       interval: 1,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
-                        if (index < 0 ||
-                            index >= plotRecord.measurements.length) {
+                        if (index < 0 || index >= sortedMeasurements.length) {
                           return const SizedBox();
                         }
-                        final freq = plotRecord.measurements[index].frequency;
+                        final freq = sortedMeasurements[index].frequency;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: RotatedBox(
@@ -1382,49 +1400,161 @@ class _CableLossScreenState extends State<CableLossScreen> {
 
   Widget _buildMeasuringOverlay(ThemeData theme) {
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withOpacity(0.5),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20),
-            ],
-          ),
+        child: ContentCard(
+          width: 500,
+          padding: const EdgeInsets.all(32),
+          borderRadius: 24,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.settings_suggest,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "MEASUREMENT IN PROGRESS",
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        Text(
+                          "Measuring Cable: ${_cableNameController.text}",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const LinearProgressIndicator(
+                minHeight: 6,
+                borderRadius: BorderRadius.all(Radius.circular(3)),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _measuringStatus,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
-              Text(
-                _measuringStatus,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Container(
+                height: 250,
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1C1E),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "STATUS LOG",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.grey.shade500,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _measuringLogs.length,
+                        itemBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            _measuringLogs[index],
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 11,
+                              color: Colors.grey.shade400,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  context.read<ServerService>().abortCableLossMeasurement();
-                  setState(() {
-                    _isMeasuring = false;
-                    _measuringStatus = '';
-                  });
-                  _showAppNotification(
-                    title: 'Measurement Aborted',
-                    message: 'The measurement process was stopped by user.',
-                    type: NotificationType.warning,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade100,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                ),
-                child: const Text('Abort Measurement'),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context
+                            .read<ServerService>()
+                            .abortCableLossMeasurement();
+                        setState(() {
+                          _isMeasuring = false;
+                          _measuringStatus = '';
+                        });
+                        _showAppNotification(
+                          title: 'Measurement Aborted',
+                          message:
+                              'The measurement process was stopped by user.',
+                          type: NotificationType.warning,
+                        );
+                      },
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      label: const Text('ABORT MEASUREMENT'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

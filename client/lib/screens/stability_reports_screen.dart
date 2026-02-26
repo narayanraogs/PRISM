@@ -59,6 +59,25 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   bool _isHelpOpen = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMetadata();
+    });
+  }
+
+  @override
+  void dispose() {
+    _xMinController.dispose();
+    _xMaxController.dispose();
+    _y1MinController.dispose();
+    _y1MaxController.dispose();
+    _y2MinController.dispose();
+    _y2MaxController.dispose();
+    super.dispose();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncMetadata();
@@ -101,9 +120,8 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   }
 
   void _fetchMetadata() {
-    // Manually trigger a bootstrap refresh if needed
     setState(() => _isLoadingMetadata = true);
-    Provider.of<ServerService>(context, listen: false).fetchBootstrapData();
+    Provider.of<ServerService>(context, listen: false).fetchStabilityReports();
   }
 
   Future<void> _fetchParamData(String param) async {
@@ -788,9 +806,9 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                   axisNameSize: 22,
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 50,
+                    reservedSize: 55,
                     getTitlesWidget: (val, meta) => Text(
-                      val.toStringAsFixed(1),
+                      val.toStringAsFixed(2),
                       style: const TextStyle(fontSize: 10, color: Colors.grey),
                     ),
                   ),
@@ -809,7 +827,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                   axisNameSize: 22,
                   sideTitles: SideTitles(
                     showTitles: _selectedParams.length > 1,
-                    reservedSize: 50,
+                    reservedSize: 55,
                     getTitlesWidget: (val, meta) {
                       final realVal = _denormalize(
                         val,
@@ -819,7 +837,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                         y2Max,
                       );
                       return Text(
-                        realVal.toStringAsFixed(1),
+                        realVal.toStringAsFixed(2),
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.grey,

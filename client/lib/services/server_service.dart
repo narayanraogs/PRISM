@@ -3484,6 +3484,58 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Future<void> fetchStabilityReports() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getStabilityReports';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final reportsData = StabilityReportMetadataResponse.fromJson(
+          jsonDecode(response.body),
+        );
+        if (_status.bootstrapData != null) {
+          final oldBootstrap = _status.bootstrapData!;
+          final newBootstrap = BootstrapData(
+            rfuData: oldBootstrap.rfuData,
+            testData: oldBootstrap.testData,
+            stabilityData: oldBootstrap.stabilityData,
+            stabilityReportsData: reportsData,
+            spectrumDumpData: oldBootstrap.spectrumDumpData,
+            monitorData: oldBootstrap.monitorData,
+            tvacCableLossData: oldBootstrap.tvacCableLossData,
+            cableLossData: oldBootstrap.cableLossData,
+            databaseData: oldBootstrap.databaseData,
+            reportsData: oldBootstrap.reportsData,
+            tsmInternalLossData: oldBootstrap.tsmInternalLossData,
+            ucdcData: oldBootstrap.ucdcData,
+            attnData: oldBootstrap.attnData,
+            gtxData: oldBootstrap.gtxData,
+            scpiData: oldBootstrap.scpiData,
+          );
+          _status = ServerStatus(
+            satelliteName: _status.satelliteName,
+            testPhase: _status.testPhase,
+            memoryUsed: _status.memoryUsed,
+            cpuUsed: _status.cpuUsed,
+            isConnected: _status.isConnected,
+            bootstrapData: newBootstrap,
+          );
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching Stability Reports: $e');
+    }
+  }
+
   WebSocketChannel? _ucdcChannel;
 
   Stream<dynamic> connectUCDC(UCDCRequest request) {
