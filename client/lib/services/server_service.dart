@@ -55,6 +55,7 @@ class BootstrapData {
   final AttnMetaData attnData;
   final GTxMeasurementMetadata gtxData;
   final SCPIDetails scpiData;
+  final String plannerData;
 
   BootstrapData({
     required this.rfuData,
@@ -72,6 +73,7 @@ class BootstrapData {
     required this.attnData,
     required this.gtxData,
     required this.scpiData,
+    required this.plannerData,
   });
 
   factory BootstrapData.fromJson(Map<String, dynamic> json) {
@@ -139,6 +141,7 @@ class BootstrapData {
         'SCPIData',
         () => SCPIDetails.fromJson(json['SCPIData'] ?? {}),
       ),
+      plannerData: json['PlannerData'] ?? '',
     );
   }
 
@@ -3519,6 +3522,7 @@ class ServerService extends ChangeNotifier {
             attnData: oldBootstrap.attnData,
             gtxData: oldBootstrap.gtxData,
             scpiData: oldBootstrap.scpiData,
+            plannerData: oldBootstrap.plannerData,
           );
           _status = ServerStatus(
             satelliteName: _status.satelliteName,
@@ -3650,5 +3654,29 @@ class ServerService extends ChangeNotifier {
     _ucdcChannel?.sink.close();
     _scpiChannel?.sink.close();
     super.dispose();
+  }
+
+  Future<bool> savePlannerData(String jsonString) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/savePlannerData';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'data': jsonString}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['ok'] == true;
+      }
+    } catch (e) {
+      debugPrint('Error saving Planner Data: $e');
+    }
+    return false;
   }
 }

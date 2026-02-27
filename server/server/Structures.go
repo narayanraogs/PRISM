@@ -29,6 +29,7 @@ type BootstrapData struct {
 	AttnData             AttnMetaData
 	GTxData              GTxMeasurementMetadata
 	SCPIData             SCPIDetails
+	PlannerData          string
 }
 
 type RFUplinkRequest struct {

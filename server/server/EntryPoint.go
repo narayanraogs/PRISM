@@ -65,5 +65,7 @@ func GetRouter() *gin.Engine {
 	r.GET("/getUCDCResults", getUCDCResults)
 	//SCPI
 	r.GET("/scpi", scpi)
+	//PlannerState
+	r.POST("/savePlannerData", savePlannerData)
 	return r
 }

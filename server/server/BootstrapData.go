@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/resultsDB"
@@ -34,6 +36,7 @@ func getBootstrapData(c *gin.Context) {
 	resp.AttnData = getAttnInitialData()
 	resp.GTxData = getGTxMeasurementMetadata()
 	resp.SCPIData = getSCPIData()
+	resp.PlannerData = getPlannerData()
 
 	c.IndentedJSON(http.StatusOK, resp)
 }
@@ -692,4 +695,31 @@ func getSCPIData() SCPIDetails {
 	scpiDetails.OK = true
 	scpiDetails.Message = "Successfully retrieved metadata"
 	return scpiDetails
+}
+
+func getPlannerData() string {
+	plannerPath := filepath.Join(utils.Config.BaseFolder, ".resources", "plannerState.json")
+	data, err := os.ReadFile(plannerPath)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+func savePlannerData(c *gin.Context) {
+	var req struct {
+		Data string `json:"data"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "message": "Invalid request"})
+		return
+	}
+	plannerPath := filepath.Join(utils.Config.BaseFolder, ".resources", "plannerState.json")
+	err := os.WriteFile(plannerPath, []byte(req.Data), 0644)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "message": "Failed to save data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "message": "Saved successfully"})
 }
