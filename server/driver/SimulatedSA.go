@@ -13,8 +13,7 @@ type simulatedSA struct {
 }
 
 func (device *simulatedSA) setClearWrite() utils.CommandResponse {
-	//TODO implement me
-	panic("implement me")
+	return getSuccessResponse()
 }
 
 func (device *simulatedSA) loadLANDetails(name string) bool {
@@ -192,7 +191,7 @@ func (device *simulatedSA) getNoOfRowsToSkipInTrace() utils.CommandResponse {
 	var ret = getSuccessResponse()
 	ret.Result["NoOfRows"] = utils.CommandResult{
 		ResultType: "Value",
-		Value:      45.0,
+		Integer:    45,
 	}
 	return ret
 }
@@ -284,7 +283,6 @@ func (device *simulatedSA) getPhaseNoiseMarkerY(marker int) utils.CommandRespons
 }
 
 func (device *simulatedSA) getSpectrumDump() utils.CommandResponse {
-	//todo: replace with a proper image
 	data := make([]byte, 100)
 	filename := utils.GetTimeStampedFileName("screenshot")
 	filename = utils.Config.BaseFolder + "/screenshots/" + filename + ".png"
@@ -300,7 +298,6 @@ func (device *simulatedSA) getSpectrumDump() utils.CommandResponse {
 }
 
 func (device *simulatedSA) getTraceDump(points int) utils.CommandResponse {
-	//todo: replace with a proper trace
 	data := make([]byte, 100)
 	filename := utils.GetTimeStampedFileName("trace")
 	filename = utils.Config.BaseFolder + "/screenshots/" + filename + ".csv"
@@ -313,4 +310,108 @@ func (device *simulatedSA) getTraceDump(points int) utils.CommandResponse {
 		String:     fileData,
 	}
 	return ret
+}
+
+func (device *simulatedSA) getPulseAveragePower() utils.CommandResponse {
+	ret := getSuccessResponse()
+	pulseNos := []float64{1, 2, 3, 4, 5}
+	avgPowers := []float64{-10.5, -10.2, -10.8, -10.4, -10.6}
+
+	ret.Result["PulseNo"] = utils.CommandResult{
+		ResultType: "Values",
+		Values:     pulseNos,
+	}
+	ret.Result["PulseAvgPower"] = utils.CommandResult{
+		ResultType: "Values",
+		Values:     avgPowers,
+	}
+	ret.Result["TotalNoOfPulses"] = utils.CommandResult{
+		ResultType: "Value",
+		Value:      float64(len(pulseNos)),
+	}
+	return ret
+}
+
+func (device *simulatedSA) setPulseMode() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) setSpectrumParameters(centerFrequency float64, span float64, rbw float64) utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) setPulseParameters(acqtime float64, YTop float64, pdiv float64, analLength float64, reflevel float64,
+	hystlevel float64, points int32, bufferlength int32) utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) startMeasurement() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) stopMeasurement() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) setSpectrogramMode(mode string) utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) getPulseParameters() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) waitTillFirstPulse() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) getScreenshot(mode string) utils.CommandResponse {
+	data := make([]byte, 100)
+	filename := utils.GetTimeStampedFileName("screenshot")
+	filename = utils.Config.BaseFolder + "/screenshots/" + filename + ".png"
+	_ = os.WriteFile(filename, data, os.ModePerm)
+
+	var encodedImage = base64.StdEncoding.EncodeToString(data)
+	ret := getSuccessResponse()
+	ret.Result["Screenshot"] = utils.CommandResult{
+		ResultType: "Image",
+		String:     encodedImage,
+	}
+	return ret
+}
+
+func (device *simulatedSA) setSelectedTrace(number int) utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) restoreTrace() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) getSpectrumDumpSA() utils.CommandResponse {
+	return device.getSpectrumDump()
+}
+
+func (device *simulatedSA) getTraceDumpSA(points int) utils.CommandResponse {
+	return device.getTraceDump(points)
+}
+
+func (device *simulatedSA) startVSA() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) startSA() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) checkSA() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) checkVSA() utils.CommandResponse {
+	return getSuccessResponse()
+}
+
+func (device *simulatedSA) waitForSweeps(i int) utils.CommandResponse {
+	return getSuccessResponse()
 }

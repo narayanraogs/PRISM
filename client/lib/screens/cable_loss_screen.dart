@@ -7,6 +7,9 @@ import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class CableLossScreen extends StatefulWidget {
   final bool isActive;
@@ -55,7 +58,18 @@ class _CableLossScreenState extends State<CableLossScreen> {
   List<FrequencyDefinition> _availableFrequencies = [];
   Set<String> _selectedFrequencyNames = {};
   List<CableLossRecord> _history = [];
-  CableLossRecord? _selectedPlotRecord;
+  final Set<int> _selectedSlNos = {};
+
+  final List<Color> _plotColors = [
+    const Color(0xFF2196F3), // Blue
+    const Color(0xFFF44336), // Red
+    const Color(0xFF4CAF50), // Green
+    const Color(0xFFFF9800), // Orange
+    const Color(0xFF9C27B0), // Purple
+    const Color(0xFF00BCD4), // Cyan
+    const Color(0xFFE91E63), // Pink
+    const Color(0xFF795548), // Brown
+  ];
 
   @override
   void initState() {
@@ -116,8 +130,8 @@ class _CableLossScreenState extends State<CableLossScreen> {
     if (historyResp != null && historyResp.ok) {
       setState(() {
         _history = historyResp.history;
-        if (_history.isNotEmpty) {
-          _selectedPlotRecord = _history.last;
+        if (_history.isNotEmpty && _selectedSlNos.isEmpty) {
+          _selectedSlNos.add(_history.last.slNo);
         }
       });
     } else {
@@ -399,6 +413,66 @@ class _CableLossScreenState extends State<CableLossScreen> {
     _cableNameController.dispose();
     _lengthController.dispose();
     super.dispose();
+  }
+
+  void _exportToCSV({CableLossRecord? record}) {
+    final historyToExport = record != null ? [record] : _history;
+    if (historyToExport.isEmpty) {
+      _showAppNotification(
+        title: 'Export Failed',
+        message: 'No data available to export',
+        type: NotificationType.warning,
+      );
+      return;
+    }
+
+    // Header: Sl. No, Cable Name, Length (m), Date, Time, [Frequencies...]
+    List<String> header = ['Sl. No', 'Cable Name', 'Length (m)', 'Date', 'Time'];
+    for (var f in _availableFrequencies) {
+      header.add('${f.name} (${f.value} MHz)');
+    }
+
+    String csv = header.join(',') + '\n';
+
+    for (var rec in historyToExport) {
+      List<String> row = [
+        rec.slNo.toString(),
+        '"${rec.cableName}"',
+        rec.length.toString(),
+        rec.date,
+        rec.time,
+      ];
+
+      for (var f in _availableFrequencies) {
+        final m = rec.measurements.firstWhere(
+          (m) => m.frequency == f.value,
+          orElse: () => MeasurementPoint(frequency: f.value, loss: 0),
+        );
+        row.add(m.loss != 0 ? m.loss.toStringAsFixed(4) : '-');
+      }
+      csv += row.join(',') + '\n';
+    }
+
+    final bytes = utf8.encode(csv);
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/csv'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+    anchor.href = url;
+    final filename = record != null
+        ? "cable_loss_${record.cableName}_${record.date.replaceAll('-', '')}.csv"
+        : "cable_loss_history_${DateTime.now().millisecondsSinceEpoch}.csv";
+    anchor.download = filename;
+    anchor.click();
+    web.URL.revokeObjectURL(url);
+
+    _showAppNotification(
+      title: 'Export Successful',
+      message: 'CSV file has been downloaded',
+      type: NotificationType.success,
+    );
   }
 
   @override
@@ -1031,7 +1105,12 @@ class _CableLossScreenState extends State<CableLossScreen> {
   }
 
   Widget _buildLatestResultCard(ThemeData theme) {
-    if (_history.isEmpty || _selectedPlotRecord == null) {
+    final selectedRecords = _history
+        .where((r) => _selectedSlNos.contains(r.slNo))
+        .toList()
+      ..sort((a, b) => a.slNo.compareTo(b.slNo));
+
+    if (_history.isEmpty || selectedRecords.isEmpty) {
       return ContentCard(
         isSidebar: false,
         height: 480,
@@ -1041,9 +1120,9 @@ class _CableLossScreenState extends State<CableLossScreen> {
             children: [
               Icon(Icons.query_stats, size: 64, color: Colors.grey.shade200),
               const SizedBox(height: 16),
-              Text(
-                'No measurements yet',
-                style: TextStyle(color: Colors.grey.shade400),
+              const Text(
+                'Select records from history to plot',
+                style: TextStyle(color: Colors.grey),
               ),
             ],
           ),
@@ -1051,14 +1130,8 @@ class _CableLossScreenState extends State<CableLossScreen> {
       );
     }
 
-    final plotRecord = _selectedPlotRecord!;
-    final sortedMeasurements = List<MeasurementPoint>.from(
-      plotRecord.measurements,
-    )..sort((a, b) => a.frequency.compareTo(b.frequency));
-
-    final spots = List.generate(sortedMeasurements.length, (i) {
-      return FlSpot(i.toDouble(), sortedMeasurements[i].loss);
-    });
+    final isMulti = selectedRecords.length > 1;
+    final primaryRecord = selectedRecords.last;
 
     return ContentCard(
       isSidebar: false,
@@ -1073,21 +1146,35 @@ class _CableLossScreenState extends State<CableLossScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Latest Measurement',
+                    isMulti ? 'Comparison Plot' : 'Measurement Plot',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    'Cable: ${plotRecord.cableName} (${plotRecord.length}m)',
+                    isMulti
+                        ? '${selectedRecords.length} cables selected'
+                        : 'Cable: ${primaryRecord.cableName} (${primaryRecord.length}m)',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   ),
                 ],
               ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.download),
-                tooltip: 'Export CSV',
+              Row(
+                children: [
+                  if (isMulti)
+                    TextButton.icon(
+                      onPressed: () => setState(() => _selectedSlNos.clear()),
+                      icon: const Icon(Icons.clear_all, size: 18),
+                      label: const Text('Clear'),
+                    ),
+                  IconButton(
+                    onPressed: () => _exportToCSV(
+                      record: isMulti ? null : primaryRecord,
+                    ),
+                    icon: const Icon(Icons.download),
+                    tooltip: 'Export CSV',
+                  ),
+                ],
               ),
             ],
           ),
@@ -1097,7 +1184,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
             child: LineChart(
               LineChartData(
                 minX: 0,
-                maxX: (plotRecord.measurements.length - 1).toDouble(),
+                maxX: (_availableFrequencies.length - 1).toDouble(),
                 gridData: FlGridData(
                   show: true,
                   drawHorizontalLine: true,
@@ -1115,16 +1202,16 @@ class _CableLossScreenState extends State<CableLossScreen> {
                       interval: 1,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
-                        if (index < 0 || index >= sortedMeasurements.length) {
+                        if (index < 0 || index >= _availableFrequencies.length) {
                           return const SizedBox();
                         }
-                        final freq = sortedMeasurements[index].frequency;
+                        final freq = _availableFrequencies[index].value;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: RotatedBox(
                             quarterTurns: 1,
                             child: Text(
-                              '${freq.toStringAsFixed(1)}',
+                              freq.toStringAsFixed(1),
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.grey,
@@ -1141,7 +1228,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                       showTitles: true,
                       reservedSize: 40,
                       getTitlesWidget: (value, meta) => Text(
-                        '${value.toStringAsFixed(1)}',
+                        value.toStringAsFixed(1),
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.grey,
@@ -1157,52 +1244,80 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   ),
                 ),
                 borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
+                lineBarsData: selectedRecords.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final record = entry.value;
+                  final color = _plotColors[idx % _plotColors.length];
+
+                  final sortedMeasurements =
+                      List<MeasurementPoint>.from(record.measurements)
+                        ..sort((a, b) => a.frequency.compareTo(b.frequency));
+
+                  // Map to global available frequencies indices
+                  final spots = <FlSpot>[];
+                  for (int i = 0; i < _availableFrequencies.length; i++) {
+                    final targetFreq = _availableFrequencies[i].value;
+                    final match = sortedMeasurements.firstWhere(
+                      (m) => (m.frequency - targetFreq).abs() < 0.001,
+                      orElse: () => MeasurementPoint(frequency: targetFreq, loss: 0),
+                    );
+                    if (match.loss != 0) {
+                      spots.add(FlSpot(i.toDouble(), match.loss));
+                    }
+                  }
+
+                  return LineChartBarData(
                     spots: spots,
                     isCurved: false,
-                    color: theme.colorScheme.primary,
+                    color: color,
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: true),
                     belowBarData: BarAreaData(
-                      show: true,
-                      color: theme.colorScheme.primary.withOpacity(0.05),
+                      show: !isMulti,
+                      color: color.withOpacity(0.05),
                     ),
-                  ),
-                ],
+                  );
+                }).toList(),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          _buildLegend(theme),
+          _buildLegend(theme, selectedRecords),
         ],
       ),
     );
   }
 
-  Widget _buildLegend(ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          'Loss (dB)',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
+  Widget _buildLegend(ThemeData theme, List<CableLossRecord> selectedRecords) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: selectedRecords.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final record = entry.value;
+        final color = _plotColors[idx % _plotColors.length];
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${record.cableName} (${record.date})',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 
@@ -1224,7 +1339,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () => _exportToCSV(),
                 icon: const Icon(Icons.file_download),
                 label: const Text('Export All'),
               ),
@@ -1351,27 +1466,34 @@ class _CableLossScreenState extends State<CableLossScreen> {
                               IconButton(
                                 onPressed: () {
                                   setState(() {
-                                    _selectedPlotRecord = record;
+                                    if (_selectedSlNos.contains(record.slNo)) {
+                                      _selectedSlNos.remove(record.slNo);
+                                    } else {
+                                      _selectedSlNos.add(record.slNo);
+                                    }
                                   });
-                                  _showAppNotification(
-                                    title: 'Chart Updated',
-                                    message:
-                                        'Plotting data for ${record.cableName}',
-                                    type: NotificationType.info,
-                                  );
+                                  if (_selectedSlNos.contains(record.slNo)) {
+                                    _showAppNotification(
+                                      title: 'Chart Updated',
+                                      message:
+                                          'Added ${record.cableName} to plot',
+                                      type: NotificationType.info,
+                                    );
+                                  }
                                 },
                                 icon: Icon(
-                                  Icons.show_chart,
+                                  _selectedSlNos.contains(record.slNo)
+                                      ? Icons.check_circle
+                                      : Icons.show_chart,
                                   size: 18,
-                                  color:
-                                      _selectedPlotRecord?.slNo == record.slNo
+                                  color: _selectedSlNos.contains(record.slNo)
                                       ? theme.colorScheme.primary
                                       : null,
                                 ),
                                 tooltip: 'Plot measurement',
                               ),
                               IconButton(
-                                onPressed: () {},
+                                onPressed: () => _exportToCSV(record: record),
                                 icon: const Icon(Icons.download, size: 18),
                                 tooltip: 'Export CSV',
                               ),

@@ -110,7 +110,7 @@ func measureTSMInternalLoss(c *gin.Context) {
 
 	var req InternalLossMeasurementRequest
 	if err := conn.ReadJSON(&req); err != nil {
-		conn.WriteJSON(tne.MeasurementStatus{
+		conn.WriteJSON(tne.RTStatus{
 			Message:   "Unable to read request",
 			Completed: true,
 			Success:   false,

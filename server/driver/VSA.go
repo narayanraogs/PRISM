@@ -18,7 +18,7 @@ type VSA struct {
 func (vsa *VSA) LoadDevice(name string) bool {
 	if utils.Config.Simulator.VSA {
 		vsa.deviceMake = "SimulatedVSA"
-		vsa.device = &simulatedVSA{}
+		vsa.device = &simulatedSA{}
 		return true
 	}
 	dev, ok := database.GetDeviceDetails(name)

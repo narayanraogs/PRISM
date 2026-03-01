@@ -2,11 +2,15 @@ package driver
 
 import (
 	_ "embed"
+	"fmt"
 	"prismServer/utils"
+	"strings"
 )
 
 type simulatedTSM struct {
-	connection instrument
+	connection   instrument
+	driverStates map[int]string
+	attnStates   map[int]float64
 }
 
 func (device *simulatedTSM) loadLANDetails(name string) bool {
@@ -18,6 +22,11 @@ func (device *simulatedTSM) loadCommands() bool {
 }
 
 func (device *simulatedTSM) initializeDevice(name string) {
+	device.driverStates = make(map[int]string)
+	device.attnStates = make(map[int]float64)
+	for i := 1; i <= utils.Config.TSM.NoOfDrivers; i++ {
+		device.driverStates[i] = "A1234567890"
+	}
 }
 
 func (device *simulatedTSM) getCommands(mnemonics []string, arguments []string, replace []string) []utils.Command {
@@ -30,35 +39,63 @@ func (device *simulatedTSM) communicate(cmds []utils.Command, port string) []str
 
 func (device *simulatedTSM) getDriverPath() utils.CommandResponse {
 	response := getSuccessResponse()
+	var tbr = make([]string, 0)
+	for i := 1; i <= utils.Config.TSM.NoOfDrivers; i++ {
+		tbr = append(tbr, fmt.Sprintf("D%d%s", i, device.driverStates[i]))
+	}
 	response.Result["DriverPath"] = utils.CommandResult{
 		ResultType: "String",
-		String:     "D1A1234567890!D2A1234567890",
+		String:     strings.Join(tbr, "!"),
 	}
 	return response
 }
 
 func (device *simulatedTSM) setDriverPath(driverNo int, onStatus string, offStatus string) utils.CommandResponse {
+	currentState := device.driverStates[driverNo]
+	if len(currentState) == 0 {
+		currentState = "A1234567890"
+	}
+	//todo: Check
+	chars := []rune(currentState)
+	// Apply "A" (On) values
+	for _, posStr := range strings.Split(onStatus, "") {
+		var pos int
+		if _, err := fmt.Sscanf(posStr, "%d", &pos); err == nil && pos >= 0 && pos < len(chars) {
+			chars[pos] = '1'
+		}
+	}
+	// Apply "B" (Off) values
+	for _, posStr := range strings.Split(offStatus, "") {
+		var pos int
+		if _, err := fmt.Sscanf(posStr, "%d", &pos); err == nil && pos >= 0 && pos < len(chars) {
+			chars[pos] = '0'
+		}
+	}
+
+	device.driverStates[driverNo] = string(chars)
 	return getSuccessResponse()
 }
 
 func (device *simulatedTSM) getError() utils.CommandResponse {
 	response := getSuccessResponse()
-	response.Result["DriverPath"] = utils.CommandResult{
+	response.Result["Error"] = utils.CommandResult{
 		ResultType: "String",
-		String:     "",
+		String:     "No Error",
 	}
 	return response
 }
 
 func (device *simulatedTSM) setAttn(value float64, attnNo int) utils.CommandResponse {
+	device.attnStates[attnNo] = value
 	return getSuccessResponse()
 }
 
 func (device *simulatedTSM) getAttn(attnNo int) utils.CommandResponse {
 	response := getSuccessResponse()
+	val := device.attnStates[attnNo]
 	response.Result["Attn"] = utils.CommandResult{
 		ResultType: "String",
-		String:     "0",
+		String:     fmt.Sprintf("%.3f", val),
 	}
 	return response
 }

@@ -28,34 +28,62 @@ type SGPowerMeasurement struct {
 	stop            bool
 }
 
+// Internal Helpers
+
+func (sg *SGPowerMeasurement) notify(msg string) {
+	sg.statusMonitor <- AttnMeasurementStatus{Message: msg, Error: false}
+}
+
+func (sg *SGPowerMeasurement) finish(msg string, success bool) {
+	sg.statusMonitor <- AttnMeasurementStatus{
+		Message:   msg,
+		Error:     !success,
+		Completed: true,
+	}
+	close(sg.statusMonitor)
+}
+
+func (sg *SGPowerMeasurement) setError(msg string) {
+	sg.finish(msg, false)
+}
+
+func (sg *SGPowerMeasurement) check(resp utils.CommandResponse, errMsg string) bool {
+	if !resp.Success {
+		sg.setError(fmt.Sprintf("%s: %s", errMsg, resp.ErrorMessage))
+		return false
+	}
+	if sg.stop {
+		sg.setError("Measurement aborted by user")
+		return false
+	}
+	return true
+}
+
+// Public API
+
 func (sg *SGPowerMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return sg.statusMonitor
 }
 
-func (sg *SGPowerMeasurement) Initialize(deviceProfile string, rxName string, spectrumProfile string,
-	maxPower float64, minPower float64, stepSize float64) {
+func (sg *SGPowerMeasurement) Initialize(deviceProfile, rxName, spectrumProfile string,
+	maxPower, minPower, stepSize float64) {
 	sg.deviceProfile = deviceProfile
 	sg.rxName = rxName
 	sg.spectrumProfile = spectrumProfile
 	sg.maxPower = maxPower
 	sg.minPower = minPower
 	sg.stepSize = stepSize
-	sg.currentStatus = make([][]string, 0)
+	sg.currentStatus = [][]string{{"Sl. No", "Set Power", "Measured Power", "Deviation"}}
 	sg.statusMonitor = make(chan AttnMeasurementStatus, 20)
-	ok := sg.loadDevices()
-	if !ok {
+	sg.stop = false
+
+	if !sg.loadDevices() {
 		sg.setError("Unable to load devices")
 		return
 	}
-	ok = sg.loadDetails()
-	if !ok {
-		sg.setError("Unable to load details")
-		return
+	if !sg.loadDetails() {
+		sg.setError("Unable to load details from database")
 	}
-	header := make([]string, 0)
-	header = append(header, "Sl. No", "Set Power", "Measured Power", "Deviation")
-	sg.currentStatus = append(sg.currentStatus, header)
-	sg.stop = false
 }
 
 func (sg *SGPowerMeasurement) Stop() {
@@ -63,67 +91,45 @@ func (sg *SGPowerMeasurement) Stop() {
 }
 
 func (sg *SGPowerMeasurement) loadDevices() bool {
-	saName, ok := database.GetSAFromDeviceProfile(sg.deviceProfile)
-	if !ok {
+	saName, okSa := database.GetSAFromDeviceProfile(sg.deviceProfile)
+	sgName, okSg := database.GetSGFromDeviceProfile(sg.deviceProfile)
+
+	if !okSa || !okSg {
 		return false
 	}
-	sgName, ok := database.GetSGFromDeviceProfile(sg.deviceProfile)
-	if !ok {
-		return false
-	}
-	ok = sg.sa.LoadDevice(saName)
-	if !ok {
-		return false
-	}
-	ok = sg.sg.LoadDevice(sgName)
-	if !ok {
-		return false
-	}
-	return true
+
+	return sg.sa.LoadDevice(saName) && sg.sg.LoadDevice(sgName)
 }
 
 func (sg *SGPowerMeasurement) loadDetails() bool {
-	freq, ok := database.GetRxFrequency(sg.rxName)
-	if !ok {
+	freq, okFreq := database.GetRxFrequency(sg.rxName)
+	rxs, okRxs := database.GetAllRxWithFrequency(freq)
+
+	if !okFreq || !okRxs {
 		return false
 	}
-	rxs, ok := database.GetAllRxWithFrequency(freq)
-	if !ok {
-		return false
-	}
+
 	sg.frequency = freq
-	sg.linkedRxs = make([]string, 0)
-	sg.linkedRxs = append(sg.linkedRxs, rxs...)
+	sg.linkedRxs = rxs
 	return true
 }
 
-func (sg *SGPowerMeasurement) setError(message string) {
-	var measure = AttnMeasurementStatus{
-		Completed: true,
-		Error:     true,
-		Message:   message,
-		HasData:   false,
-	}
-	sg.statusMonitor <- measure
-	close(sg.statusMonitor)
-}
-
 func (sg *SGPowerMeasurement) StartMeasurement() {
-	var measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "SG Power Measurement Started",
-		HasData:   false,
-	}
-	sg.statusMonitor <- measure
-	response := sg.sa.SetAlignmentOff()
-	if !response.Success {
-		sg.setError("Unable to communicate with SA")
+	sg.notify("SG Power Measurement Started")
+
+	if !sg.check(sg.sa.SetAlignmentOff(), "SA: alignment off") {
 		return
 	}
-	response = sg.sg.SetFrequency(float64(sg.frequency))
-	if !response.Success {
-		sg.setError("Unable to communicate with SG")
+	if !sg.check(sg.sg.SetFrequency(float64(sg.frequency)), "SG: set freq") {
+		return
+	}
+	if !sg.check(sg.sg.SetModOff(), "SG: mod off") {
+		return
+	}
+	if !sg.check(sg.sg.SetPower(0), "SG: power 0") {
+		return
+	}
+	if !sg.check(sg.sg.SetRFOn(), "SG: RF on") {
 		return
 	}
 
@@ -133,151 +139,109 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 		sg.sg.SetRFOff()
 	}()
 
-	response = sg.sg.SetModOff()
-	if !response.Success {
-		sg.setError("Unable to communicate with SG")
-		return
-	}
-
-	spectrum, ok := database.GetSpectrumProfile(sg.spectrumProfile)
+	spec, ok := database.GetSpectrumProfile(sg.spectrumProfile)
 	if !ok {
-		sg.setError("Unable to Read Spectrum from Database")
+		sg.setError("Spectrum profile not found in database")
 		return
 	}
 
-	response = sg.sa.SetSpectrum(spectrum.CenterFrequency, spectrum.Span,
-		float64(spectrum.RBW), float64(spectrum.VBW))
-	if !response.Success {
-		sg.setError("Unable to communicate with SA")
+	if !sg.check(sg.sa.SetSpectrum(spec.CenterFrequency, spec.Span, float64(spec.RBW), float64(spec.VBW)), "SA: set spectrum") {
 		return
 	}
 
-	response = sg.sg.SetPower(0)
-	if !response.Success {
-		sg.setError("Unable to communicate with SG")
+	sg.notify("Measuring initial baseline power")
+	if !sg.check(sg.sa.SetReferenceNominal(), "SA: find carrier") {
 		return
 	}
+	time.Sleep(time.Second)
 
-	response = sg.sg.SetRFOn()
-	if !response.Success {
-		sg.setError("Unable to communicate with SG")
+	resp := sg.sa.GetMaxMarkerValue()
+	if !sg.check(resp, "SA: read baseline power") {
 		return
 	}
-
-	response = sg.sa.SetReferenceNominal()
-	if !response.Success {
-		sg.setError("Carrier Not found")
-		return
-	}
-	time.Sleep(1000 * time.Millisecond)
-	response = sg.sa.GetMaxMarkerValue()
-	if !response.Success {
-		sg.setError("Unable to communicate with SA")
-		return
-	}
-	cableLoss := response.Result["MarkerY"].Value
+	baseline := resp.Result["MarkerY"].Value
 	slNo := 0
-	slNoStr := strconv.Itoa(slNo)
 
-	for powerSet := sg.minPower; powerSet <= sg.maxPower; powerSet = powerSet + sg.stepSize {
+	for power := sg.minPower; power <= sg.maxPower; power += sg.stepSize {
 		if sg.stop {
-			sg.setError("Measurement Aborted by User")
-			return
-		}
-		powerStr := fmt.Sprintf("%.3f", powerSet)
-
-		response = sg.sg.SetPower(powerSet)
-		if !response.Success {
-			sg.setError("SG Power Cannot be set to " + powerStr)
+			sg.setError("User Aborted")
 			return
 		}
 
-		time.Sleep(1000 * time.Millisecond)
-
-		response = sg.sa.GetMaxMarkerValue()
-		if !response.Success {
-			sg.setError("SA Power Cannot be read")
+		if !sg.check(sg.sg.SetPower(power), "SG: set power") {
 			return
 		}
-		actualPower := response.Result["MarkerY"].Value - cableLoss
+		time.Sleep(time.Second)
 
-		actualPowerStr := fmt.Sprintf("%.3f", actualPower)
-		slNo = slNo + 1
-		slNoStr = strconv.Itoa(slNo)
+		mResp := sg.sa.GetMaxMarkerValue()
+		if !sg.check(mResp, "SA: read power") {
+			return
+		}
 
-		difference := actualPower - powerSet
-		differenceStr := fmt.Sprintf("%.3f", difference)
-		row := make([]string, 0)
-		row = append(row, slNoStr, powerStr, actualPowerStr, differenceStr)
-		sg.currentStatus = append(sg.currentStatus, row)
-		measure = AttnMeasurementStatus{
-			Completed:     false,
-			Error:         false,
+		measuredPower := mResp.Result["MarkerY"].Value - baseline
+		diff := measuredPower - power
+		slNo++
+
+		measure := AttnMeasurementStatus{
+			Message:       fmt.Sprintf("Completed Measurement for %.3f dBm", power),
 			PlotDeviation: true,
-			Message:       "Completed Measurement for " + powerStr,
 		}
-		measure.AddData(slNo, powerSet, actualPower, difference)
+		measure.AddData(slNo, power, measuredPower, diff)
 		sg.statusMonitor <- measure
-	}
-	measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "Saving Results",
-	}
-	sg.statusMonitor <- measure
 
+		sg.currentStatus = append(sg.currentStatus, []string{
+			strconv.Itoa(slNo),
+			fmt.Sprintf("%.3f", power),
+			fmt.Sprintf("%.3f", measuredPower),
+			fmt.Sprintf("%.3f", diff),
+		})
+	}
+
+	sg.notify("Saving Results")
+	sg.saveResults()
+	sg.finish("Measurement Completed", true)
+}
+
+func (sg *SGPowerMeasurement) saveResults() {
 	var csv strings.Builder
-	for _, row := range sg.currentStatus {
+	var reqs, measureds, diffs []float64
+
+	for i, row := range sg.currentStatus {
 		csv.WriteString(strings.Join(row, ","))
 		csv.WriteString("\n")
-	}
 
-	for _, rx := range sg.linkedRxs {
-		fileName := utils.Config.BaseFolder + "/.resources/sg-" + rx + ".csv"
-		err := os.WriteFile(fileName, []byte(csv.String()), 0755)
-		if err != nil {
-			fmt.Println("Cannot write file", fileName)
-		}
-	}
-
-	var requried = make([]float64, 0)
-	var measured = make([]float64, 0)
-	var difference = make([]float64, 0)
-	for i, row := range sg.currentStatus {
 		if i == 0 {
 			continue
 		}
-		tempR, _ := strconv.ParseFloat(row[1], 64)
-		tempM, _ := strconv.ParseFloat(row[2], 64)
-		tempD, _ := strconv.ParseFloat(row[3], 64)
-		requried = append(requried, tempR)
-		measured = append(measured, tempM)
-		difference = append(difference, tempD)
+
+		r, _ := strconv.ParseFloat(row[1], 64)
+		m, _ := strconv.ParseFloat(row[2], 64)
+		d, _ := strconv.ParseFloat(row[3], 64)
+		reqs = append(reqs, r)
+		measureds = append(measureds, m)
+		diffs = append(diffs, d)
 	}
 
-	var measuredStruct utils.TSMAttnProvider
-	measuredStruct.RequiredAttn = requried
-	measuredStruct.MeasuredAttn = measured
-	measuredStruct.Difference = difference
-	var correctedStruct utils.TSMAttnProvider
-	correctedStruct = utils.GetCorrectedProfile(measuredStruct, 0, sg.stepSize)
+	// Calculate Corrected Profile
+	provider := utils.TSMAttnProvider{RequiredAttn: reqs, MeasuredAttn: measureds, Difference: diffs}
+	corrected := utils.GetCorrectedProfile(provider, 0, sg.stepSize)
 
-	sg.deviations = make([]CorrectedDeviation, 0)
-	for i := 0; i < len(requried); i++ {
-		var temp CorrectedDeviation
-		temp.SetValue = requried[i]
-		temp.MeasuredDeviation = difference[i]
-		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
-		sg.deviations = append(sg.deviations, temp)
+	sg.deviations = nil
+	for i := range reqs {
+		sg.deviations = append(sg.deviations, CorrectedDeviation{
+			SetValue:           reqs[i],
+			MeasuredDeviation:  diffs[i],
+			CorrectedDeviation: corrected.GetDeviation(reqs[i]),
+		})
 	}
 
-	measure = AttnMeasurementStatus{
-		Completed: true,
-		Error:     false,
-		Message:   "Measurement Completed",
+	// Write CSV for each linked RX
+	for _, rx := range sg.linkedRxs {
+		path := fmt.Sprintf("%s/.resources/sg-%s.csv", utils.Config.BaseFolder, rx)
+		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
+			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
+		}
 	}
-	sg.statusMonitor <- measure
-	close(sg.statusMonitor)
 }
 
 func (sg *SGPowerMeasurement) GetCorrectedDeviations() []CorrectedDeviation {

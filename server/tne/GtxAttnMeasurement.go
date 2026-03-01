@@ -29,12 +29,45 @@ type GTxAttnMeasurement struct {
 	stop            bool
 }
 
+// Internal Helpers
+
+func (gtx *GTxAttnMeasurement) notify(msg string) {
+	gtx.statusMonitor <- AttnMeasurementStatus{Message: msg, Error: false}
+}
+
+func (gtx *GTxAttnMeasurement) finish(msg string, success bool) {
+	gtx.statusMonitor <- AttnMeasurementStatus{
+		Message:   msg,
+		Error:     !success,
+		Completed: true,
+	}
+	close(gtx.statusMonitor)
+}
+
+func (gtx *GTxAttnMeasurement) setError(msg string) {
+	gtx.finish(msg, false)
+}
+
+func (gtx *GTxAttnMeasurement) check(resp utils.CommandResponse, errMsg string) bool {
+	if !resp.Success {
+		gtx.setError(fmt.Sprintf("%s: %s", errMsg, resp.ErrorMessage))
+		return false
+	}
+	if gtx.stop {
+		gtx.setError("Measurement aborted by user")
+		return false
+	}
+	return true
+}
+
+// Public API
+
 func (gtx *GTxAttnMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return gtx.statusMonitor
 }
 
-func (gtx *GTxAttnMeasurement) Initialize(deviceProfile string, rxName string, spectrumProfile string,
-	component string, maxPower float64, minPower float64, stepSize float64) {
+func (gtx *GTxAttnMeasurement) Initialize(deviceProfile, rxName, spectrumProfile, component string,
+	maxPower, minPower, stepSize float64) {
 	gtx.deviceProfile = deviceProfile
 	gtx.rxName = rxName
 	gtx.spectrumProfile = spectrumProfile
@@ -42,22 +75,17 @@ func (gtx *GTxAttnMeasurement) Initialize(deviceProfile string, rxName string, s
 	gtx.maxPower = maxPower
 	gtx.minPower = minPower
 	gtx.stepSize = stepSize
-	gtx.currentStatus = make([][]string, 0)
+	gtx.currentStatus = [][]string{{"Sl. No", "Set Power", "Measured Power", "Deviation"}}
 	gtx.statusMonitor = make(chan AttnMeasurementStatus, 20)
-	ok := gtx.loadDevices()
-	if !ok {
-		gtx.setError("Unable to Load devices")
-		return
-	}
-	ok = gtx.loadDetails()
-	if !ok {
-		gtx.setError("Unable to Load Details")
-		return
-	}
-	header := make([]string, 0)
-	header = append(header, "Sl. No", "Set Power", "Measured Power", "Deviation")
-	gtx.currentStatus = append(gtx.currentStatus, header)
 	gtx.stop = false
+
+	if !gtx.loadDevices() {
+		gtx.setError("Unable to load devices")
+		return
+	}
+	if !gtx.loadDetails() {
+		gtx.setError("Unable to load details from database")
+	}
 }
 
 func (gtx *GTxAttnMeasurement) Stop() {
@@ -65,65 +93,36 @@ func (gtx *GTxAttnMeasurement) Stop() {
 }
 
 func (gtx *GTxAttnMeasurement) loadDevices() bool {
-	saName, ok := database.GetSAFromDeviceProfile(gtx.deviceProfile)
-	if !ok {
+	saName, okSa := database.GetSAFromDeviceProfile(gtx.deviceProfile)
+	gtxName, okGtx := database.GetGTxFromDeviceProfile(gtx.deviceProfile)
+
+	if !okSa || !okGtx {
 		return false
 	}
-	gtxName, ok := database.GetGTxFromDeviceProfile(gtx.deviceProfile)
-	if !ok {
-		return false
-	}
-	ok = gtx.sa.LoadDevice(saName)
-	if !ok {
-		return false
-	}
-	ok = gtx.gtx.LoadDevice(gtxName)
-	if !ok {
-		return false
-	}
-	return true
+
+	return gtx.sa.LoadDevice(saName) && gtx.gtx.LoadDevice(gtxName)
 }
 
 func (gtx *GTxAttnMeasurement) loadDetails() bool {
-	freq, ok := database.GetRxFrequency(gtx.rxName)
-	if !ok {
+	freq, okFreq := database.GetRxFrequency(gtx.rxName)
+	rxs, okRxs := database.GetAllRxWithFrequency(freq)
+
+	if !okFreq || !okRxs {
 		return false
 	}
-	rxs, ok := database.GetAllRxWithFrequency(freq)
-	if !ok {
-		return false
-	}
+
 	gtx.frequency = freq
-	gtx.linkedRxs = make([]string, 0)
-	gtx.linkedRxs = append(gtx.linkedRxs, rxs...)
+	gtx.linkedRxs = rxs
 	return true
 }
 
-func (gtx *GTxAttnMeasurement) setError(message string) {
-	var measure = AttnMeasurementStatus{
-		Completed: true,
-		Error:     true,
-		Message:   message,
-	}
-	gtx.statusMonitor <- measure
-	close(gtx.statusMonitor)
-}
-
 func (gtx *GTxAttnMeasurement) StartMeasurement() {
-	var measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "GTx Power Measurement Started",
-	}
-	gtx.statusMonitor <- measure
-	response := gtx.sa.SetAlignmentOff()
-	if !response.Success {
-		gtx.setError("Unable to communicate with SA")
+	gtx.notify("GTx Power Measurement Started")
+
+	if !gtx.check(gtx.sa.SetAlignmentOff(), "SA: alignment off") {
 		return
 	}
-	response = gtx.gtx.SetPower(gtx.component, 0)
-	if !response.Success {
-		gtx.setError("Unable to communicate with GTx")
+	if !gtx.check(gtx.gtx.SetPower(gtx.component, 0), "GTx: power 0") {
 		return
 	}
 	time.Sleep(200 * time.Millisecond)
@@ -134,148 +133,116 @@ func (gtx *GTxAttnMeasurement) StartMeasurement() {
 		gtx.gtx.SetCarrierOff(gtx.component)
 	}()
 
-	response = gtx.gtx.SetModulationOff(gtx.component)
-	if !response.Success {
-		gtx.setError("Unable to communicate with GTx")
+	if !gtx.check(gtx.gtx.SetModulationOff(gtx.component), "GTx: modulation off") {
 		return
 	}
 	time.Sleep(200 * time.Millisecond)
-	response = gtx.gtx.SetCarrierOn(gtx.component)
-	if !response.Success {
-		gtx.setError("Unable to communicate with GTx")
+	if !gtx.check(gtx.gtx.SetCarrierOn(gtx.component), "GTx: carrier on") {
 		return
 	}
 	time.Sleep(200 * time.Millisecond)
-	spectrum, ok := database.GetSpectrumProfile(gtx.spectrumProfile)
+
+	spec, ok := database.GetSpectrumProfile(gtx.spectrumProfile)
 	if !ok {
-		gtx.setError("Unable to Read Spectrum from Database")
+		gtx.setError("Spectrum profile not found in database")
 		return
 	}
 
-	response = gtx.sa.SetSpectrum(spectrum.CenterFrequency, spectrum.Span,
-		float64(spectrum.RBW), float64(spectrum.VBW))
-	if !response.Success {
-		gtx.setError("Unable to communicate with SA")
+	if !gtx.check(gtx.sa.SetSpectrum(spec.CenterFrequency, spec.Span, float64(spec.RBW), float64(spec.VBW)), "SA: set spectrum") {
 		return
 	}
-
-	response = gtx.sa.SetReferenceNominal()
-	if !response.Success {
-		gtx.setError("Carrier Not found")
+	if !gtx.check(gtx.sa.SetReferenceNominal(), "SA: find carrier") {
 		return
 	}
+	time.Sleep(time.Second)
 
-	time.Sleep(1 * time.Second)
-
-	response = gtx.sa.GetMaxMarkerValue()
-	if !response.Success {
-		gtx.setError("Unable to communicate with SA")
+	resp := gtx.sa.GetMaxMarkerValue()
+	if !gtx.check(resp, "SA: read initial power") {
 		return
 	}
-	initalPower := response.Result["MarkerY"].Value
-	slNo := 1
+	initialPower := resp.Result["MarkerY"].Value
+	slNo := 0
 
-	for powerSet := gtx.minPower; powerSet <= gtx.maxPower; powerSet = powerSet + gtx.stepSize {
+	for power := gtx.minPower; power <= gtx.maxPower; power += gtx.stepSize {
 		if gtx.stop {
-			gtx.setError("Measurement Aborted by User")
-			return
-		}
-		powerStr := fmt.Sprintf("%.3f", powerSet)
-		response = gtx.gtx.SetPower(gtx.component, powerSet)
-		if !response.Success {
-			gtx.setError("GTx Power Cannot be set to " + powerStr)
+			gtx.setError("User Aborted")
 			return
 		}
 
+		if !gtx.check(gtx.gtx.SetPower(gtx.component, power), "GTx: set power") {
+			return
+		}
 		time.Sleep(200 * time.Millisecond)
 
-		response = gtx.sa.GetMaxMarkerValue()
-		if !response.Success {
-			gtx.setError("SA Power Cannot be read")
+		mResp := gtx.sa.GetMaxMarkerValue()
+		if !gtx.check(mResp, "SA: read power") {
 			return
 		}
-		actualPower := response.Result["MarkerY"].Value - initalPower
 
-		actualPowerStr := fmt.Sprintf("%.3f", actualPower)
-		slNo = slNo + 1
-		slNoStr := strconv.Itoa(slNo)
+		measuredPower := mResp.Result["MarkerY"].Value - initialPower
+		diff := measuredPower - power
+		slNo++
 
-		difference := actualPower - powerSet
-		differenceStr := fmt.Sprintf("%.3f", difference)
-		row := make([]string, 0)
-		row = append(row, slNoStr, powerStr, actualPowerStr, differenceStr)
-		gtx.currentStatus = append(gtx.currentStatus, row)
-
-		measure = AttnMeasurementStatus{
-			Completed:     false,
-			Error:         false,
-			Message:       "Completed Measurement for " + powerStr,
+		measure := AttnMeasurementStatus{
+			Message:       fmt.Sprintf("Completed Measurement for %.3f dBm", power),
 			PlotDeviation: true,
 		}
-		measure.AddData(slNo, powerSet, actualPower, difference)
+		measure.AddData(slNo, power, measuredPower, diff)
 		gtx.statusMonitor <- measure
-	}
-	measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "Saving Results",
-		HasData:   false,
-	}
-	gtx.statusMonitor <- measure
 
+		gtx.currentStatus = append(gtx.currentStatus, []string{
+			strconv.Itoa(slNo),
+			fmt.Sprintf("%.3f", power),
+			fmt.Sprintf("%.3f", measuredPower),
+			fmt.Sprintf("%.3f", diff),
+		})
+	}
+
+	gtx.notify("Saving Results")
+	gtx.saveResults()
+	gtx.finish("Measurement Completed", true)
+}
+
+func (gtx *GTxAttnMeasurement) saveResults() {
 	var csv strings.Builder
-	for _, row := range gtx.currentStatus {
+	var reqs, measureds, diffs []float64
+
+	for i, row := range gtx.currentStatus {
 		csv.WriteString(strings.Join(row, ","))
 		csv.WriteString("\n")
-	}
 
-	for _, rx := range gtx.linkedRxs {
-		fileName := utils.Config.BaseFolder + "/.resources/gtx-" + rx + ".csv"
-		err := os.WriteFile(fileName, []byte(csv.String()), 0755)
-		if err != nil {
-			fmt.Println("Cannot write file", fileName)
-		}
-	}
-
-	var requried = make([]float64, 0)
-	var measured = make([]float64, 0)
-	var difference = make([]float64, 0)
-	for i, row := range gtx.currentStatus {
 		if i == 0 {
 			continue
 		}
-		tempR, _ := strconv.ParseFloat(row[1], 64)
-		tempM, _ := strconv.ParseFloat(row[2], 64)
-		tempD, _ := strconv.ParseFloat(row[3], 64)
-		requried = append(requried, tempR)
-		measured = append(measured, tempM)
-		difference = append(difference, tempD)
+
+		r, _ := strconv.ParseFloat(row[1], 64)
+		m, _ := strconv.ParseFloat(row[2], 64)
+		d, _ := strconv.ParseFloat(row[3], 64)
+		reqs = append(reqs, r)
+		measureds = append(measureds, m)
+		diffs = append(diffs, d)
 	}
 
-	var measuredStruct utils.TSMAttnProvider
-	measuredStruct.RequiredAttn = requried
-	measuredStruct.MeasuredAttn = measured
-	measuredStruct.Difference = difference
-	var correctedStruct utils.TSMAttnProvider
-	correctedStruct = utils.GetCorrectedProfile(measuredStruct, 0, gtx.stepSize)
+	// Calculate Corrected Deviations
+	provider := utils.TSMAttnProvider{RequiredAttn: reqs, MeasuredAttn: measureds, Difference: diffs}
+	corrected := utils.GetCorrectedProfile(provider, 0, gtx.stepSize)
 
-	gtx.deviations = make([]CorrectedDeviation, 0)
-	for i := 0; i < len(requried); i++ {
-		var temp CorrectedDeviation
-		temp.SetValue = requried[i]
-		temp.MeasuredDeviation = difference[i]
-		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
-		gtx.deviations = append(gtx.deviations, temp)
+	gtx.deviations = nil
+	for i := range reqs {
+		gtx.deviations = append(gtx.deviations, CorrectedDeviation{
+			SetValue:           reqs[i],
+			MeasuredDeviation:  diffs[i],
+			CorrectedDeviation: corrected.GetDeviation(reqs[i]),
+		})
 	}
-	measure = AttnMeasurementStatus{
-		Completed:     true,
-		Error:         false,
-		Message:       "Measurement Completed",
-		HasData:       false,
-		PlotDeviation: false,
+
+	// Write CSV for each linked RX
+	for _, rx := range gtx.linkedRxs {
+		path := fmt.Sprintf("%s/.resources/gtx-%s.csv", utils.Config.BaseFolder, rx)
+		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
+			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
+		}
 	}
-	gtx.statusMonitor <- measure
-	close(gtx.statusMonitor)
 }
 
 func (gtx *GTxAttnMeasurement) GetCorrectedDeviations() []CorrectedDeviation {

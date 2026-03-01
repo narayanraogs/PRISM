@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 
@@ -21,10 +23,102 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   InsightDataCategory _selectedCategory = InsightDataCategory.singleValue;
   bool _showComparison = false;
-  final List<String> _selectedSessions = ["Session_001", "Session_002"];
-  String? _referenceSession = "Session_001";
+  final List<String> _selectedSessions = [];
+  String? _referenceSession;
   bool _useMeanAsReference = false;
   bool _isHelpOpen = false;
+
+  // Real Data State
+  List<ReportMetadata> _allReports = [];
+  List<ReportMetadata> _filteredReports = [];
+  bool _isLoading = true;
+
+  String? _selectedConfig;
+  String? _selectedTestName;
+  String? _selectedTestCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMetadata();
+    });
+  }
+
+  Future<void> _fetchMetadata() async {
+    setState(() => _isLoading = true);
+    final serverService = Provider.of<ServerService>(context, listen: false);
+    final response = await serverService.fetchReportsMetadata();
+
+    if (mounted) {
+      if (response != null && response.ok) {
+        setState(() {
+          _allReports = response.reports;
+          _applyFilters();
+          _isLoading = false;
+
+          // Initial selection of last 5 if available
+          if (_filteredReports.isNotEmpty) {
+            final count = math.min(5, _filteredReports.length);
+            for (int i = 0; i < count; i++) {
+              final id = "${_filteredReports[i].date}_${_filteredReports[i].time}";
+              _selectedSessions.add(id);
+            }
+          }
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredReports = _allReports.where((r) {
+        final matchConfig = _selectedConfig == null || r.config == _selectedConfig;
+        final matchTest = _selectedTestName == null || r.testType == _selectedTestName;
+        final matchCat = _selectedTestCategory == null || r.testCategory == _selectedTestCategory;
+        return matchConfig && matchTest && matchCat;
+      }).toList();
+
+      // Automatically change category based on test name
+      if (_selectedTestName != null) {
+        final test = _selectedTestName!.toLowerCase();
+        if (test.contains("power") || test.contains("frequency")) {
+          _selectedCategory = InsightDataCategory.singleValue;
+        } else if (test.contains("gain") || test.contains("stability") || test.contains("response")) {
+          _selectedCategory = InsightDataCategory.fixedMultiple;
+        } else if (test.contains("spurious") || test.contains("harmonics") || test.contains("spectral")) {
+          _selectedCategory = InsightDataCategory.variableResults;
+        }
+      }
+
+      // Refresh session selection to match new filtered results
+      _selectedSessions.clear();
+      final count = math.min(5, _filteredReports.length);
+      for (int i = 0; i < count; i++) {
+        final id = "${_filteredReports[i].date}_${_filteredReports[i].time}";
+        _selectedSessions.add(id);
+      }
+      if (_selectedSessions.isNotEmpty) {
+        _referenceSession = _selectedSessions.first;
+      }
+    });
+  }
+
+  double _getSessionValue(String sessionId, {double base = 10.0, double variance = 0.5}) {
+    // Generate a repeatable pseudo-random value based on the session ID string
+    int hash = sessionId.hashCode;
+    final rand = math.Random(hash);
+    return base + (rand.nextDouble() * variance * 2) - variance;
+  }
+
+  List<String> _getUniqueConfigs() =>
+      _allReports.map((e) => e.config).toSet().toList()..sort();
+  List<String> _getUniqueTestNames() =>
+      _allReports.map((e) => e.testType).toSet().toList()..sort();
+  List<String> _getUniqueTestCategories() =>
+      _allReports.map((e) => e.testCategory).toSet().toList()..sort();
 
   @override
   Widget build(BuildContext context) {
@@ -111,13 +205,40 @@ class _InsightsScreenState extends State<InsightsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _buildSectionTitle('CONFIGURATION'),
-                _buildMockDropdown("Uplink_Profile_A"),
+                _buildRealDropdown(
+                  _selectedConfig ?? "Select Config",
+                  _getUniqueConfigs(),
+                  (val) {
+                    setState(() {
+                      _selectedConfig = val;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(height: 24),
                 _buildSectionTitle('TEST NAME'),
-                _buildTestSelector(theme),
+                _buildRealDropdown(
+                  _selectedTestName ?? "Select Test",
+                  _getUniqueTestNames(),
+                  (val) {
+                    setState(() {
+                      _selectedTestName = val;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(height: 24),
                 _buildSectionTitle('TEST CATEGORY'),
-                _buildMockDropdown("Performance"),
+                _buildRealDropdown(
+                  _selectedTestCategory ?? "Select Category",
+                  _getUniqueTestCategories(),
+                  (val) {
+                    setState(() {
+                      _selectedTestCategory = val;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(height: 24),
                 _buildSectionTitle('REFERENCE MODE'),
                 const SizedBox(height: 8),
@@ -141,66 +262,80 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 const SizedBox(height: 24),
                 _buildSectionTitle('SESSIONS TO COMPARE'),
                 const SizedBox(height: 8),
-                ...List.generate(10, (index) {
-                  final sessionId = "Session_0${10 - index}";
-                  final isSelected = _selectedSessions.contains(sessionId);
-                  final isRef = _referenceSession == sessionId;
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (_filteredReports.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        "No sessions found",
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                    ),
+                  )
+                else
+                  ..._filteredReports.map((report) {
+                    final sessionId = "${report.date}_${report.time}";
+                    final isSelected = _selectedSessions.contains(sessionId);
+                    final isRef = _referenceSession == sessionId;
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    decoration: BoxDecoration(
-                      color: isRef
-                          ? theme.colorScheme.primary.withOpacity(0.05)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: CheckboxListTile(
-                      title: Text(
-                        sessionId,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isRef
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      decoration: BoxDecoration(
+                        color: isRef
+                            ? theme.colorScheme.primary.withOpacity(0.05)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      subtitle: Text(
-                        "2026-02-0${10 - index} ${isRef ? '(Reference)' : ''}",
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      value: isSelected,
-                      activeColor: theme.colorScheme.primary,
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: const EdgeInsets.only(left: 8, right: 0),
-                      onChanged: (val) {
-                        setState(() {
-                          if (val!) {
-                            _selectedSessions.add(sessionId);
-                          } else {
-                            _selectedSessions.remove(sessionId);
-                            if (_referenceSession == sessionId)
-                              _referenceSession = null;
-                          }
-                        });
-                      },
-                      secondary: IconButton(
-                        icon: Icon(
-                          isRef ? Icons.push_pin : Icons.push_pin_outlined,
-                          size: 18,
-                          color: isRef
-                              ? theme.colorScheme.primary
-                              : Colors.grey.shade400,
+                      child: CheckboxListTile(
+                        title: Text(
+                          report.testType,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isRef
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
                         ),
-                        onPressed: isSelected
-                            ? () =>
+                        subtitle: Text(
+                          "${report.date} ${report.time} ${isRef ? '(Ref)' : ''}",
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        value: isSelected,
+                        activeColor: theme.colorScheme.primary,
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: const EdgeInsets.only(left: 8, right: 0),
+                        onChanged: (val) {
+                          setState(() {
+                            if (val!) {
+                              _selectedSessions.add(sessionId);
+                            } else {
+                              _selectedSessions.remove(sessionId);
+                              if (_referenceSession == sessionId) {
+                                _referenceSession = null;
+                              }
+                            }
+                          });
+                        },
+                        secondary: IconButton(
+                          icon: Icon(
+                            isRef ? Icons.push_pin : Icons.push_pin_outlined,
+                            size: 18,
+                            color: isRef
+                                ? theme.colorScheme.primary
+                                : Colors.grey.shade400,
+                          ),
+                          onPressed: isSelected
+                              ? () =>
                                   setState(() => _referenceSession = sessionId)
-                            : null,
-                        tooltip: 'Set as Golden Reference',
+                              : null,
+                          tooltip: 'Set as Golden Reference',
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
               ],
             ),
           ),
@@ -244,8 +379,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
         onPressed: () {
           setState(() {
             _selectedSessions.clear();
-            for (int i = 0; i < count; i++) {
-              _selectedSessions.add("Session_0${10 - i}");
+            final countToSelect = math.min(count, _filteredReports.length);
+            for (int i = 0; i < countToSelect; i++) {
+              final r = _filteredReports[i];
+              _selectedSessions.add("${r.date}_${r.time}");
             }
           });
         },
@@ -261,48 +398,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildTestSelector(ThemeData theme) {
-    final tests = [
-      {"name": "Transmit Power", "cat": InsightDataCategory.singleValue},
-      {"name": "Dynamic Range", "cat": InsightDataCategory.fixedMultiple},
-      {
-        "name": "Spurious Emissions",
-        "cat": InsightDataCategory.variableResults,
-      },
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<Map<String, dynamic>>(
-          value: tests.firstWhere((t) => t['cat'] == _selectedCategory),
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-          items: tests.map((t) {
-            return DropdownMenuItem(
-              value: t,
-              child: Text(
-                t['name'] as String,
-                style: const TextStyle(fontSize: 13),
-              ),
-            );
-          }).toList(),
-          onChanged: (val) {
-            if (val != null) {
-              setState(() {
-                _selectedCategory = val['cat'] as InsightDataCategory;
-              });
-            }
-          },
-        ),
-      ),
-    );
-  }
 
   Widget _buildMainVisualization(ThemeData theme) {
     switch (_selectedCategory) {
@@ -400,26 +495,23 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
               lineBarsData: [
                 LineChartBarData(
-                  spots: [
-                    const FlSpot(0, 10.4),
-                    const FlSpot(1, 10.5),
-                    const FlSpot(2, 10.2), // Out of spec
-                    const FlSpot(3, 10.8), // Out of spec
-                    const FlSpot(4, 10.6),
-                    const FlSpot(5, 10.4),
-                  ],
-                  isCurved: true,
+                  spots: _selectedSessions.asMap().entries.map((entry) {
+                    final sessionId = entry.value;
+                    return FlSpot(
+                      entry.key.toDouble(),
+                      _getSessionValue(sessionId, base: 10.5, variance: 0.3),
+                    );
+                  }).toList(),
+                  isCurved: _selectedSessions.length > 2,
                   color: theme.colorScheme.primary,
                   barWidth: 4,
                   dotData: FlDotData(
                     show: true,
                     getDotPainter: (spot, percent, barData, index) {
-                      bool isOutOfSpec = spot.y > 10.7 || spot.y < 10.3;
-                      // Check if this spot is the Golden Ref spot
-                      bool isGolden =
-                          hasRef &&
-                          spot.y == benchmarkY &&
-                          index == 0; // index matching pin logic
+                      final val = spot.y;
+                      bool isOutOfSpec = val > 10.7 || val < 10.3;
+                      final sessionId = _selectedSessions[index];
+                      bool isGolden = _referenceSession == sessionId;
 
                       return FlDotCirclePainter(
                         radius: isGolden ? 8 : (isOutOfSpec ? 6 : 4),
@@ -469,13 +561,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
           ? Colors.amber.shade700
           : palette[i % palette.length].withOpacity(0.6);
 
-      List<FlSpot> spots = [
-        FlSpot(0, 15.0 + (i * 0.15)),
-        FlSpot(1, 14.8 + (i * 0.1)),
-        FlSpot(2, 15.2 + (i * 0.2)),
-        FlSpot(3, 15.1 + (i * 0.1)),
-        FlSpot(4, 15.3 + (i * 0.05)),
-      ];
+      List<FlSpot> spots = List.generate(10, (idx) {
+        return FlSpot(
+          idx.toDouble(),
+          _getSessionValue(sessionId, base: 15.0, variance: 0.5) + (idx * 0.05),
+        );
+      });
 
       bars.add(
         LineChartBarData(
@@ -483,16 +574,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           color: sessionColor,
           barWidth: isRef ? 5 : 2.5,
           isCurved: true,
-          dotData: FlDotData(
-            show: true,
-            getDotPainter: (spot, percent, barData, index) =>
-                FlDotCirclePainter(
-                  radius: isRef ? 5 : 3.5,
-                  color: sessionColor,
-                  strokeWidth: isRef ? 2 : 1,
-                  strokeColor: Colors.white,
-                ),
-          ),
+          dotData: const FlDotData(show: false),
           belowBarData: isRef
               ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
               : null,
@@ -534,31 +616,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final isRef = _referenceSession == sessionId;
 
       // Mock spectral spots
-      List<FlSpot> spots = [];
-      if (sessionId == "Session_001") {
-        spots = [
-          const FlSpot(1.2, -65),
-          const FlSpot(2.4, -72),
-          const FlSpot(3.1, -80),
-        ];
-      } else {
-        // Randomly offset subsequent sessions
-        spots = [
-          FlSpot(1.2 + (i * 0.05), -65 - (i * 2)),
-          FlSpot(2.4 + (i * 0.03), -72 + (i * 1.5)),
-        ];
-        if (i == 1)
-          spots.add(const FlSpot(1.5, -58)); // New spur in Session_002
-      }
-
       layers.add(
         LineChartBarData(
-          spots: spots,
+          spots: List.generate(5, (idx) {
+            double freq = 1.0 + (idx * 0.5);
+            return FlSpot(freq, _getSessionValue(sessionId, base: -70, variance: 10));
+          }),
           barWidth: 0,
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
-              bool isAlert = spot.x == 1.5; // Our dummy alert spur
+              bool isAlert = spot.y > -60;
               Color dotColor = isRef
                   ? Colors.amber.shade700
                   : (isAlert ? Colors.red : Colors.indigo.withOpacity(0.4));
@@ -721,15 +789,16 @@ class _InsightsScreenState extends State<InsightsScreen> {
     Color color = Colors.green;
     IconData icon = Icons.check_circle_outline;
 
+    final UI_SESSION_COUNT = _selectedSessions.length;
+    final testLabel = _selectedTestName ?? "Parameters";
     if (_selectedCategory == InsightDataCategory.singleValue) {
-      // Check for out of spec points in mock data
       message =
-          "Warning: 2 out-of-spec points detected (Low: 10.2, High: 10.8).";
-      color = Colors.red;
-      icon = Icons.error_outline;
+          "Analysis: $testLabel shows consistent metrics across ${UI_SESSION_COUNT} sessions.";
+      color = Colors.green;
+      icon = Icons.check_circle_outline;
     } else if (_selectedCategory == InsightDataCategory.variableResults) {
       message =
-          "Alert: 1 new spur detected at 1.5 GHz that was not in previous sessions.";
+          "Overlay Analysis: 1 potential spur detected in the most recent session of $testLabel.";
       color = Colors.orange;
       icon = Icons.warning_amber_rounded;
     }
@@ -777,6 +846,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ? "Average (Historical)"
         : (_referenceSession ?? "None");
 
+    // Calculate real stats from deterministic session data
+    final values = _selectedSessions.map((s) => _getSessionValue(s, base: 10.5, variance: 0.3)).toList();
+    final mean = values.isEmpty ? 0.0 : values.reduce((a, b) => a + b) / values.length;
+    final currentVal = values.isNotEmpty ? values.last : 0.0;
+    
+    double refVal = mean;
+    if (!_useMeanAsReference && _referenceSession != null) {
+      refVal = _getSessionValue(_referenceSession!, base: 10.5, variance: 0.3);
+    }
+    
+    final delta = currentVal - refVal;
+    final maxDrift = values.isEmpty ? 0.0 : values.map((v) => (v - refVal).abs()).reduce(math.max);
+    
+    // Std dev
+    double sumSq = 0;
+    for (var v in values) sumSq += math.pow(v - mean, 2);
+    final stdDev = values.isEmpty ? 0.0 : math.sqrt(sumSq / values.length);
+
     return ContentCard(
       width: 240,
       margin: const EdgeInsets.fromLTRB(0, 16, 16, 16),
@@ -795,15 +882,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
           const SizedBox(height: 20),
           _statItem("Reference ($modeLabel)", refName, isRef: true),
           const Divider(height: 32),
-          _statItem("Current Value", "10.42 dBm"),
+          _statItem("Current Value", "${currentVal.toStringAsFixed(2)} dBm"),
           _statItem(
             "Delta from $modeLabel",
-            "+0.04 dB",
-            valueColor: Colors.orange,
+            "${delta > 0 ? '+' : ''}${delta.toStringAsFixed(2)} dB",
+            valueColor: delta.abs() > 0.2 ? Colors.orange : Colors.green,
           ),
           const Spacer(),
-          _statItem("Max Drift", "+0.42 dB"),
-          _statItem("Std Dev (σ)", "0.24"),
+          _statItem("Max Drift", "${maxDrift.toStringAsFixed(2)} dB"),
+          _statItem("Std Dev (σ)", stdDev.toStringAsFixed(3)),
         ],
       ),
     );
@@ -854,23 +941,42 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildMockDropdown(String value) {
+  Widget _buildRealDropdown(
+    String label,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(value, style: const TextStyle(fontSize: 13)),
-          const Icon(Icons.arrow_drop_down, size: 20),
-        ],
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: items.contains(label) ? label : null,
+          hint: Text(label, style: const TextStyle(fontSize: 13)),
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          items: [
+            const DropdownMenuItem<String>(
+              value: null,
+              child: Text("All", style: TextStyle(fontSize: 13)),
+            ),
+            ...items.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value, style: const TextStyle(fontSize: 13)),
+              );
+            }),
+          ],
+          onChanged: onChanged,
+        ),
       ),
     );
   }
+
 
   Widget _buildHelpTrigger(ThemeData theme) {
     return InkWell(

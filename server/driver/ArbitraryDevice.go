@@ -3,6 +3,7 @@ package driver
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -21,7 +22,7 @@ func NewArbitraryDevice(ip string, port int) *ArbitraryDevice {
 }
 
 func (d *ArbitraryDevice) SendCommand(command string, read bool) (string, error) {
-	address := fmt.Sprintf("%s:%d", d.IPAddress, d.Port)
+	address := net.JoinHostPort(d.IPAddress, strconv.Itoa(d.Port))
 	conn, err := net.DialTimeout("tcp", address, d.Timeout)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to device: %v", err)

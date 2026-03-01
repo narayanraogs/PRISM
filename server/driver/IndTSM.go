@@ -129,7 +129,7 @@ func (device *indTSM) getError() utils.CommandResponse {
 		return getErrorResponse("Cannot Communicate with TSM")
 	}
 	response := getSuccessResponse()
-	response.Result["DriverPath"] = utils.CommandResult{
+	response.Result["Error"] = utils.CommandResult{
 		ResultType: "String",
 		String:     retVal[0],
 	}

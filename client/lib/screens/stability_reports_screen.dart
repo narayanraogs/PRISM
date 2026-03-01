@@ -281,6 +281,68 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
     }
   }
 
+  void _exportCSV() {
+    if (_selectedParams.isEmpty) return;
+
+    try {
+      final String fileName =
+          'Stability_Report_${_selectedSession?.date}_${_selectedSession?.time}.csv';
+      StringBuffer csvContent = StringBuffer();
+
+      // Header
+      List<String> headers = [];
+      for (var param in _selectedParams) {
+        headers.add('Time ($param) [s]');
+        headers.add('$param Value');
+      }
+      csvContent.writeln(headers.join(','));
+
+      // Data
+      int maxLength = 0;
+      List<List<DataPoint>> allPoints = [];
+      for (var param in _selectedParams) {
+        final pts = _loadedData[param]!.points;
+        allPoints.add(pts);
+        if (pts.length > maxLength) maxLength = pts.length;
+      }
+
+      for (int i = 0; i < maxLength; i++) {
+        List<String> row = [];
+        for (int j = 0; j < _selectedParams.length; j++) {
+          final pts = allPoints[j];
+          if (i < pts.length) {
+            row.add(pts[i].x.toStringAsFixed(3));
+            row.add(pts[i].y.toStringAsFixed(6));
+          } else {
+            row.add('');
+            row.add('');
+          }
+        }
+        csvContent.writeln(row.join(','));
+      }
+
+      final bytes = utf8.encode(csvContent.toString());
+      final blob = web.Blob(
+        [bytes.toJS].toJS,
+        web.BlobPropertyBag(type: 'text/csv'),
+      );
+      final url = web.URL.createObjectURL(blob);
+      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      web.URL.revokeObjectURL(url);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report exported as CSV')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting CSV: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -629,13 +691,14 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 label: const Text('PNG'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 48),
+                  padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () => _exportImage('jpeg'),
@@ -643,6 +706,22 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 label: const Text('JPG'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 48),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _exportCSV,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('CSV'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1008,8 +1087,8 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
                 _buildHelpItem(
                   theme,
                   'Report Export',
-                  'Export the current view as High-Resolution PNG or JPG. The filename automatically includes '
-                      'the session date and time for easy archival.',
+                  'Export the current view as High-Resolution PNG or JPG images for visual documentation. '
+                      'Alternatively, export the selected parameter values as a CSV file for detailed offline analysis.',
                 ),
               ],
             ),

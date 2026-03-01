@@ -28,42 +28,48 @@ type TSMAttnMeasurement struct {
 	currentStatus    [][]string
 	statusMonitor    chan AttnMeasurementStatus
 	deviations       []CorrectedDeviation
-
-	stop bool
+	stop             bool
 }
 
-type CorrectedDeviation struct {
-	SetValue           float64
-	MeasuredDeviation  float64
-	CorrectedDeviation float64
+// Internal Helpers
+
+func (tsm *TSMAttnMeasurement) notify(msg string) {
+	tsm.statusMonitor <- AttnMeasurementStatus{Message: msg, Error: false}
 }
 
-type AttnMeasurementStatus struct {
-	SlNo          int
-	SetAttn       float64
-	MeasuredAttn  float64
-	Deviation     float64
-	HasData       bool
-	Completed     bool
-	Error         bool
-	Message       string
-	PlotDeviation bool
+func (tsm *TSMAttnMeasurement) finish(msg string, success bool) {
+	tsm.statusMonitor <- AttnMeasurementStatus{
+		Message:   msg,
+		Error:     !success,
+		Completed: true,
+	}
+	close(tsm.statusMonitor)
 }
 
-func (t *AttnMeasurementStatus) AddData(slNo int, setAttn float64, measured float64, deviation float64) {
-	t.SlNo = slNo
-	t.SetAttn = setAttn
-	t.MeasuredAttn = measured
-	t.Deviation = deviation
-	t.HasData = true
+func (tsm *TSMAttnMeasurement) setError(msg string) {
+	tsm.finish(msg, false)
 }
+
+func (tsm *TSMAttnMeasurement) check(resp utils.CommandResponse, errMsg string) bool {
+	if !resp.Success {
+		tsm.setError(fmt.Sprintf("%s: %s", errMsg, resp.ErrorMessage))
+		return false
+	}
+	if tsm.stop {
+		tsm.setError("Measurement aborted by user")
+		return false
+	}
+	return true
+}
+
+// Public API
 
 func (tsm *TSMAttnMeasurement) GetStatusMonitor() chan AttnMeasurementStatus {
 	return tsm.statusMonitor
 }
 
-func (tsm *TSMAttnMeasurement) Initialize(deviceProfile string, rxName string, spectrumProfile string, tsmConfiguration string,
-	maxPower float64, minPower float64, stepSize float64) {
+func (tsm *TSMAttnMeasurement) Initialize(deviceProfile, rxName, spectrumProfile, tsmConfiguration string,
+	maxPower, minPower, stepSize float64) {
 	tsm.deviceProfile = deviceProfile
 	tsm.rxName = rxName
 	tsm.spectrumProfile = spectrumProfile
@@ -71,20 +77,17 @@ func (tsm *TSMAttnMeasurement) Initialize(deviceProfile string, rxName string, s
 	tsm.maxPower = maxPower
 	tsm.minPower = minPower
 	tsm.stepSize = stepSize
-	tsm.currentStatus = make([][]string, 0)
-	tsm.currentStatus = append(tsm.currentStatus, []string{"Sl No", "Set Attn", "Measured Attn", "Deviation"})
+	tsm.currentStatus = [][]string{{"Sl No", "Set Attn", "Measured Attn", "Deviation"}}
 	tsm.statusMonitor = make(chan AttnMeasurementStatus, 20)
-	ok := tsm.loadDevices()
-	if !ok {
+	tsm.stop = false
+
+	if !tsm.loadDevices() {
 		tsm.setError("Unable to load devices")
 		return
 	}
-	ok = tsm.loadDetails()
-	if !ok {
-		tsm.setError("Unable to load details")
-		return
+	if !tsm.loadDetails() {
+		tsm.setError("Unable to load details from database")
 	}
-	tsm.stop = false
 }
 
 func (tsm *TSMAttnMeasurement) Stop() {
@@ -92,292 +95,208 @@ func (tsm *TSMAttnMeasurement) Stop() {
 }
 
 func (tsm *TSMAttnMeasurement) loadDevices() bool {
-	saName, ok := database.GetSAFromDeviceProfile(tsm.deviceProfile)
-	if !ok {
+	saName, okSa := database.GetSAFromDeviceProfile(tsm.deviceProfile)
+	sgName, okSg := database.GetSGFromDeviceProfile(tsm.deviceProfile)
+	tsmName, okTsm := database.GetTSMFromDeviceProfile(tsm.deviceProfile)
+
+	if !okSa || !okSg || !okTsm {
 		return false
 	}
-	sgName, ok := database.GetSGFromDeviceProfile(tsm.deviceProfile)
-	if !ok {
-		return false
-	}
-	tsmName, ok := database.GetTSMFromDeviceProfile(tsm.deviceProfile)
-	if !ok {
-		return false
-	}
-	ok = tsm.sa.LoadDevice(saName)
-	if !ok {
-		return false
-	}
-	ok = tsm.sg.LoadDevice(sgName)
-	if !ok {
-		return false
-	}
-	ok = tsm.tsm.LoadDevice(tsmName)
-	if !ok {
-		return false
-	}
-	return true
+
+	return tsm.sa.LoadDevice(saName) && tsm.sg.LoadDevice(sgName) && tsm.tsm.LoadDevice(tsmName)
 }
 
 func (tsm *TSMAttnMeasurement) loadDetails() bool {
-	freq, ok := database.GetRxFrequency(tsm.rxName)
-	if !ok {
+	freq, okFreq := database.GetRxFrequency(tsm.rxName)
+	rxs, okRxs := database.GetAllRxWithFrequency(freq)
+	paths, okPath := database.GetTSMPathDetails(tsm.tsmConfiguration)
+
+	if !okFreq || !okRxs || !okPath {
 		return false
 	}
-	rxs, ok := database.GetAllRxWithFrequency(freq)
-	if !ok {
-		return false
-	}
+
 	tsm.frequency = freq
-	tsm.linkedRxs = make([]string, 0)
-	tsm.linkedRxs = append(tsm.linkedRxs, rxs...)
-	paths, ok := database.GetTSMPathDetails(tsm.tsmConfiguration)
-	if !ok {
-		return false
-	}
+	tsm.linkedRxs = rxs
 	tsm.tsmConfig = paths
 	return true
 }
 
-func (tsm *TSMAttnMeasurement) setError(message string) {
-	var measure = AttnMeasurementStatus{
-		Completed: true,
-		Error:     true,
-		Message:   message,
-	}
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
-}
-
 func (tsm *TSMAttnMeasurement) StartMeasurement() {
-	var measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "TSM Power Measurement Started",
-	}
-	tsm.statusMonitor <- measure
-	response := tsm.sa.SetAlignmentOff()
-	if !response.Success {
-		tsm.setError("Unable to communicate with SA")
+	tsm.notify("TSM Attenuation Measurement Started")
+
+	if !tsm.check(tsm.sa.SetAlignmentOff(), "SA: alignment off") {
 		return
 	}
-	response = tsm.tsm.SetDriverStatus(tsm.tsmConfig.UplinkToSC.String)
-	if !response.Success {
-		tsm.setError("Unable to communicate with TSM")
+	if !tsm.check(tsm.tsm.SetDriverStatus(tsm.tsmConfig.UplinkToSC.String), "TSM: uplink to SC") {
 		return
 	}
 	time.Sleep(500 * time.Millisecond)
-	response = tsm.tsm.SetAttn(int(tsm.tsmConfig.AttnNumber.Int64), 0)
-	if !response.Success {
-		tsm.setError("Unable to communicate with TSM")
+
+	attnNum := int(tsm.tsmConfig.AttnNumber.Int64)
+	if !tsm.check(tsm.tsm.SetAttn(attnNum, 0), "TSM: reset attn") {
 		return
 	}
-	response = tsm.sg.SetPower(0)
-	if !response.Success {
-		tsm.setError("Unable to communicate with SG")
+	if !tsm.check(tsm.sg.SetPower(0), "SG: set power 0") {
 		return
 	}
+	if !tsm.check(tsm.sg.SetFrequency(float64(tsm.frequency)), "SG: set freq") {
+		return
+	}
+	if !tsm.check(tsm.sg.SetModOff(), "SG: mod off") {
+		return
+	}
+	if !tsm.check(tsm.sg.SetRFOn(), "SG: RF on") {
+		return
+	}
+
 	defer func() {
 		tsm.tsm.SetDriverStatus(tsm.tsmConfig.TerminateUplink.String)
 		time.Sleep(500 * time.Millisecond)
 		tsm.sa.SetAlignmentOn()
 		tsm.sa.SystemPreset()
 		tsm.sg.SetRFOff()
-		tsm.tsm.SetAttn(int(tsm.tsmConfig.AttnNumber.Int64), 0)
+		tsm.tsm.SetAttn(attnNum, 0)
 	}()
-	response = tsm.sg.SetFrequency(float64(tsm.frequency))
-	if !response.Success {
-		tsm.setError("Unable to communicate with SG")
-		return
-	}
-	response = tsm.sg.SetModOff()
-	if !response.Success {
-		tsm.setError("Unable to communicate with SG")
-		return
-	}
-	response = tsm.sg.SetRFOn()
-	if !response.Success {
-		tsm.setError("Unable to communicate with SG")
-		return
-	}
 
-	spectrum, ok := database.GetSpectrumProfile(tsm.spectrumProfile)
+	spec, ok := database.GetSpectrumProfile(tsm.spectrumProfile)
 	if !ok {
-		tsm.setError("Unable to Read Spectrum from Database")
+		tsm.setError("Spectrum profile not found")
 		return
 	}
 
-	response = tsm.sa.SetSpectrum(spectrum.CenterFrequency, spectrum.Span,
-		float64(spectrum.RBW), float64(spectrum.VBW))
-	if !response.Success {
-		tsm.setError("Unable to communicate with SA")
+	if !tsm.check(tsm.sa.SetSpectrum(spec.CenterFrequency, spec.Span, float64(spec.RBW), float64(spec.VBW)), "SA: set spectrum") {
 		return
 	}
 
 	if tsm.tsmConfig.ExcludePad.Valid {
-		response = tsm.tsm.SetDriverStatus(tsm.tsmConfig.ExcludePad.String)
-		if !response.Success {
-			tsm.setError("Unable to communicate with TSM")
+		if !tsm.check(tsm.tsm.SetDriverStatus(tsm.tsmConfig.ExcludePad.String), "TSM: exclude pad") {
 			return
 		}
 	}
 
-	measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "Measuring initial power",
+	tsm.notify("Measuring initial power")
+	if !tsm.check(tsm.sa.SetReferenceNominal(), "SA: find carrier") {
+		return
 	}
-	tsm.statusMonitor <- measure
+	time.Sleep(time.Second)
 
-	response = tsm.sa.SetReferenceNominal()
-	if !response.Success {
-		tsm.setError("Carrier Not found")
+	resp := tsm.sa.GetMaxMarkerValue()
+	if !tsm.check(resp, "SA: read initial power") {
 		return
 	}
-	time.Sleep(1000 * time.Millisecond)
-	response = tsm.sa.GetMaxMarkerValue()
-	if !response.Success {
-		tsm.setError("Unable to communicate with SA")
-		return
-	}
-	initialPower := response.Result["MarkerY"].Value
+	initialPower := resp.Result["MarkerY"].Value
 	slNo := 0
 
+	// Fixed Pad Measurement
+	var fixedPower float64
 	if tsm.tsmConfig.IncludePad.Valid {
-		measure = AttnMeasurementStatus{
-			Completed: false,
-			Error:     false,
-			Message:   "Measuring Fixed Pad Attenuation",
-		}
-		tsm.statusMonitor <- measure
-
-		response = tsm.tsm.SetDriverStatus(tsm.tsmConfig.IncludePad.String)
-		if !response.Success {
-			tsm.setError("Unable to communicate with TSM")
+		tsm.notify("Measuring Fixed Pad Attenuation")
+		if !tsm.check(tsm.tsm.SetDriverStatus(tsm.tsmConfig.IncludePad.String), "TSM: include pad") {
 			return
 		}
 		time.Sleep(200 * time.Millisecond)
-		response = tsm.sa.GetMaxMarkerValue()
-		if !response.Success {
-			tsm.setError("Unable to communicate with SA")
+
+		pResp := tsm.sa.GetMaxMarkerValue()
+		if !tsm.check(pResp, "SA: read pad power") {
 			return
 		}
-		power := response.Result["MarkerY"].Value - initialPower
-		slNo = slNo + 1
-		response = tsm.tsm.SetDriverStatus(tsm.tsmConfig.ExcludePad.String)
-		if !response.Success {
-			tsm.setError("Unable to communicate with TSM")
+		fixedPower = pResp.Result["MarkerY"].Value - initialPower
+		slNo++
+
+		if !tsm.check(tsm.tsm.SetDriverStatus(tsm.tsmConfig.ExcludePad.String), "TSM: exclude pad restore") {
 			return
 		}
-		measure = AttnMeasurementStatus{
-			Completed:     false,
-			Error:         false,
-			Message:       "Completed Measuring Fixed Pad Attenuation",
-			PlotDeviation: false,
-		}
-		measure.AddData(slNo, 0, power, 0)
-		tsm.currentStatus = append(tsm.currentStatus, []string{fmt.Sprintf("%d", slNo), "FixedPad", fmt.Sprintf("%.3f", power), "-"})
+
+		measure := AttnMeasurementStatus{Message: "Completed Measuring Fixed Pad Attenuation"}
+		measure.AddData(slNo, 0, fixedPower, 0)
 		tsm.statusMonitor <- measure
+		tsm.currentStatus = append(tsm.currentStatus, []string{strconv.Itoa(slNo), "FixedPad", fmt.Sprintf("%.3f", fixedPower), "-"})
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	for attn := tsm.minPower; attn <= tsm.maxPower; attn = attn + tsm.stepSize {
+	// Attenuation Sweep Loop
+	for attn := tsm.minPower; attn <= tsm.maxPower; attn += tsm.stepSize {
 		if tsm.stop {
 			tsm.setError("User Aborted")
 			return
 		}
-		setAttn := fmt.Sprintf("%.3f", attn)
-		response = tsm.tsm.SetAttn(int(tsm.tsmConfig.AttnNumber.Int64), attn)
-		if !response.Success {
-			if !response.Success {
-				tsm.setError("Unable to communicate with TSM")
-				return
-			}
+
+		if !tsm.check(tsm.tsm.SetAttn(attnNum, attn), "TSM: set attn") {
+			return
 		}
 		time.Sleep(200 * time.Millisecond)
-		response = tsm.sa.GetMaxMarkerValue()
-		if !response.Success {
-			if !response.Success {
-				tsm.setError("Unable to communicate with TSM")
-				return
-			}
+
+		mResp := tsm.sa.GetMaxMarkerValue()
+		if !tsm.check(mResp, "SA: read attenuation") {
+			return
 		}
-		power := response.Result["MarkerY"].Value
+
+		power := mResp.Result["MarkerY"].Value
 		actualAttn := initialPower - power
-		difference := attn - actualAttn
-		slNo = slNo + 1
-		measure = AttnMeasurementStatus{
-			Completed:     false,
-			Error:         false,
-			Message:       "Completed Measuring for " + setAttn + " dB",
+		diff := attn - actualAttn
+		slNo++
+
+		measure := AttnMeasurementStatus{
+			Message:       fmt.Sprintf("Completed Measuring for %.3f dB", attn),
 			PlotDeviation: true,
 		}
-		measure.AddData(slNo, attn, actualAttn, difference)
+		measure.AddData(slNo, attn, actualAttn, diff)
 		tsm.statusMonitor <- measure
-		tsm.currentStatus = append(tsm.currentStatus, []string{fmt.Sprintf("%d", slNo), setAttn, fmt.Sprintf("%.3f", actualAttn), fmt.Sprintf("%.3f", difference)})
+		tsm.currentStatus = append(tsm.currentStatus, []string{strconv.Itoa(slNo), fmt.Sprintf("%.3f", attn), fmt.Sprintf("%.3f", actualAttn), fmt.Sprintf("%.3f", diff)})
 		time.Sleep(200 * time.Millisecond)
 	}
-	measure = AttnMeasurementStatus{
-		Completed: false,
-		Error:     false,
-		Message:   "Saving Results",
-		HasData:   false,
-	}
-	tsm.statusMonitor <- measure
-	var requried = make([]float64, 0)
-	var measured = make([]float64, 0)
-	var difference = make([]float64, 0)
+
+	tsm.notify("Saving Results")
+	tsm.saveAndCalculate(fixedPower)
+	tsm.finish("Measurement Completed", true)
+}
+
+func (tsm *TSMAttnMeasurement) saveAndCalculate(fixedPad float64) {
 	var csv strings.Builder
-	var fixed float64
+	var reqs, measureds, diffs []float64
+
 	for i, row := range tsm.currentStatus {
 		csv.WriteString(strings.Join(row, ","))
 		csv.WriteString("\n")
+
 		if i == 0 {
 			continue
 		}
-		if i == 1 {
-			fixed, _ = strconv.ParseFloat(row[2], 64)
-		}
-		tempR, _ := strconv.ParseFloat(row[1], 64)
-		tempM, _ := strconv.ParseFloat(row[2], 64)
-		tempD, _ := strconv.ParseFloat(row[3], 64)
-		requried = append(requried, tempR)
-		measured = append(measured, tempM)
-		difference = append(difference, tempD)
+
+		r, _ := strconv.ParseFloat(row[1], 64) // r will be 0 for FixedPad row which is fine
+		m, _ := strconv.ParseFloat(row[2], 64)
+		d, _ := strconv.ParseFloat(row[3], 64)
+		reqs = append(reqs, r)
+		measureds = append(measureds, m)
+		diffs = append(diffs, d)
 	}
 
-	var measuredStruct utils.TSMAttnProvider
-	measuredStruct.RequiredAttn = requried
-	measuredStruct.MeasuredAttn = measured
-	measuredStruct.Difference = difference
-	var correctedStruct utils.TSMAttnProvider
-	correctedStruct = utils.GetCorrectedProfile(measuredStruct, fixed, tsm.stepSize)
+	// Calculate Corrected Deviations
+	provider := utils.TSMAttnProvider{RequiredAttn: reqs, MeasuredAttn: measureds, Difference: diffs}
+	corrected := utils.GetCorrectedProfile(provider, fixedPad, tsm.stepSize)
 
-	tsm.deviations = make([]CorrectedDeviation, 0)
-	for i := 1; i < len(requried); i++ {
-		var temp CorrectedDeviation
-		temp.SetValue = requried[i]
-		temp.MeasuredDeviation = difference[i]
-		temp.CorrectedDeviation = correctedStruct.GetDeviation(requried[i])
-		tsm.deviations = append(tsm.deviations, temp)
+	tsm.deviations = nil
+	// Skip the first row if it was FixedPad (reqs[0] == 0)
+	startIdx := 0
+	if tsm.tsmConfig.IncludePad.Valid {
+		startIdx = 1
 	}
 
+	for i := startIdx; i < len(reqs); i++ {
+		tsm.deviations = append(tsm.deviations, CorrectedDeviation{
+			SetValue:           reqs[i],
+			MeasuredDeviation:  diffs[i],
+			CorrectedDeviation: corrected.GetDeviation(reqs[i]),
+		})
+	}
+
+	// Write CSV for each linked RX
 	for _, rx := range tsm.linkedRxs {
-		fileName := utils.Config.BaseFolder + "/.resources/tsm-" + rx + ".csv"
-		err := os.WriteFile(fileName, []byte(csv.String()), 0755)
-		if err != nil {
-			fmt.Println("Cannot write file", fileName)
+		path := fmt.Sprintf("%s/.resources/tsm-%s.csv", utils.Config.BaseFolder, rx)
+		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
+			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
 		}
 	}
-
-	measure = AttnMeasurementStatus{
-		Completed: true,
-		Error:     false,
-		Message:   "Measurement Completed",
-		HasData:   false,
-	}
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
 }
 
 func (tsm *TSMAttnMeasurement) GetCorrectedDeviations() []CorrectedDeviation {

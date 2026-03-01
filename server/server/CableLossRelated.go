@@ -84,7 +84,7 @@ func measureCableLoss(c *gin.Context) {
 
 	var req CableLossRequest
 	if err := conn.ReadJSON(&req); err != nil {
-		conn.WriteJSON(tne.MeasurementStatus{
+		conn.WriteJSON(tne.RTStatus{
 			Message:   "Unable to read request",
 			Completed: true,
 			Success:   false,

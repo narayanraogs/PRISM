@@ -47,7 +47,12 @@ func (device *simulatedPM) getPowerChannelA(connect bool) utils.CommandResponse 
 }
 
 func (device *simulatedPM) getFrequency(channel string, connect bool) utils.CommandResponse {
-	return getSuccessResponse()
+	response := getSuccessResponse()
+	response.Result["Frequency"] = utils.CommandResult{
+		ResultType: "Value",
+		Value:      1e9,
+	}
+	return response
 }
 
 func (device *simulatedPM) setChannelB(frequency float64) utils.CommandResponse {
@@ -131,7 +136,7 @@ func (device *simulatedPM) getRiseTime(channel string, connect bool) utils.Comma
 
 func (device *simulatedPM) getFallTime(channel string, connect bool) utils.CommandResponse {
 	response := getSuccessResponse()
-	response.Result["RiseTime"] = utils.CommandResult{
+	response.Result["FallTime"] = utils.CommandResult{
 		ResultType: "Value",
 		Value:      10e-9,
 	}
@@ -173,8 +178,6 @@ func (device *simulatedPM) getDutyCycle(channel string, connect bool) utils.Comm
 	}
 	return response
 }
-
-// ----------------Stability Related Functions-----------------------------------
 
 func (device *simulatedPM) connect() utils.CommandResponse {
 	return getSuccessResponse()

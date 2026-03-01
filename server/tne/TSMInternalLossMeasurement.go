@@ -6,6 +6,7 @@ import (
 	"prismServer/database"
 	"prismServer/driver"
 	"prismServer/resultsDB"
+	"prismServer/utils"
 	"slices"
 	"strconv"
 	"strings"
@@ -23,66 +24,101 @@ type TSMInternalLoss struct {
 	currentMeasurement map[string]float64
 }
 
+// Internal Helpers
+
+func (tsm *TSMInternalLoss) notify(msg string) {
+	tsm.statusMonitor <- RTStatus{Message: msg, Success: true}
+}
+
+func (tsm *TSMInternalLoss) finish(msg string, success bool) {
+	tsm.statusMonitor <- RTStatus{
+		Message:   msg,
+		Success:   success,
+		Error:     !success,
+		Completed: true,
+	}
+	close(tsm.statusMonitor)
+}
+
+func (tsm *TSMInternalLoss) setError(msg string) {
+	tsm.finish(msg, false)
+}
+
+func (tsm *TSMInternalLoss) check(resp utils.CommandResponse, errMsg string) bool {
+	if !resp.Success {
+		tsm.setError(fmt.Sprintf("%s: %s", errMsg, resp.ErrorMessage))
+		return false
+	}
+	if tsm.stop {
+		tsm.setError("Measurement aborted by user")
+		return false
+	}
+	return true
+}
+
+func (tsm *TSMInternalLoss) updateDB(jsonData string, subType string, inputPort, outputPort string) bool {
+	var ok bool
+	switch subType {
+	case "PM_OFFSET":
+		ok = resultsDB.UpdateTSMInternalLossPMOffset(jsonData)
+	case "CABLE_LOSS":
+		ok = resultsDB.UpdateTSMInternalLossCableLoss(jsonData)
+	case "PATH_LOSS":
+		ok = resultsDB.UpdateTSMInternalLoss(inputPort, outputPort, jsonData)
+	}
+	if !ok {
+		tsm.setError("Failed to update database results")
+	}
+	return ok
+}
+
+// Public API
+
 func (tsm *TSMInternalLoss) Initialize(deviceProfile string, pmChannel string) bool {
 	tsm.statusMonitor = make(chan RTStatus, 20)
 	tsm.pmChannel = pmChannel
 	tsm.currentMeasurement = make(map[string]float64)
 	tsm.stop = false
-	pmName, ok := database.GetPMFromDeviceProfile(deviceProfile)
-	if !ok {
+
+	pmName, okPm := database.GetPMFromDeviceProfile(deviceProfile)
+	sgName, okSg := database.GetSGFromDeviceProfile(deviceProfile)
+	tsmName, okTsm := database.GetTSMFromDeviceProfile(deviceProfile)
+
+	if !okPm || !okSg || !okTsm {
 		return false
 	}
-	sgName, ok := database.GetSGFromDeviceProfile(deviceProfile)
-	if !ok {
-		return false
-	}
-	tsmName, ok := database.GetTSMFromDeviceProfile(deviceProfile)
-	if !ok {
-		return false
-	}
-	ok = tsm.pm.LoadDevice(pmName)
-	if !ok {
-		return false
-	}
-	ok = tsm.sg.LoadDevice(sgName)
-	if !ok {
-		return false
-	}
-	ok = tsm.tsm.LoadDevice(tsmName)
-	if !ok {
-		return false
-	}
-	return true
+
+	return tsm.pm.LoadDevice(pmName) && tsm.sg.LoadDevice(sgName) && tsm.tsm.LoadDevice(tsmName)
 }
+
 func (tsm *TSMInternalLoss) CreateNewTable() bool {
 	tsmConfigs, ok := database.GetTSMConfigurations()
 	if !ok {
 		return false
 	}
 	tsm.table = make([][]string, 0)
-	var frequencyMap = make(map[string][]float64)
 	for _, t := range tsmConfigs {
-		var freqs = make([]float64, 0)
+		var freqs []float64
 		cfgs, ok := database.GetConfigNamesForTSMConfig(t)
 		if !ok {
-			return false
+			continue
 		}
+
 		for _, cfg := range cfgs {
 			config, ok := database.GetConfigurationDetails(cfg)
 			if !ok {
-				return false
+				continue
 			}
 
 			freq, ok := tsm.getFrequenciesForConfig(config)
-			if slices.Index(freqs, freq) == -1 {
+			if ok && slices.Index(freqs, freq) == -1 {
 				freqs = append(freqs, freq)
 			}
 		}
-		frequencyMap[t] = freqs
 		tsm.addToMeasurementTable(t, freqs)
 	}
-	ok = tsm.createNewDBEntry()
-	if ok {
+
+	if ok := tsm.createNewDBEntry(); ok {
 		fmt.Println("TSM Internal Loss Table created")
 	} else {
 		fmt.Println("Error in TSM Internal Loss Table creation")
@@ -111,51 +147,51 @@ func (tsm *TSMInternalLoss) addToMeasurementTable(tsmConfig string, frequencies 
 	if !ok {
 		return false
 	}
+
 	inputPort := tsmDetails.InputPortName.String
-	outputPorts := make([]string, 0)
-	paths := make([]string, 0)
+	var outPorts []string
+	var paths []string
+
 	if !strings.EqualFold(strings.TrimSpace(tsmDetails.UplinkToSC.String), "") {
-		outputPorts = append(outputPorts, tsmDetails.OutputPortName.String)
+		outPorts = append(outPorts, tsmDetails.OutputPortName.String)
 		paths = append(paths, tsmDetails.UplinkToSC.String)
 		if tsmDetails.IncludePad.Valid {
-			outputPorts = append(outputPorts, tsmDetails.OutputPortName.String+"-WithPad")
+			outPorts = append(outPorts, tsmDetails.OutputPortName.String+"-WithPad")
 			paths = append(paths, tsmDetails.UplinkToSC.String+"!"+tsmDetails.IncludePad.String+";"+tsmDetails.ExcludePad.String)
 		}
 		if tsmDetails.UplinkToSA.Valid {
-			outputPorts = append(outputPorts, tsmDetails.SAPortName.String)
+			outPorts = append(outPorts, tsmDetails.SAPortName.String)
 			paths = append(paths, tsmDetails.UplinkToSA.String)
 		}
 		if tsmDetails.UplinkToPM.Valid {
-			outputPorts = append(outputPorts, tsmDetails.PMPortName.String)
+			outPorts = append(outPorts, tsmDetails.PMPortName.String)
 			paths = append(paths, tsmDetails.UplinkToPM.String)
 		}
 	}
 
 	if !strings.EqualFold(strings.TrimSpace(tsmDetails.DownlinkToPM.String), "") {
-		outputPorts = append(outputPorts, tsmDetails.PMPortName.String)
+		outPorts = append(outPorts, tsmDetails.PMPortName.String)
 		paths = append(paths, tsmDetails.DownlinkToPM.String)
-		outputPorts = append(outputPorts, tsmDetails.OutputPortName.String)
+		outPorts = append(outPorts, tsmDetails.OutputPortName.String)
 		paths = append(paths, tsmDetails.DownlinkToDC.String)
 		if tsmDetails.DownlinkToSA.Valid {
-			outputPorts = append(outputPorts, tsmDetails.SAPortName.String)
+			outPorts = append(outPorts, tsmDetails.SAPortName.String)
 			paths = append(paths, tsmDetails.DownlinkToSA.String)
 		}
 	}
-	for i := 0; i < len(outputPorts); i++ {
+
+	for i := range outPorts {
 		for _, freq := range frequencies {
 			freqStr := fmt.Sprintf("%.2f", freq)
-			if !tsm.isDuplicate(inputPort, outputPorts[i], paths[i], freqStr) {
-				row := make([]string, 0)
-				row = append(row, inputPort, outputPorts[i], paths[i], freqStr)
-				tsm.table = append(tsm.table, row)
+			if !tsm.isDuplicate(inputPort, outPorts[i], paths[i], freqStr) {
+				tsm.table = append(tsm.table, []string{inputPort, outPorts[i], paths[i], freqStr})
 			}
 		}
 	}
-
 	return true
 }
 
-func (tsm *TSMInternalLoss) isDuplicate(inputPort string, outputPort string, path string, frequency string) bool {
+func (tsm *TSMInternalLoss) isDuplicate(inputPort, outputPort, path, frequency string) bool {
 	for _, row := range tsm.table {
 		if strings.EqualFold(row[0], inputPort) && strings.EqualFold(row[1], outputPort) &&
 			strings.EqualFold(row[2], path) && strings.EqualFold(row[3], frequency) {
@@ -166,348 +202,221 @@ func (tsm *TSMInternalLoss) isDuplicate(inputPort string, outputPort string, pat
 }
 
 func (tsm *TSMInternalLoss) createNewDBEntry() bool {
-	var consolidatedMap = make(map[string]*cableLossMeasured)
-	var frequencyList = make([]string, 0)
+	consolidatedMap := make(map[string]*cableLossMeasured)
+	var freqList []string
+
 	for _, row := range tsm.table {
-		if slices.Index(frequencyList, row[3]) == -1 {
-			frequencyList = append(frequencyList, row[3])
+		if slices.Index(freqList, row[3]) == -1 {
+			freqList = append(freqList, row[3])
 		}
 		key := row[0] + ":" + row[1] + ":" + row[2]
-		val, ok := consolidatedMap[key]
-		if !ok {
-			consolidatedMap[key] = &cableLossMeasured{
-				Frequency: make([]string, 0),
-				Measured:  make([]string, 0),
-			}
-			val = consolidatedMap[key]
+		if _, ok := consolidatedMap[key]; !ok {
+			consolidatedMap[key] = &cableLossMeasured{Frequency: []string{}, Measured: []string{}}
 		}
-		val.Frequency = append(val.Frequency, row[3])
-		val.Measured = append(val.Measured, "")
+		consolidatedMap[key].Frequency = append(consolidatedMap[key].Frequency, row[3])
+		consolidatedMap[key].Measured = append(consolidatedMap[key].Measured, "")
 	}
-	var dbEntry = make([][]string, 0)
-	allCables := cableLossMeasured{
-		Frequency: frequencyList,
-		Measured:  make([]string, len(frequencyList)),
+
+	allCables := cableLossMeasured{Frequency: freqList, Measured: make([]string, len(freqList))}
+	jsonData, _ := json.MarshalIndent(allCables, "", " ")
+
+	dbEntry := [][]string{
+		{"", "", "PM-Measurement", string(jsonData)},
+		{"", "", "Cable-Measurement", string(jsonData)},
 	}
-	jsonData, err := json.MarshalIndent(allCables, "", " ")
-	if err != nil {
-		return false
-	}
-	pmRow := []string{"", "", "PM-Measurement", string(jsonData)}
-	cableRow := []string{"", "", "Cable-Measurement", string(jsonData)}
-	dbEntry = append(dbEntry, pmRow, cableRow)
+
 	for key, value := range consolidatedMap {
 		row := strings.Split(key, ":")
-		jsonData, err := json.MarshalIndent(&value, "", " ")
-		if err != nil {
-			return false
-		}
-		row = append(row, string(jsonData))
-		dbEntry = append(dbEntry, row)
+		vData, _ := json.MarshalIndent(value, "", " ")
+		dbEntry = append(dbEntry, append(row, string(vData)))
 	}
 
 	return resultsDB.CreateNewTSMInternalLoss(dbEntry)
 }
 
 func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset map[string]float64) bool {
-	response := tsm.pm.SetChAAverageOff()
-	if !response.Success {
-		tsm.setError("Unable to communicate with PM")
+	if !tsm.check(tsm.pm.SetChAAverageOff(), "PM: ChA average off") {
 		return false
 	}
-	response = tsm.pm.SetChBAverageOff()
-	if !response.Success {
-		tsm.setError("Unable to communicate with PM")
+	if !tsm.check(tsm.pm.SetChBAverageOff(), "PM: ChB average off") {
 		return false
 	}
-	response = tsm.sg.SetModOff()
-	if !response.Success {
-		tsm.setError("Unable to communicate with SG")
+	if !tsm.check(tsm.sg.SetModOff(), "SG: mod off") {
 		return false
 	}
-	defer func() {
-		tsm.pm.SetChAAverageOn()
-		tsm.pm.SetChBAverageOn()
-		tsm.sg.SetRFOff()
-		fmt.Println("Restored")
-	}()
+
+	defer tsm.pm.SetChAAverageOn()
+	defer tsm.pm.SetChBAverageOn()
+	defer tsm.sg.SetRFOff()
 
 	for _, freq := range frequencies {
-		if tsm.stop {
-			tsm.setError("User Aborted")
-			return false
-		}
-
-		var measure = RTStatus{
-			Completed: false,
-			Success:   true,
-			Error:     false,
-			Message:   "Measuring Loss for " + freq + " Hz",
-		}
-		tsm.statusMonitor <- measure
-
+		tsm.notify(fmt.Sprintf("Measuring loss for %s Hz", freq))
 		f, _ := strconv.ParseFloat(freq, 64)
-		response = tsm.sg.SetFrequency(f)
-		if !response.Success {
-			tsm.setError("Unable to communicate with SG")
-			return false
-		}
-		power := offset[freq]
-		power = power * -1
-		response = tsm.sg.SetPower(power)
-		if !response.Success {
-			tsm.setError("Unable to communicate with SG")
-			return false
-		}
-		response = tsm.sg.SetRFOn()
-		if !response.Success {
-			tsm.setError("Unable to communicate with SG")
-			return false
-		}
-		if strings.EqualFold(tsm.pmChannel, "A") {
-			response = tsm.pm.SetChannelA(f)
-			if !response.Success {
-				tsm.setError("Unable to communicate with PM")
-				return false
-			}
-			response = tsm.pm.GetPowerChannelA(true)
-			if !response.Success {
-				tsm.setError("Unable to communicate with PM")
-				return false
-			}
-			if response.Result["ChannelBPower"].Value < -60 {
-				tsm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
-			}
-			tsm.currentMeasurement[freq] = response.Result["Power"].Value
-		} else {
-			response = tsm.pm.SetChannelB(f)
-			if !response.Success {
-				tsm.setError("Unable to communicate with PM")
-				return false
-			}
-			response = tsm.pm.GetPowerChannelB(true)
-			if !response.Success {
-				tsm.setError("Unable to communicate with PM")
-				return false
-			}
-			if response.Result["ChannelBPower"].Value < -60 {
-				tsm.setError("Power read is less than -60dBm. Check PM Connection")
-				return false
-			}
-			tsm.currentMeasurement[freq] = response.Result["Power"].Value
-		}
-		response = tsm.sg.SetRFOff()
-		if !response.Success {
-			tsm.setError("Unable to communicate with SG")
-			return false
-		}
-	}
 
+		if !tsm.check(tsm.sg.SetFrequency(f), "SG: frequency set") {
+			return false
+		}
+		if !tsm.check(tsm.sg.SetPower(-1*offset[freq]), "SG: power set") {
+			return false
+		}
+		if !tsm.check(tsm.sg.SetRFOn(), "SG: RF on") {
+			return false
+		}
+
+		var pResp utils.CommandResponse
+		if strings.EqualFold(tsm.pmChannel, "A") {
+			tsm.pm.SetChannelA(f)
+			pResp = tsm.pm.GetPowerChannelA(true)
+		} else {
+			tsm.pm.SetChannelB(f)
+			pResp = tsm.pm.GetPowerChannelB(true)
+		}
+
+		if !tsm.check(pResp, "PM: read power") {
+			return false
+		}
+
+		val := pResp.Result["Power"].Value
+		if val < -60 {
+			tsm.setError("Power too low (<-60dBm). Check connection.")
+			return false
+		}
+		tsm.currentMeasurement[freq] = val
+		tsm.sg.SetRFOff()
+	}
 	return true
 }
 
 func (tsm *TSMInternalLoss) measurePMReference(frequencies []string) {
 	offset := make(map[string]float64)
-	for _, freq := range frequencies {
-		offset[freq] = 0
+	for _, f := range frequencies {
+		offset[f] = 0
 	}
-	ok := tsm.measureForFrequencies(frequencies, offset)
-	if !ok {
+
+	if !tsm.measureForFrequencies(frequencies, offset) {
 		return
 	}
-	var measurement cableLossMeasured
-	for freq := range tsm.currentMeasurement {
-		measurement.Frequency = append(measurement.Frequency, freq)
-		measurement.Measured = append(measurement.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[freq]))
+
+	var m cableLossMeasured
+	for _, f := range frequencies {
+		m.Frequency = append(m.Frequency, f)
+		m.Measured = append(m.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[f]))
 	}
 
-	jsonData, err := json.MarshalIndent(measurement, "", " ")
-	if err != nil {
-		return
+	data, _ := json.MarshalIndent(m, "", " ")
+	if tsm.updateDB(string(data), "PM_OFFSET", "", "") {
+		tsm.finish("Reference Measurement Completed", true)
 	}
-	resultsDB.UpdateTSMInternalLossPMOffset(string(jsonData))
-
-	var measure = RTStatus{
-		Completed: true,
-		Success:   true,
-		Error:     false,
-		Message:   "Measurement Completed",
-	}
-
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
 }
 
 func (tsm *TSMInternalLoss) measureCableLoss(pmOffset cableLossMeasured) {
 	offset := make(map[string]float64)
-	for i, freq := range pmOffset.Frequency {
-		offset[freq], _ = strconv.ParseFloat(pmOffset.Measured[i], 64)
-	}
-	ok := tsm.measureForFrequencies(pmOffset.Frequency, offset)
-	if !ok {
-		return
-	}
-	var measurement cableLossMeasured
-	for freq := range tsm.currentMeasurement {
-		measurement.Frequency = append(measurement.Frequency, freq)
-		measurement.Measured = append(measurement.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[freq]))
+	for i, f := range pmOffset.Frequency {
+		offset[f], _ = strconv.ParseFloat(pmOffset.Measured[i], 64)
 	}
 
-	jsonData, err := json.MarshalIndent(measurement, "", " ")
-	if err != nil {
+	if !tsm.measureForFrequencies(pmOffset.Frequency, offset) {
 		return
 	}
-	resultsDB.UpdateTSMInternalLossCableLoss(string(jsonData))
 
-	var measure = RTStatus{
-		Completed: true,
-		Success:   true,
-		Error:     false,
-		Message:   "Measurement Completed",
+	var m cableLossMeasured
+	for _, f := range pmOffset.Frequency {
+		m.Frequency = append(m.Frequency, f)
+		m.Measured = append(m.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[f]))
 	}
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
+
+	data, _ := json.MarshalIndent(m, "", " ")
+	if tsm.updateDB(string(data), "CABLE_LOSS", "", "") {
+		tsm.finish("Cable Loss Measurement Completed", true)
+	}
 }
 
-func (tsm *TSMInternalLoss) measurePathLoss(inputPort string, outputPort string) {
-	path, measured, ok := resultsDB.GetTSMInternalMeasuredLoss(inputPort, outputPort)
+func (tsm *TSMInternalLoss) measurePathLoss(inputPort, outputPort string) {
+	pathStr, measuredJson, ok := resultsDB.GetTSMInternalMeasuredLoss(inputPort, outputPort)
 	if !ok {
-		tsm.setError("Unable to get Path Mnemonic")
-		return
-	}
-	cblLossString, ok := resultsDB.GetTSMInternalLossCableLoss()
-	if !ok {
-		tsm.setError("Unable to get Cable Loss")
-		return
-	}
-	var ref cableLossMeasured
-	err := json.Unmarshal([]byte(measured), &ref)
-	if err != nil {
-		tsm.setError("Unable to get Frequencies for Measurement")
-		return
-	}
-	var cblLoss cableLossMeasured
-	err = json.Unmarshal([]byte(cblLossString), &cblLoss)
-	if err != nil {
-		tsm.setError("Unable to get Frequencies for Measurement")
-		return
-	}
-	paths := strings.Split(path, ";")
-	if !strings.EqualFold(paths[0], "") {
-		response := tsm.tsm.SetDriverStatus(paths[0])
-		if !response.Success {
-			tsm.setError("Unable to Communicate with TSM")
-			return
-		}
-		time.Sleep(1 * time.Second)
-	}
-	response := tsm.tsm.SetAttn(1, 0)
-	if !response.Success {
-		tsm.setError("Unable to Communicate with TSM")
-		return
-	}
-	time.Sleep(1 * time.Second)
-	response = tsm.tsm.SetAttn(2, 0)
-	if !response.Success {
-		tsm.setError("Unable to Communicate with TSM")
+		tsm.setError("Failed to retrieve path mnemonic")
 		return
 	}
 
-	offset := make(map[string]float64)
-	for _, freq := range ref.Frequency {
-		offset[freq] = 0
-	}
-	ok = tsm.measureForFrequencies(ref.Frequency, offset)
+	cblJson, ok := resultsDB.GetTSMInternalLossCableLoss()
 	if !ok {
+		tsm.setError("Failed to retrieve cable loss")
+		return
+	}
+
+	var ref, cbl cableLossMeasured
+	if json.Unmarshal([]byte(measuredJson), &ref) != nil || json.Unmarshal([]byte(cblJson), &cbl) != nil {
+		tsm.setError("Failed to parse measurement data")
+		return
+	}
+
+	paths := strings.Split(pathStr, ";")
+	if paths[0] != "" {
+		if !tsm.check(tsm.tsm.SetDriverStatus(paths[0]), "TSM: set path") {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+
+	if !tsm.check(tsm.tsm.SetAttn(1, 0), "TSM: reset attn 1") {
+		return
+	}
+	if !tsm.check(tsm.tsm.SetAttn(2, 0), "TSM: reset attn 2") {
+		return
+	}
+	time.Sleep(time.Second)
+
+	offsets := make(map[string]float64)
+	for _, f := range ref.Frequency {
+		offsets[f] = 0
+	}
+
+	if !tsm.measureForFrequencies(ref.Frequency, offsets) {
 		return
 	}
 
 	if len(paths) > 1 {
-		response := tsm.tsm.SetDriverStatus(paths[1])
-		if !response.Success {
-			tsm.setError("Unable to Communicate with TSM")
-			return
-		}
+		tsm.tsm.SetDriverStatus(paths[1])
 	}
 
-	var measurement cableLossMeasured
-	for freq := range tsm.currentMeasurement {
-		measurement.Frequency = append(measurement.Frequency, freq)
-		index := slices.Index(cblLoss.Frequency, freq)
+	var m cableLossMeasured
+	for _, f := range ref.Frequency {
+		m.Frequency = append(m.Frequency, f)
 		loss := 0.0
-		if index != -1 {
-			loss, _ = strconv.ParseFloat(cblLoss.Measured[index], 64)
+		if idx := slices.Index(cbl.Frequency, f); idx != -1 {
+			loss, _ = strconv.ParseFloat(cbl.Measured[idx], 64)
 		}
-		m := tsm.currentMeasurement[freq] - loss
-		measurement.Measured = append(measurement.Measured, fmt.Sprintf("%.2f", m))
+		m.Measured = append(m.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[f]-loss))
 	}
 
-	jsonData, err := json.MarshalIndent(measurement, "", " ")
-	if err != nil {
-		return
+	data, _ := json.MarshalIndent(m, "", " ")
+	if tsm.updateDB(string(data), "PATH_LOSS", inputPort, outputPort) {
+		tsm.finish("Path Loss Measurement Completed", true)
 	}
-	resultsDB.UpdateTSMInternalLoss(inputPort, outputPort, string(jsonData))
-
-	var measure = RTStatus{
-		Completed: true,
-		Success:   true,
-		Error:     false,
-		Message:   "Measurement Completed",
-	}
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
 }
 
-func (tsm *TSMInternalLoss) MeasureForConfig(mode string, inputPort string, outputPort string) {
+func (tsm *TSMInternalLoss) MeasureForConfig(mode, inputPort, outputPort string) {
+	data, ok := resultsDB.GetTSMInternalLossPMOffset()
+	if !ok {
+		tsm.setError("Unable to read PM offsets from database")
+		return
+	}
+
+	var pmMeasured cableLossMeasured
+	if json.Unmarshal([]byte(data), &pmMeasured) != nil {
+		tsm.setError("Failed to parse PM offsets")
+		return
+	}
+
 	if strings.EqualFold(mode, "PM") {
-		pmOffset, ok := resultsDB.GetTSMInternalLossPMOffset()
-		if !ok {
-			tsm.setError("Unable to read from Database")
-			return
-		}
-		var pmMeasured cableLossMeasured
-		err := json.Unmarshal([]byte(pmOffset), &pmMeasured)
-		if err != nil {
-			tsm.setError("Unable to read from Database")
-			return
-		}
 		tsm.measurePMReference(pmMeasured.Frequency)
-		return
-	}
-	if strings.EqualFold(mode, "Cable Loss") {
-		pmOffset, ok := resultsDB.GetTSMInternalLossPMOffset()
-		if !ok {
-			tsm.setError("Unable to read from Database")
-			return
-		}
-		var pmMeasured cableLossMeasured
-		err := json.Unmarshal([]byte(pmOffset), &pmMeasured)
-		if err != nil {
-			tsm.setError("Unable to read from Database")
-			return
-		}
+	} else if strings.EqualFold(mode, "Cable Loss") {
 		tsm.measureCableLoss(pmMeasured)
-		return
+	} else {
+		tsm.measurePathLoss(inputPort, outputPort)
 	}
-	tsm.measurePathLoss(inputPort, outputPort)
 }
 
-func (tsm *TSMInternalLoss) setError(message string) {
-	var measure = RTStatus{
-		Completed: true,
-		Success:   false,
-		Error:     true,
-		Message:   message,
-	}
-	tsm.statusMonitor <- measure
-	close(tsm.statusMonitor)
-}
+func (tsm *TSMInternalLoss) Stop() { tsm.stop = true }
 
-func (tsm *TSMInternalLoss) Stop() {
-	tsm.stop = true
-}
-
-func (tsm *TSMInternalLoss) GetStatusMonitor() chan RTStatus {
-	return tsm.statusMonitor
-}
+func (tsm *TSMInternalLoss) GetStatusMonitor() chan RTStatus { return tsm.statusMonitor }
