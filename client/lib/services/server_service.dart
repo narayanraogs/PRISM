@@ -801,7 +801,7 @@ class TVACCableLossMetadata {
     return TVACCableLossMetadata(
       frequencies:
           (json['frequencies'] as List?)
-              ?.map((e) => (e as num).toDouble())
+              ?.map((e) => (e as num).toDouble() / 1e6)
               .toList() ??
           [],
       deviceProfiles: List<String>.from(json['deviceProfiles'] ?? []),
@@ -904,7 +904,7 @@ class InternalLossEntry {
       pathMnemonic: json['PathMnemonic'] ?? '',
       frequencies:
           (json['Frequencies'] as List?)
-              ?.map((e) => (e as num).toDouble())
+              ?.map((e) => (e as num).toDouble() / 1e6)
               .toList() ??
           [],
       losses:
@@ -3287,6 +3287,28 @@ class ServerService extends ChangeNotifier {
   void closeTSMInternalLoss() {
     _tsmInternalLossChannel?.sink.close();
     _tsmInternalLossChannel = null;
+  }
+
+  Future<Ack?> createNewTSMTable() async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/createNewTSMTable';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error creating new TSM Table: $e');
+    }
+    return null;
   }
 
   Stream<MeasurementStatus> streamTVACCableLossAction(

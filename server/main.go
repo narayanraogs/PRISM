@@ -49,7 +49,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	router.NoRoute(func(c *gin.Context) {
 		http.FileServer(http.FS(webFS)).ServeHTTP(c.Writer, c.Request)
 	})

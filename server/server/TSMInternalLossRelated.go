@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"prismServer/resultsDB"
 	"prismServer/tne"
 	"strconv"
@@ -99,6 +100,19 @@ func getInternalLoss(entry resultsDB.TSMInternalLoss) (InternalLossEntry, bool) 
 		pm.Losses = append(pm.Losses, loss)
 	}
 	return pm, true
+}
+
+func createNewTSMTable(c *gin.Context) {
+	var tsm tne.TSMInternalLoss
+	ok := tsm.CreateNewTable()
+	var ack Ack
+	ack.OK = ok
+	if ok {
+		ack.Message = "Table regenerated successfully"
+	} else {
+		ack.Message = "Table Cannot be regenerated"
+	}
+	c.JSON(http.StatusOK, ack)
 }
 
 func measureTSMInternalLoss(c *gin.Context) {

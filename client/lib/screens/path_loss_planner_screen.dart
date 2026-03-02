@@ -142,6 +142,12 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     _loadMetadata();
   }
 
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
   void _loadMetadata() {
     final server = context.read<ServerService>();
     final bootstrap = server.status.bootstrapData;
@@ -240,11 +246,20 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
 
   void _deleteNode(PlannerNode parent, PlannerNode nodeToDelete) {
     setState(() {
-      parent.children.remove(nodeToDelete);
+      final index = parent.children.indexOf(nodeToDelete);
+      if (index != -1) {
+        // Collect children to preserve the path
+        final childrenToPreserve = nodeToDelete.children;
+
+        // Remove the node and insert its children at its position
+        parent.children.removeAt(index);
+        parent.children.insertAll(index, childrenToPreserve);
+      }
     });
+
     AppNotifications.show(
       context,
-      'Node Removed',
+      'Node Removed (Path Preserved)',
       type: NotificationType.warning,
     );
   }
@@ -495,10 +510,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     if (_allCalibratedRecords.isEmpty) return 0.0;
 
     // Get latest record for this cable
-    final records = _allCalibratedRecords
-        .where((r) => r.cableName == cableName)
-        .toList()
-      ..sort((a, b) => b.slNo.compareTo(a.slNo));
+    final records =
+        _allCalibratedRecords.where((r) => r.cableName == cableName).toList()
+          ..sort((a, b) => b.slNo.compareTo(a.slNo));
 
     if (records.isEmpty) return 0.0;
     final record = records.first;
@@ -549,13 +563,15 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       if (node.physicalResourceId != null) {
         nodeLoss = _interpolateCableLoss(node.physicalResourceId!, currentFreq);
       }
-      double outFreq = currentFreq + node.loOffset;
-      steps.add(PathStep(
-        label: node.label,
-        frequency: currentFreq,
-        loss: nodeLoss,
-        outputFrequency: outFreq,
-      ));
+      double outFreq = (currentFreq + node.loOffset).abs();
+      steps.add(
+        PathStep(
+          label: node.label,
+          frequency: currentFreq,
+          loss: nodeLoss,
+          outputFrequency: outFreq,
+        ),
+      );
       totalLoss += nodeLoss;
       currentFreq = outFreq;
     }
@@ -563,13 +579,18 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     // Path 2: Through Hub
     final startPortChild = _findHubChildOf(startNode);
     final endPortChild = _findHubChildOf(endNode);
-    double hubLoss = _getHubPathLoss(startPortChild?.label, endPortChild?.label);
-    steps.add(PathStep(
-      label: 'TSM Hub (${startPortChild?.label} → ${endPortChild?.label})',
-      frequency: currentFreq,
-      loss: hubLoss,
-      outputFrequency: currentFreq,
-    ));
+    double hubLoss = _getHubPathLoss(
+      startPortChild?.label,
+      endPortChild?.label,
+    );
+    steps.add(
+      PathStep(
+        label: 'TSM Hub (${startPortChild?.label} → ${endPortChild?.label})',
+        frequency: currentFreq,
+        loss: hubLoss,
+        outputFrequency: currentFreq,
+      ),
+    );
     totalLoss += hubLoss;
 
     // Path 3: Hub to Instrument
@@ -586,13 +607,15 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       if (node.physicalResourceId != null) {
         nodeLoss = _interpolateCableLoss(node.physicalResourceId!, currentFreq);
       }
-      double outFreq = currentFreq + node.loOffset;
-      steps.add(PathStep(
-        label: node.label,
-        frequency: currentFreq,
-        loss: nodeLoss,
-        outputFrequency: outFreq,
-      ));
+      double outFreq = (currentFreq + node.loOffset).abs();
+      steps.add(
+        PathStep(
+          label: node.label,
+          frequency: currentFreq,
+          loss: nodeLoss,
+          outputFrequency: outFreq,
+        ),
+      );
       totalLoss += nodeLoss;
       currentFreq = outFreq;
     }
@@ -603,9 +626,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   double _getNodeAppliedFrequency(PlannerNode target) {
     if (target == _hubNode) return _selectedFrequency;
     // Simple traversal to find current freq at node
-    // For now, we'll just solve the whole path if needed, 
+    // For now, we'll just solve the whole path if needed,
     // but a simpler way is to solve from root if it's connected
-    // This is complex for star layout. 
+    // This is complex for star layout.
     // Let's just solve the path when building cards if it's part of the selected path.
     return 0.0; // Placeholder
   }
@@ -656,8 +679,8 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     if (_tsmData == null || inputPort == null || outputPort == null) return 0.0;
     // Hub internal path look-up
     for (var p in _tsmData!.measuredLoss.paths) {
-      if (p.inputPort.replaceAll('WithPad', '') == inputPort &&
-          p.outputPort.replaceAll('WithPad', '') == outputPort) {
+      if (p.inputPort.replaceAll('-WithPad', '') == inputPort &&
+          p.outputPort.replaceAll('-WithPad', '') == outputPort) {
         if (p.losses.isNotEmpty) {
           // Use interpolation if possible, or just first one
           // The Hub data usually has multiple frequencies.
@@ -665,7 +688,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
           int closestIdx = 0;
           double minDiff = double.infinity;
           for (int i = 0; i < p.frequencies.length; i++) {
-            double diff = (p.frequencies[i] - (_selectedFrequency / 1000.0)).abs();
+            double diff = (p.frequencies[i] - _selectedFrequency).abs();
             if (diff < minDiff) {
               minDiff = diff;
               closestIdx = i;
@@ -704,8 +727,6 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                 _initializeDefaultTree();
                 _transformationController.value = Matrix4.identity();
               });
-              // Also clear on server
-              context.read<ServerService>().savePlannerData("");
               AppNotifications.show(
                 context,
                 'Planner has been reset to defaults',
@@ -726,14 +747,24 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
               children: [
                 const Icon(Icons.waves, size: 14, color: Colors.indigo),
                 const SizedBox(width: 8),
-                const Text('Source:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Source:',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(width: 8),
                 DropdownButton<double>(
                   value: _selectedFrequency,
                   underline: const SizedBox(),
-                  style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                   items: [70, 140, 720, 1200, 14000, 30000].map((f) {
-                    return DropdownMenuItem(value: f.toDouble(), child: Text('${f.toInt()} MHz'));
+                    return DropdownMenuItem(
+                      value: f.toDouble(),
+                      child: Text('${f.toInt()} MHz'),
+                    );
                   }).toList(),
                   onChanged: (val) {
                     if (val != null) setState(() => _selectedFrequency = val);
@@ -1223,7 +1254,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    '${f.toStringAsFixed(1)} GHz',
+                                    '${(f / 1000.0).toStringAsFixed(1)} GHz',
                                     style: TextStyle(
                                       fontSize: 8,
                                       color: Colors.indigo.shade700,
@@ -1247,13 +1278,15 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        displayLoss != null 
-                          ? '${displayLoss.toStringAsFixed(2)} dB'
-                          : (node.lossDb == 0 ? '0 dB' : '${node.lossDb} dB'),
+                        displayLoss != null
+                            ? '${displayLoss.toStringAsFixed(2)} dB'
+                            : (node.lossDb == 0 ? '0 dB' : '${node.lossDb} dB'),
                         style: TextStyle(
                           color: (displayLoss ?? node.lossDb) > 0
                               ? Colors.red
-                              : ((displayLoss ?? node.lossDb) < 0 ? Colors.green : Colors.grey),
+                              : ((displayLoss ?? node.lossDb) < 0
+                                    ? Colors.green
+                                    : Colors.grey),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -1261,14 +1294,20 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                       if (appliedFreq != null) ...[
                         const SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             '${appliedFreq.toInt()} MHz',
-                            style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -1332,7 +1371,10 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
               const SizedBox(width: 12),
               Text(
                 'Freq: ${_selectedFrequency.toInt()} MHz',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo,
+                ),
               ),
             ],
           ),
@@ -1369,13 +1411,20 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          ...solution.steps.map((step) => _buildSummaryItem(
-            theme,
-            '${step.label} @ ${step.frequency.toInt()} MHz',
-            step.loss,
-          )),
+          ...solution.steps.map(
+            (step) => _buildSummaryItem(
+              theme,
+              '${step.label} @ ${step.frequency.toInt()} MHz',
+              step.loss,
+            ),
+          ),
           const Divider(height: 32),
-          _buildSummaryItem(theme, 'Final Link Budget', totalLoss, isTotal: true),
+          _buildSummaryItem(
+            theme,
+            'Final Link Budget',
+            totalLoss,
+            isTotal: true,
+          ),
         ],
 
         const Spacer(),
@@ -1711,12 +1760,13 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                           ],
                           if (node.type == NodeType.converter) ...[
                             _buildFieldLabel('LO OFFSET (MHz)'),
-                             TextField(
+                            TextField(
                               controller: loController,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                                signed: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
                               decoration: InputDecoration(
                                 hintText: 'e.g. 16000 for up-conversion',
                                 suffixText: 'MHz',
@@ -1731,7 +1781,10 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Input freq will be added to this LO. Use negative for down-conversion.',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade500,
+                              ),
                             ),
                             const SizedBox(height: 20),
                           ],
@@ -1791,7 +1844,8 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                               node.lossDb =
                                   double.tryParse(lossController.text) ?? 0.0;
                               node.physicalResourceId = selectedCable;
-                              node.loOffset = double.tryParse(loController.text) ?? 0.0;
+                              node.loOffset =
+                                  double.tryParse(loController.text) ?? 0.0;
                               if (node.physicalResourceId != null) {
                                 _globalSync(
                                   node.physicalResourceId!,
@@ -1844,26 +1898,89 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   }
 
   Set<double> _getBranchFrequencies(PlannerNode node) {
-    final freqs = <double>{};
+    final results = <double>{};
+    if (_hubNode == null) return results;
 
-    // 1. Collect from self and all descendants
-    void collectDown(PlannerNode n) {
-      freqs.addAll(n.supportedFrequencies);
+    // 1. Add currently selected global frequency (properly converted to this node's position)
+    double globalHubFreq = _selectedFrequency;
+    results.add(_calculateFlippedFrequency(globalHubFreq, node));
+
+    // 2. Add frequencies from nodes with specific capabilities (like Ports)
+    final branchRoot = _findHubChildOf(node);
+    if (branchRoot == null) return results;
+
+    final allNodesWithFreqs = <PlannerNode>[];
+    void collect(PlannerNode n) {
+      if (n.supportedFrequencies.isNotEmpty) {
+        allNodesWithFreqs.add(n);
+      }
       for (var child in n.children) {
-        collectDown(child);
+        collect(child);
       }
     }
 
-    collectDown(node);
+    collect(branchRoot);
 
-    // 2. Walk up to Hub to collect from ancestors (e.g. the Port node)
-    PlannerNode? current = _findParent(_root, node);
-    while (current != null && current != _hubNode) {
-      freqs.addAll(current.supportedFrequencies);
-      current = _findParent(_root, current);
+    for (var source in allNodesWithFreqs) {
+      for (var f in source.supportedFrequencies) {
+        // Calculate what the Hub frequency would be if 'f' is at the source
+        double hubFreq;
+        final sourcePath = _getPathFromHub(source);
+
+        if (node.direction == NodeDirection.down) {
+          // DOWNSTREAM: Hub -> ... -> source. HubFreq = f - sum(LOs along path to source)
+          double loSumToSource = 0;
+          for (var n in sourcePath) {
+            if (n == source) break;
+            loSumToSource += n.loOffset;
+          }
+          hubFreq = (f - loSumToSource).abs();
+        } else {
+          // UPSTREAM: source -> ... -> Hub. HubFreq = f + sum(LOs along path to Hub)
+          double loSumFromSource = 0;
+          for (var n in sourcePath) {
+            loSumFromSource += n.loOffset;
+          }
+          hubFreq = (f + loSumFromSource).abs();
+        }
+
+        // Now calculate frequency at 'node' based on this hubFreq
+        results.add(_calculateFlippedFrequency(hubFreq, node));
+      }
     }
 
-    return freqs;
+    // Fallback if still empty
+    if (results.isEmpty) results.addAll(node.supportedFrequencies);
+    return results;
+  }
+
+  List<PlannerNode> _getPathFromHub(PlannerNode node) {
+    List<PlannerNode> path = [];
+    PlannerNode? curr = node;
+    while (curr != null && curr != _hubNode) {
+      path.add(curr);
+      curr = _findParent(_root, curr);
+    }
+    return path.reversed.toList();
+  }
+
+  double _calculateFlippedFrequency(double hFreq, PlannerNode node) {
+    double resultF = hFreq;
+    final path = _getPathFromHub(node);
+
+    if (node.direction == NodeDirection.down) {
+      // Hub -> ... -> node
+      for (var n in path) {
+        if (n == node) break;
+        resultF += n.loOffset;
+      }
+    } else {
+      // node -> ... -> Hub
+      for (var n in path) {
+        resultF -= n.loOffset;
+      }
+    }
+    return resultF.abs();
   }
 
   void _showCableAssistant(
@@ -1879,16 +1996,17 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     List<double> targetFrequencies = List.from(initialFrequencies);
     final freqEditController = TextEditingController();
 
+    final lengthController = TextEditingController(text: '1.0');
+    final nameFilterController = TextEditingController();
+    List<CableLossRecord> allRecords = [];
+    List<Map<String, dynamic>> candidates = [];
+    bool loading = false;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setAltState) {
           final theme = Theme.of(context);
-          final lengthController = TextEditingController(text: '1.0');
-          final nameFilterController = TextEditingController();
-          List<CableLossRecord> allRecords = [];
-          List<Map<String, dynamic>> candidates = [];
-          bool loading = false;
           void searchCables() async {
             setAltState(() => loading = true);
             final server = context.read<ServerService>();
@@ -1902,8 +2020,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
               // Group by cable name and get latest record
               Map<String, CableLossRecord> uniqueCables = {};
               for (var rec in allRecords) {
-                // Filter by exact length ONLY
-                if (rec.length != targetLength) continue;
+                // Filter by length: allow +/- 20% tolerance or at least within 0.5m
+                final diff = (rec.length - targetLength).abs();
+                if (diff > (targetLength * 0.2) && diff > 0.5) continue;
 
                 // Filter by name if provided
                 if (nameQuery.isNotEmpty &&
@@ -1956,12 +2075,28 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                 });
               }
 
-              results.sort(
-                (a, b) => (a['loss'] as double).compareTo(b['loss'] as double),
-              );
-              candidates = results.take(5).toList();
+              results.sort((a, b) {
+                // Primary sort: Loss (lower is better)
+                // Secondary sort: Length diff (lower is better)
+                final lossComp = (a['loss'] as double).compareTo(
+                  b['loss'] as double,
+                );
+                if (lossComp != 0) return lossComp;
+
+                final aDiff = ((a['originalLength'] as double) - targetLength)
+                    .abs();
+                final bDiff = ((b['originalLength'] as double) - targetLength)
+                    .abs();
+                return aDiff.compareTo(bDiff);
+              });
+
+              setAltState(() {
+                candidates = results.take(10).toList();
+                loading = false;
+              });
+            } else {
+              setAltState(() => loading = false);
             }
-            setAltState(() => loading = false);
           }
 
           return Dialog(
@@ -2066,8 +2201,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                                   GestureDetector(
                                     onTap: () {
                                       setAltState(() {
-                                        targetFrequencies =
-                                            List.from(initialFrequencies);
+                                        targetFrequencies = List.from(
+                                          initialFrequencies,
+                                        );
                                       });
                                     },
                                     child: Text(
@@ -2083,13 +2219,16 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                               ),
                               const SizedBox(height: 8),
                               Container(
-                                constraints: const BoxConstraints(minHeight: 48),
+                                constraints: const BoxConstraints(
+                                  minHeight: 48,
+                                ),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade50,
                                   borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: Colors.grey.shade200),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
                                 ),
                                 child: Wrap(
                                   spacing: 4,
@@ -2098,7 +2237,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                                     ...targetFrequencies.map((f) {
                                       return Chip(
                                         label: Text(
-                                          '${f.toInt()}',
+                                          (f / 1000.0).toStringAsFixed(2),
                                           style: const TextStyle(fontSize: 10),
                                         ),
                                         padding: EdgeInsets.zero,
@@ -2116,8 +2255,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                                         },
                                         backgroundColor: Colors.blue.shade50,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           side: BorderSide.none,
                                         ),
                                       );
@@ -2139,8 +2279,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                                           final d = double.tryParse(val);
                                           if (d != null) {
                                             setAltState(() {
-                                              if (!targetFrequencies
-                                                  .contains(d)) {
+                                              if (!targetFrequencies.contains(
+                                                d,
+                                              )) {
                                                 targetFrequencies.add(d);
                                               }
                                               freqEditController.clear();

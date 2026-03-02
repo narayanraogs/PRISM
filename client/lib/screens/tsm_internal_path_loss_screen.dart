@@ -139,9 +139,29 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton.filledTonal(
-                  onPressed: _fetchMetadata,
+                  onPressed: () async {
+                    setState(() => _isLoading = true);
+                    final server = context.read<ServerService>();
+                    final ack = await server.createNewTSMTable();
+                    if (ack != null && ack.ok) {
+                      await server.fetchBootstrapData();
+                      _fetchMetadata();
+                    } else {
+                      setState(() => _isLoading = false);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              ack?.message ?? "Failed to regenerate table",
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
                   icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh Data',
+                  tooltip: 'Regenerate & Reload Table',
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
@@ -637,7 +657,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                             DataCell(
                               Center(
                                 child: Text(
-                                  freq.toStringAsFixed(2),
+                                  (freq / 1000.0).toStringAsFixed(2),
                                   style: GoogleFonts.robotoMono(),
                                 ),
                               ),
@@ -780,7 +800,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                       DataCell(Text(path.pathMnemonic)),
                       DataCell(
                         Text(
-                          freq.toStringAsFixed(2),
+                          (freq / 1000.0).toStringAsFixed(2),
                           style: GoogleFonts.robotoMono(),
                         ),
                       ),

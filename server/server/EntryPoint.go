@@ -58,6 +58,7 @@ func GetRouter() *gin.Engine {
 	r.POST("/regenerateReport", regenerateReport)
 	//TSMInternalLossRelated
 	r.GET("/measureTSMInternalLoss", measureTSMInternalLoss)
+	r.POST("/createNewTSMTable", createNewTSMTable)
 	//GTxMeasurementRelated
 	r.GET("/conductGTxTne", conductGTxTne)
 	//UpDownConverterRelated
