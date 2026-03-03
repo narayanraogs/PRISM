@@ -546,19 +546,27 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     final startNode = startTerminals.firstWhere((t) => t.id == _startNodeId);
     final endNode = endTerminals.firstWhere((t) => t.id == _endNodeId);
 
+    // 1. Calculate frequency at start terminal by traversing BACKWARDS from Hub
+    double freqAtHub = _selectedFrequency;
+    double freqAtStart = freqAtHub;
+    List<PlannerNode> upstream = [];
+    PlannerNode? currU = startNode;
+    while (currU != null && currU != _hubNode) {
+      upstream.add(currU);
+      currU = _findParent(_root, currU);
+    }
+    // upstream is [Source, ..., HubChild]. Traversal Backwards: HubChild -> ... -> Source
+    for (var node in upstream.reversed) {
+      freqAtStart = (freqAtStart - node.loOffset).abs();
+    }
+
+    // 2. Solve Forward from Source
     List<PathStep> steps = [];
-    double currentFreq = _selectedFrequency;
+    double currentFreq = freqAtStart;
     double totalLoss = 0.0;
 
-    // Path 1: Source to Hub Child
-    List<PlannerNode> upstream = [];
-    PlannerNode? curr = startNode;
-    while (curr != null && curr != _hubNode) {
-      upstream.add(curr);
-      curr = _findParent(_root, curr);
-    }
-    // Traverse towards Hub: so Reverse Upstream
-    for (var node in upstream.reversed) {
+    // Path 1: Source to Hub Child (Forwards)
+    for (var node in upstream) {
       double nodeLoss = node.lossDb;
       if (node.physicalResourceId != null) {
         nodeLoss = _interpolateCableLoss(node.physicalResourceId!, currentFreq);
@@ -595,10 +603,10 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
 
     // Path 3: Hub to Instrument
     List<PlannerNode> downstream = [];
-    curr = endNode;
-    while (curr != null && curr != _hubNode) {
-      downstream.add(curr);
-      curr = _findParent(_root, curr);
+    PlannerNode? currD = endNode;
+    while (currD != null && currD != _hubNode) {
+      downstream.add(currD);
+      currD = _findParent(_root, currD);
     }
     // Already in Hub to Terminal order (mostly)
     // Actually, downstream is EndNode -> ... -> HubChild. Needs reverse.
@@ -621,16 +629,6 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     }
 
     return SolveResult(totalLoss: totalLoss, steps: steps);
-  }
-
-  double _getNodeAppliedFrequency(PlannerNode target) {
-    if (target == _hubNode) return _selectedFrequency;
-    // Simple traversal to find current freq at node
-    // For now, we'll just solve the whole path if needed,
-    // but a simpler way is to solve from root if it's connected
-    // This is complex for star layout.
-    // Let's just solve the path when building cards if it's part of the selected path.
-    return 0.0; // Placeholder
   }
 
   @override
@@ -1990,7 +1988,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     // Initial frequencies from branch
     final branchFreqs = _getBranchFrequencies(node);
     final List<double> initialFrequencies = branchFreqs.isNotEmpty
-        ? branchFreqs.map((f) => f * 1000.0).toList()
+        ? branchFreqs.toList()
         : [1000.0];
 
     List<double> targetFrequencies = List.from(initialFrequencies);

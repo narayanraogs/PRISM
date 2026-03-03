@@ -552,7 +552,7 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 	if !udc.check(udc.sgExt.SetFrequency(loFreq), "SG Ext: frequency set") {
 		return
 	}
-	if !udc.check(udc.sgExt.SetPower(loPower-udc.loCableLoss), "SG Ext: power set") {
+	if !udc.check(udc.sgExt.SetPower(loPower), "SG Ext: power set") {
 		return
 	}
 	if !udc.check(udc.sgExt.SetModOff(), "SG Ext: mod off") {
@@ -798,8 +798,8 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	}
 
 	extLoMeasured := resp.Result["MarkerY"].Value
-	powerDev := loPower - extLoMeasured - udc.loCableLoss
-	powerSet := 0.0
+	powerDev := loPower - extLoMeasured
+	powerSet := loPower + udc.loCableLoss
 
 	// Matching Loop: iterate until deviation is within 0.1 dB
 	for math.Abs(powerDev) > 0.1 {
@@ -807,7 +807,8 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 			udc.setError("Aborted")
 			return
 		}
-		powerSet = loPower + powerDev + udc.loCableLoss
+
+		powerSet += powerDev
 		if !udc.check(udc.sgExt.SetPower(powerSet), "SG Ext: adjust power") {
 			return
 		}
@@ -818,12 +819,16 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 			return
 		}
 		extLoMeasured = mResp.Result["MarkerY"].Value
-		powerDev = loPower - extLoMeasured - udc.loCableLoss
+		powerDev = loPower - extLoMeasured
 	}
 
 	result := ConvertorResults{
 		TestName: "Output Port - Ext LO Power Matching", TestCode: UCDCExtLOPowerMatch, PowerMatchingResults: true,
-		PowerMatchingResultValue: PowerMatchingResults{InternalLOPowerMeasured: loPower, ExternalLOPowerMeasured: extLoMeasured + udc.loCableLoss, ExternalSGPowerSet: powerSet},
+		PowerMatchingResultValue: PowerMatchingResults{
+			InternalLOPowerMeasured: loPower,
+			ExternalLOPowerMeasured: extLoMeasured,
+			ExternalSGPowerSet:      powerSet,
+		},
 	}
 
 	udc.measurementMonitor <- result
