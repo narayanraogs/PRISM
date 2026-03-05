@@ -557,16 +557,12 @@ func getUCDCMetadata() UCDCMetadata {
 		{Code: tne.UCDCInputLeakage, DisplayName: "Input Leakage", Category: "Output Port"},
 		{Code: tne.UCDCGainExternalCable, DisplayName: "Gain Measurement - External LO (Cable)", Category: "Output Port"},
 		{Code: tne.UCDCGainExternalRadiated, DisplayName: "Gain Measurement - External LO (Radiated)", Category: "Output Port"},
-		{Code: tne.UCDCExtLOPowerMatch, DisplayName: "External LO Power Matching", Category: "LO Monitor"},
-
 		{Code: tne.UCDCLOLeakage, DisplayName: "LO Leakage", Category: "Input Port"},
-
 		{Code: tne.UCDCOutputMonPower, DisplayName: "Power Measurement", Category: "Output Monitor"},
-
 		{Code: tne.UCDCInputMonPower, DisplayName: "Power Measurement", Category: "Input Monitor"},
-
 		{Code: tne.UCDCLOMonPower, DisplayName: "Power & Frequency Measurement", Category: "LO Monitor"},
 		{Code: tne.UCDCLOMonPhaseNoise, DisplayName: "Phase Noise Measurement", Category: "LO Monitor"},
+		{Code: tne.UCDCExtLOPowerMatch, DisplayName: "External LO Power Matching", Category: "LO Monitor"},
 	}
 	resp.OK = true
 	resp.Message = "Successfully got UCDC metadata"

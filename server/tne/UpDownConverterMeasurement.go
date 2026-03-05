@@ -226,6 +226,14 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 		}
 		time.Sleep(time.Second)
 
+		if p == minPower {
+			resp := udc.sa.GetSpectrumDump()
+			if !udc.check(resp, "SA: Spectrum dump") {
+				return
+			}
+			result.SpectrumDump = []string{resp.Result["SpectrumDump"].String}
+		}
+
 		resp := udc.sa.GetMaxMarkerValue()
 		if !udc.check(resp, "SA: read power") {
 			return
@@ -282,6 +290,11 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 		return
 	}
 
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(resp, "SA: Spectrum dump") {
+		return
+	}
+
 	freq := resp.Result["Frequency"].Value
 	deviation := math.Abs(freq - udc.converter.OutputFrequency)
 
@@ -289,6 +302,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 		TestName: "Output Port - Frequency Measurement", TestCode: UCDCFreqMeas, FrequencyResults: true,
 		FrequencyResultValue: FrequencyResults{ExpectedFrequency: udc.converter.OutputFrequency, MeasuredFrequency: freq, Deviation: deviation},
 	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
@@ -356,10 +370,16 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 			}
 		}
 
+		respSpectrum := udc.sa.GetSpectrumDump()
+		if !udc.check(respSpectrum, "SA: Spectrum dump") {
+			return
+		}
+
 		result.HarmonicResultValue.HarmonicNo = append(result.HarmonicResultValue.HarmonicNo, i)
 		result.HarmonicResultValue.HarmonicFrequency = append(result.HarmonicResultValue.HarmonicFrequency, fmt.Sprintf("%.6f", hFreq))
 		result.HarmonicResultValue.CarrierLevel = append(result.HarmonicResultValue.CarrierLevel, levelStr)
 		result.HarmonicResultValue.NoiseFloor = append(result.HarmonicResultValue.NoiseFloor, noiseFloor)
+		result.SpectrumDump = append(result.SpectrumDump, respSpectrum.Result["SpectrumDump"].String)
 
 		udc.measurementMonitor <- result
 		udc.notify(fmt.Sprintf("Harmonics measurement completed for %.2f MHz", hFreq/1e6))
@@ -398,13 +418,14 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	if !udc.check(udc.sa.SetSpectrum(udc.converter.OutputFrequency, spec.span, spec.rbw, spec.vbw), "SA: set spectrum") {
 		return
 	}
-	if !udc.check(udc.sa.SetReferenceNominal(), "SA: find carrier") {
+	resp := udc.sa.SetReferenceNominal()
+	if !udc.check(resp, "SA: find carrier") {
 		return
 	}
 	time.Sleep(time.Second)
 
-	noiseFloor := udc.sa.SetReferenceNominal().Result["MinValue"].Value
-	carrierPower := udc.sa.SetReferenceNominal().Result["MaxValue"].Value + udc.outputCableLoss[0]
+	noiseFloor := resp.Result["MinValue"].Value
+	carrierPower := resp.Result["MaxValue"].Value
 
 	if !udc.check(udc.sa.SetPeakThresholdAndExcursion(noiseFloor+15, 1), "SA: excursion") {
 		return
@@ -412,42 +433,42 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	if !udc.check(udc.sa.SetMaxHold(), "SA: max hold") {
 		return
 	}
-	udc.sa.WaitForSweeps(5)
-
-	resp := udc.sa.GetMaxMarkerValue()
-	if !udc.check(resp, "SA: markers") {
+	if !udc.check(udc.sa.WaitForSweeps(10), "SA: Waiting for sweeps") {
 		return
 	}
-	prevFreq := resp.Result["MarkerX"].Value
 
-	for {
-		if !udc.check(udc.sa.SetMarkerNextPeak(1), "SA: next peak") {
-			return
-		}
-		mResp := udc.sa.GetMarkerValue(1)
-		if !udc.check(mResp, "SA: get marker") {
-			return
-		}
-
-		f, v := mResp.Result["MarkerX"].Value, mResp.Result["MarkerY"].Value+udc.outputCableLoss[0]
-		if f == prevFreq {
-			break
-		}
-
-		result.SpuriousResultValue.Frequency = append(result.SpuriousResultValue.Frequency, fmt.Sprintf("%.6f", f))
-		result.SpuriousResultValue.MeasuredPowerdBm = append(result.SpuriousResultValue.MeasuredPowerdBm, fmt.Sprintf("%.6f", v))
-		result.SpuriousResultValue.SpuriousLeveldBC = append(result.SpuriousResultValue.SpuriousLeveldBC, fmt.Sprintf("%.6f", carrierPower-v))
-
-		udc.measurementMonitor <- result
-		prevFreq = f
+	if !udc.check(udc.sa.GetTraceDump(1001), "SA: Taking trace dump") {
+		return
+	}
+	respScreendump := udc.sa.GetSpectrumDump()
+	if !udc.check(respScreendump, "SA: Taking Spectrum dump") {
+		return
 	}
 
-	if len(result.SpuriousResultValue.Frequency) == 0 {
+	resp = udc.sa.GetAllPeaksAbove(noiseFloor+15, 1)
+	if !udc.check(resp, "SA: get all peaks") {
+		return
+	}
+
+	frequencies := resp.Result["Frequencies"].Values
+	peaks := resp.Result["Peaks"].Values
+
+	if len(frequencies) == 1 {
 		result.SpuriousResultValue.Frequency = []string{"NIL"}
 		result.SpuriousResultValue.MeasuredPowerdBm = []string{"NIL"}
 		result.SpuriousResultValue.SpuriousLeveldBC = []string{"NIL"}
-		udc.measurementMonitor <- result
+	} else {
+		result.SpuriousResultValue.Frequency = make([]string, len(frequencies)-1)
+		result.SpuriousResultValue.MeasuredPowerdBm = make([]string, len(frequencies)-1)
+		result.SpuriousResultValue.SpuriousLeveldBC = make([]string, len(frequencies)-1)
+		for i := 1; i < len(frequencies); i++ {
+			result.SpuriousResultValue.Frequency[i-1] = fmt.Sprintf("%.6f", frequencies[i])
+			result.SpuriousResultValue.MeasuredPowerdBm[i-1] = fmt.Sprintf("%.2f", peaks[i])
+			result.SpuriousResultValue.SpuriousLeveldBC[i-1] = fmt.Sprintf("%.2f", carrierPower-peaks[i])
+		}
 	}
+	result.SpectrumDump = []string{respScreendump.Result["SpectrumDump"].String}
+	udc.measurementMonitor <- result
 
 	if udc.save(result, testName) {
 		udc.finish("Spurious Measurement Completed", true)
@@ -487,6 +508,12 @@ func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: targetFreq, Power: leakage},
 	}
 
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(respSpectrum, "SA: Spectrum dump") {
+		return
+	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
+
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
 		udc.finish("LO Leakage Measurement Completed", true)
@@ -525,6 +552,11 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 		TestName: "Output Port - Input Leakage Measurement", TestCode: UCDCInputLeakage, PowerOrLeakageResults: true,
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: udc.converter.InputFrequency, Power: power},
 	}
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(respSpectrum, "SA: Spectrum dump") {
+		return
+	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
@@ -552,7 +584,7 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 	if !udc.check(udc.sgExt.SetFrequency(loFreq), "SG Ext: frequency set") {
 		return
 	}
-	if !udc.check(udc.sgExt.SetPower(loPower), "SG Ext: power set") {
+	if !udc.check(udc.sgExt.SetPower(loPower+udc.loCableLoss), "SG Ext: power set") {
 		return
 	}
 	if !udc.check(udc.sgExt.SetModOff(), "SG Ext: mod off") {
@@ -597,6 +629,14 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		resp := udc.sa.GetMaxMarkerValue()
 		if !udc.check(resp, "SA: read power") {
 			return
+		}
+
+		if p == minPower {
+			respSpectrum := udc.sa.GetSpectrumDump()
+			if !udc.check(respSpectrum, "SA: Spectrum dump") {
+				return
+			}
+			result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 		}
 
 		outPower := resp.Result["MarkerY"].Value + udc.outputCableLoss[1]
@@ -647,12 +687,22 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 		return
 	}
 	udc.sa.WaitForSweeps(5)
-
-	power := udc.sa.GetMarkerValue(1).Result["MarkerY"].Value + udc.outputCableLoss[0]
+	power := 0.0
+	if isOutput {
+		power = udc.sa.GetMarkerValue(1).Result["MarkerY"].Value + udc.outputCableLoss[1]
+	} else {
+		power = udc.sa.GetMarkerValue(1).Result["MarkerY"].Value + udc.outputCableLoss[0]
+	}
 	result := ConvertorResults{
-		TestName: testName, TestCode: testCode, PowerMatchingResults: true,
+		TestName: testName, TestCode: testCode, PowerOrLeakageResults: true,
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: targetFreq, Power: power},
 	}
+
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(respSpectrum, "SA: Spectrum dump") {
+		return
+	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
 	udc.measurementMonitor <- result
 	if udc.save(result, testName) {
@@ -687,6 +737,7 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 	}
 	udc.sa.WaitForSweeps(5)
 	power := udc.sa.GetMarkerValue(1).Result["MarkerY"].Value
+	power = power + udc.outputCableLoss[2]
 
 	resp := udc.sa.GetFrequencyInCounterMode(1)
 	if !udc.check(resp, "SA: counter mode") {
@@ -694,13 +745,30 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 	}
 	freq := resp.Result["Frequency"].Value
 
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(respSpectrum, "SA: Spectrum dump") {
+		return
+	}
+
+	powerResult := ConvertorResults{
+		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, PowerOrLeakageResults: true,
+		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: freq, Power: power},
+	}
+	udc.measurementMonitor <- powerResult
+
+	frequencyResult := ConvertorResults{
+		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, FrequencyResults: true,
+		FrequencyResultValue: FrequencyResults{ExpectedFrequency: targetlo, MeasuredFrequency: freq, Deviation: math.Abs(freq - targetlo)},
+	}
+	udc.measurementMonitor <- frequencyResult
+
 	result := ConvertorResults{
 		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, PowerOrLeakageResults: true, FrequencyResults: true,
 		FrequencyResultValue:      FrequencyResults{ExpectedFrequency: targetlo, MeasuredFrequency: freq, Deviation: math.Abs(freq - targetlo)},
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: freq, Power: power},
 	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
-	udc.measurementMonitor <- result
 	if udc.save(result, "LO MON Port - Frequency & Power Measurement") {
 		udc.finish("LO Mon Power & Frequency Measurement Completed", true)
 	}
@@ -711,6 +779,7 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
+	defer udc.sa.SetNormalMode()
 
 	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
 		return
@@ -744,9 +813,15 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 		val := resp.Result["MarkerY"].Value
 		result.PhaseNoiseResultValue.Frequency = append(result.PhaseNoiseResultValue.Frequency, float64(i))
 		result.PhaseNoiseResultValue.PhaseNoise = append(result.PhaseNoiseResultValue.PhaseNoise, val)
-
-		udc.measurementMonitor <- result
 	}
+
+	respSpectrum := udc.sa.GetSpectrumDump()
+	if !udc.check(respSpectrum, "SA: Spectrum dump") {
+		return
+	}
+	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
+
+	udc.measurementMonitor <- result
 
 	if udc.save(result, "LO MON Port - Phase Noise Measurement") {
 		udc.finish("LO Mon Phase Noise Measurement Completed", true)
@@ -770,6 +845,7 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 		udc.setError("LO Power measurement required before power matching")
 		return
 	}
+	loPowerSA := loPower - udc.outputCableLoss[2]
 
 	if !udc.check(udc.sgExt.SetPower(loPower+udc.loCableLoss), "SG Ext: initial power") {
 		return
@@ -798,8 +874,8 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	}
 
 	extLoMeasured := resp.Result["MarkerY"].Value
-	powerDev := loPower - extLoMeasured
-	powerSet := loPower + udc.loCableLoss
+	powerDev := loPowerSA - extLoMeasured
+	powerSet := loPowerSA + udc.loCableLoss
 
 	// Matching Loop: iterate until deviation is within 0.1 dB
 	for math.Abs(powerDev) > 0.1 {
@@ -819,15 +895,15 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 			return
 		}
 		extLoMeasured = mResp.Result["MarkerY"].Value
-		powerDev = loPower - extLoMeasured
+		powerDev = loPowerSA - extLoMeasured
 	}
 
 	result := ConvertorResults{
 		TestName: "Output Port - Ext LO Power Matching", TestCode: UCDCExtLOPowerMatch, PowerMatchingResults: true,
 		PowerMatchingResultValue: PowerMatchingResults{
 			InternalLOPowerMeasured: loPower,
-			ExternalLOPowerMeasured: extLoMeasured,
-			ExternalSGPowerSet:      powerSet,
+			ExternalLOPowerMeasured: extLoMeasured + udc.outputCableLoss[2],
+			ExternalSGPowerSet:      powerSet - udc.loCableLoss,
 		},
 	}
 

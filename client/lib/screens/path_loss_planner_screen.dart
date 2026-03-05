@@ -7,6 +7,9 @@ import 'package:prism_client/services/notification_service.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/utils/notifications.dart';
+import 'package:prism_client/utils/svg_exporter.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 enum NodeType { source, component, branching, instrument, hub, converter }
 
@@ -180,10 +183,12 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       final leftPorts = <String>{};
       final rightPorts = <String>{};
       for (var p in _tsmData!.measuredLoss.paths) {
-        if (p.inputPort.isNotEmpty)
+        if (p.inputPort.isNotEmpty) {
           leftPorts.add(p.inputPort.replaceAll('-WithPad', ''));
-        if (p.outputPort.isNotEmpty)
+        }
+        if (p.outputPort.isNotEmpty) {
           rightPorts.add(p.outputPort.replaceAll('-WithPad', ''));
+        }
       }
       for (var port in leftPorts) {
         _hubNode!.children.add(
@@ -268,7 +273,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       }
     }
 
-    for (var c in _hubNode!.children) traverse(c);
+    for (var c in _hubNode!.children) {
+      traverse(c);
+    }
     return results;
   }
 
@@ -302,8 +309,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     final sources = _getTerminals(NodeType.source);
     final sinks = _getTerminals(NodeType.instrument);
 
-    if (_startNodeId == null || _endNodeId == null)
+    if (_startNodeId == null || _endNodeId == null) {
       return SolveResult(totalLoss: 0.0, finalPower: 0.0, steps: []);
+    }
 
     // Find nodes or fallback to avoid crash
     PlannerNode? startNode, endNode;
@@ -313,8 +321,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     try {
       endNode = sinks.firstWhere((t) => t.id == _endNodeId);
     } catch (_) {}
-    if (startNode == null || endNode == null)
+    if (startNode == null || endNode == null) {
       return SolveResult(totalLoss: 0.0, finalPower: 0.0, steps: []);
+    }
 
     double currentFreq = startNode.sourceFrequency;
     double currentPower = startNode.lossDb;
@@ -343,8 +352,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         );
       } else {
         double loss = node.lossDb;
-        if (node.calibratedCableId != null)
+        if (node.calibratedCableId != null) {
           loss = _interpolateCableLoss(node.calibratedCableId!, currentFreq);
+        }
         double outFreq = (currentFreq + node.loOffset).abs();
         steps.add(
           PathStep(
@@ -410,8 +420,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     // Traverse from HubChild down to Sink
     for (var node in downstream.reversed) {
       double loss = node.lossDb;
-      if (node.calibratedCableId != null)
+      if (node.calibratedCableId != null) {
         loss = _interpolateCableLoss(node.calibratedCableId!, currentFreq);
+      }
       double outFreq = (currentFreq + node.loOffset).abs();
       steps.add(
         PathStep(
@@ -498,6 +509,38 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
             label: const Text('SAVE'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              if (_hubNode == null) return;
+              try {
+                final svgString = SvgExporter.generate(_hubNode!);
+                final rawData = utf8.encode(svgString);
+                final content = base64Encode(rawData);
+                html.AnchorElement(href: 'data:image/svg+xml;base64,$content')
+                  ..setAttribute(
+                    'download',
+                    'PathLossDiagram_${DateTime.now().millisecondsSinceEpoch}.svg',
+                  )
+                  ..click();
+                AppNotifications.showSuccess(
+                  context,
+                  'SVG layout exported successfully',
+                );
+              } catch (e) {
+                AppNotifications.showError(
+                  context,
+                  'SVG layout export failed: $e',
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo.shade600,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.download_rounded, size: 16),
+            label: const Text('EXPORT SVG'),
           ),
         ],
       ),
@@ -1297,7 +1340,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
           node.calibratedCableId!.isNotEmpty) {
         res.add(node.calibratedCableId!);
       }
-      for (var c in node.children) traverse(c);
+      for (var c in node.children) {
+        traverse(c);
+      }
     }
 
     if (_hubNode != null) traverse(_hubNode!);
@@ -1381,12 +1426,14 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                         selected: isSel,
                         onSelected: (val) {
                           setS(() {
-                            if (val)
+                            if (val) {
                               targets.add(f);
-                            else
+                            } else {
                               targets.remove(f);
-                            if (targets.isEmpty)
+                            }
+                            if (targets.isEmpty) {
                               targets.add(_availableFrequencies.first);
+                            }
                           });
                         },
                       );
@@ -1404,12 +1451,15 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                             final filterLen = double.tryParse(lCtrl.text);
                             for (var r in c) {
                               if (q.isNotEmpty &&
-                                  !r.cableName.toLowerCase().contains(q))
+                                  !r.cableName.toLowerCase().contains(q)) {
                                 continue;
-                              if (filterLen != null && r.length != filterLen)
+                              }
+                              if (filterLen != null && r.length != filterLen) {
                                 continue;
-                              if (!unique.containsKey(r.cableName))
+                              }
+                              if (!unique.containsKey(r.cableName)) {
                                 unique[r.cableName] = r;
+                              }
                             }
                             List<Map<String, dynamic>> res = [];
                             for (var cab in unique.values) {
@@ -1420,11 +1470,12 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                               double maxL = -double.infinity;
                               for (var f in targets) {
                                 double ml = 0;
-                                if (f <= cab.measurements.first.frequency)
+                                if (f <= cab.measurements.first.frequency) {
                                   ml = cab.measurements.first.loss;
-                                else if (f >= cab.measurements.last.frequency)
+                                } else if (f >=
+                                    cab.measurements.last.frequency) {
                                   ml = cab.measurements.last.loss;
-                                else {
+                                } else {
                                   for (
                                     int i = 0;
                                     i < cab.measurements.length - 1;
@@ -1518,10 +1569,12 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   Widget _buildSummaryPanel(ThemeData theme) {
     final sources = _getTerminals(NodeType.source);
     final sinks = _getTerminals(NodeType.instrument);
-    if (_startNodeId != null && !sources.any((t) => t.id == _startNodeId))
+    if (_startNodeId != null && !sources.any((t) => t.id == _startNodeId)) {
       _startNodeId = null;
-    if (_endNodeId != null && !sinks.any((t) => t.id == _endNodeId))
+    }
+    if (_endNodeId != null && !sinks.any((t) => t.id == _endNodeId)) {
       _endNodeId = null;
+    }
 
     final sol = _solvePath();
 
@@ -1713,10 +1766,12 @@ class GridPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += gridSize)
+    for (double i = 0; i < size.width; i += gridSize) {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    for (double i = 0; i < size.height; i += gridSize)
+    }
+    for (double i = 0; i < size.height; i += gridSize) {
       canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
   }
 
   @override

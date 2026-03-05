@@ -45,7 +45,7 @@ func (test *txSpuriousMeasurement) getInstruments() {
 
 func (test *txSpuriousMeasurement) measure(runner *StepRunner) error {
 	start := time.Now()
-
+	spurSpec := test.txSpec.Spurious
 	var spuriousRows = make([][]string, 0)
 	var header []string
 
@@ -92,6 +92,7 @@ func (test *txSpuriousMeasurement) measure(runner *StepRunner) error {
 				resultData := txSpuriousResult{
 					FrequencyKHz: freqs[i] / 1e3,
 					LevelDBc:     peaks[i],
+					Spec:         spurSpec,
 				}
 				if header == nil {
 					header = resultData.ToHeader()

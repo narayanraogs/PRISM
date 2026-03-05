@@ -55,6 +55,7 @@ type ConvertorResults struct {
 	PowerOrLeakageResultValue PowerOrLeakageResults
 	PhaseNoiseResultValue     PhaseNoiseResults
 	PowerMatchingResultValue  PowerMatchingResults
+	SpectrumDump              []string
 }
 
 type GainResults struct {

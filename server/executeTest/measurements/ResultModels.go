@@ -105,16 +105,18 @@ func (r *txHarmonicsResult) ToRow() []string {
 type txSpuriousResult struct {
 	FrequencyKHz float64
 	LevelDBc     float64
+	Spec         float64
 }
 
 func (r *txSpuriousResult) ToHeader() []string {
-	return []string{"Frequency [kHz]", "Spurious Level [dBc]"}
+	return []string{"Frequency [kHz]", "Spurious Level [dBc]", "Spec [dBc]"}
 }
 
 func (r *txSpuriousResult) ToRow() []string {
 	return []string{
 		fmt.Sprintf("%.2f", r.FrequencyKHz),
 		fmt.Sprintf("%.2f", r.LevelDBc),
+		fmt.Sprintf("%.2f", r.Spec),
 	}
 }
 
@@ -141,11 +143,11 @@ func (r *txModIndexResult) ToRow() []string {
 }
 
 type tpModIndexResult struct {
-	SubCarrier          string
-	ToneFrequency float64
-	SpecifiedModIndex   float64
-	MeasuredModIndex    resultValue
-	Deviation           resultValue
+	SubCarrier        string
+	ToneFrequency     float64
+	SpecifiedModIndex float64
+	MeasuredModIndex  resultValue
+	Deviation         resultValue
 }
 
 func (r *tpModIndexResult) ToHeader() []string {

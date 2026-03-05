@@ -536,7 +536,10 @@ func (test *rxBaseTest) measureModulation(runner *StepRunner) string {
 			return
 		}
 		prompt := fmt.Sprintf("Measured value is %s, Press Continue to proceed", measuredValue)
-		test.ctx.AskForConfirmation(prompt, 30)
+		confirm := test.ctx.AskForConfirmation(prompt, 30)
+		if confirm {
+			test.success(measuredValue)
+		}
 	})
 	return measured
 }

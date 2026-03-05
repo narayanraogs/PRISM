@@ -147,9 +147,14 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                                       _selectedOperation == index;
                                   final op = _operations[index];
                                   return InkWell(
-                                    onTap: () => setState(
-                                      () => _selectedOperation = index,
-                                    ),
+                                    onTap: () {
+                                      setState(
+                                        () => _selectedOperation = index,
+                                      );
+                                      if (index == 1 || index == 2) {
+                                        _fetchHardwareStatus();
+                                      }
+                                    },
                                     borderRadius: BorderRadius.circular(16),
                                     child: AnimatedContainer(
                                       duration: const Duration(
@@ -634,7 +639,10 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
   Widget _buildDetailContent() {
     switch (_selectedOperation) {
       case 0:
-        return RFUplinkForm(metaData: _metaData);
+        return RFUplinkForm(
+          metaData: _metaData,
+          onRefresh: _fetchHardwareStatus,
+        );
       case 1:
         return RemoveLinkForm(
           metaData: _metaData,
@@ -662,7 +670,8 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
 
 class RFUplinkForm extends StatefulWidget {
   final RFUplinkMetaData? metaData;
-  const RFUplinkForm({super.key, this.metaData});
+  final VoidCallback onRefresh;
+  const RFUplinkForm({super.key, this.metaData, required this.onRefresh});
 
   @override
   State<RFUplinkForm> createState() => _RFUplinkFormState();
@@ -821,11 +830,14 @@ class _RFUplinkFormState extends State<RFUplinkForm> {
                         ],
                       ),
                     ];
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => TestProgressScreen(tests: tests),
-                      ),
-                    );
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                TestProgressScreen(tests: tests),
+                          ),
+                        )
+                        .then((_) => widget.onRefresh());
                   },
             icon: const Icon(Icons.rocket_launch),
             label: const Text(
@@ -1012,12 +1024,14 @@ class _RemoveLinkFormState extends State<RemoveLinkForm> {
                     }
 
                     if (tests.isNotEmpty) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              TestProgressScreen(tests: tests),
-                        ),
-                      );
+                      Navigator.of(context)
+                          .push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  TestProgressScreen(tests: tests),
+                            ),
+                          )
+                          .then((_) => widget.onRefresh());
                     }
                   },
             icon: const Icon(Icons.delete_forever),

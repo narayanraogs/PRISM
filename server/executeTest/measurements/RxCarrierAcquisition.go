@@ -130,9 +130,13 @@ func (test *rxCarrierAcquisition) measure(runner *StepRunner) error {
 		_ = test.checkForBSLock(runner, true)
 
 		if strings.EqualFold(test.frequencyProfile.CommandingRequired, "yes") {
-			noOfCommands, ok := test.checkCommandExecution(runner, test.noOfCommandsNominal, true)
+			noOfCmdsToBeExecuted := test.noOfCommandsNominal
+			if i == 0 || i == noOfSteps-1 {
+				noOfCmdsToBeExecuted = test.noOfCommandsAtThreshold
+			}
+			noOfCommands, ok := test.checkCommandExecution(runner, noOfCmdsToBeExecuted, true)
 			if ok {
-				result.noOfCommandsSent = test.noOfCommandsNominal
+				result.noOfCommandsSent = noOfCmdsToBeExecuted
 				result.noOfCommandsExecuted = noOfCommands
 			}
 			runner.Exec(sa.SetNormalMode)

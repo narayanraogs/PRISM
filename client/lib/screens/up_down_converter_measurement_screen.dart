@@ -247,7 +247,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       final response = await serverService.getUCDCResults(_selectedConverter);
       if (response.ok) {
         setState(() {
-          _history = response.history;
+          _history = response.history.reversed.toList();
         });
       }
     } catch (e) {
@@ -346,9 +346,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
       // Order ports predictably
       final order = [
+        "LO Monitor",
         "Output Port",
         "Output Monitor",
-        "LO Monitor",
         "Input Monitor",
         "Input Port",
       ];
@@ -1566,6 +1566,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
               Column(
                 children: activePort.tests
                     .where((t) => t.status != "PENDING")
+                    .toList()
+                    .reversed
                     .map((test) => _buildResultCard(test, theme))
                     .toList(),
               ),
@@ -1662,28 +1664,49 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     }
 
     final res = result;
+    List<Widget> children = [];
+
     if (res.gainResults && res.gainResultValue != null) {
-      return _buildGainResultTable(res.gainResultValue!);
+      children.add(_buildGainResultTable(res.gainResultValue!));
     }
     if (res.frequencyResults && res.frequencyResultValue != null) {
-      return _buildFrequencyResult(res.frequencyResultValue!);
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildFrequencyResult(res.frequencyResultValue!));
     }
     if (res.harmonicsResults && res.harmonicResultValue != null) {
-      return _buildHarmonicResult(res.harmonicResultValue!);
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildHarmonicResult(res.harmonicResultValue!));
     }
     if (res.spuriousResults && res.spuriousResultValue != null) {
-      return _buildSpuriousResult(res.spuriousResultValue!);
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildSpuriousResult(res.spuriousResultValue!));
     }
     if (res.powerOrLeakageResults && res.powerOrLeakageResultValue != null) {
-      return _buildPowerOrLeakageResult(res.powerOrLeakageResultValue!);
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildPowerOrLeakageResult(res.powerOrLeakageResultValue!));
     }
     if (res.phaseNoiseResults && res.phaseNoiseResultValue != null) {
-      return _buildPhaseNoiseResult(res.phaseNoiseResultValue!);
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildPhaseNoiseResult(res.phaseNoiseResultValue!));
+    }
+    if (res.powerMatchingResults && res.powerMatchingResultValue != null) {
+      if (children.isNotEmpty) children.add(const SizedBox(height: 16));
+      children.add(_buildPowerMatchingResult(res.powerMatchingResultValue!));
     }
 
-    return Text(
-      "Result received: ${res.testName}",
-      style: GoogleFonts.robotoMono(fontSize: 16, color: Colors.blue.shade300),
+    if (children.isEmpty) {
+      return Text(
+        "Result received: ${res.testName}",
+        style: GoogleFonts.robotoMono(
+          fontSize: 16,
+          color: Colors.blue.shade300,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
   }
 
@@ -1806,6 +1829,26 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
+  Widget _buildPowerMatchingResult(PowerMatchingResults res) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _resultRow(
+          "Internal LO Power",
+          "${res.internalLOPowerMeasured.toStringAsFixed(2)} dBm",
+        ),
+        _resultRow(
+          "External LO Power",
+          "${res.externalLOPowerMeasured.toStringAsFixed(2)} dBm",
+        ),
+        _resultRow(
+          "Selected SG Power",
+          "${res.externalSGPowerSet.toStringAsFixed(2)} dBm",
+        ),
+      ],
+    );
+  }
+
   Widget _buildTextResult(dynamic result, String status) {
     if (status == "MEASURING") {
       return Text(
@@ -1862,6 +1905,17 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
               ),
             ],
           ),
+        TableRow(
+          children: [
+            _tableCell("AVERAGE", isBold: true),
+            _tableCell(""),
+            _tableCell(
+              res.averageGain.toStringAsFixed(2),
+              isBold: true,
+              color: Colors.green.shade400,
+            ),
+          ],
+        ),
       ],
     );
   }
