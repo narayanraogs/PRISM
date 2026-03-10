@@ -303,7 +303,7 @@ class _InstrumentConnectionDiagramState
                   child: Center(
                     child: _buildEdgeLabel(
                       context,
-                      '${widget.outputPortName ?? "Output"} Cable',
+                      'Output Cable',
                       primaryColor,
                     ),
                   ),

@@ -8,7 +8,7 @@ import (
 
 var manager ProcedureManager
 
-func init() {
+func Init() {
 	client, err := NewClient()
 	if err != nil {
 		logger.Log.Error("Cannot connect to Procedure Server", "error", err.Error())

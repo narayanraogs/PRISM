@@ -14,6 +14,7 @@ import (
 	"prismServer/logger"
 	"prismServer/resultsDB"
 	"prismServer/server"
+	"prismServer/tc"
 	"prismServer/utils"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,7 @@ func main() {
 	if !ok {
 		return
 	}
+	tc.Init()
 	utils.ReadSelectionParams()
 	logPath := filepath.Join(utils.Config.BaseFolder, "log")
 	logger.InitializeLog(logPath)

@@ -445,7 +445,7 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 		return
 	}
 
-	resp = udc.sa.GetAllPeaksAbove(noiseFloor+15, 1)
+	resp = udc.sa.GetAllPeaksAbove(noiseFloor+10, 1)
 	if !udc.check(resp, "SA: get all peaks") {
 		return
 	}
@@ -750,24 +750,13 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 		return
 	}
 
-	powerResult := ConvertorResults{
-		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, PowerOrLeakageResults: true,
-		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: freq, Power: power},
-	}
-	udc.measurementMonitor <- powerResult
-
-	frequencyResult := ConvertorResults{
-		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, FrequencyResults: true,
-		FrequencyResultValue: FrequencyResults{ExpectedFrequency: targetlo, MeasuredFrequency: freq, Deviation: math.Abs(freq - targetlo)},
-	}
-	udc.measurementMonitor <- frequencyResult
-
 	result := ConvertorResults{
 		TestName: "LO MON Port Frequency & Power Measurement", TestCode: UCDCLOMonPower, PowerOrLeakageResults: true, FrequencyResults: true,
 		FrequencyResultValue:      FrequencyResults{ExpectedFrequency: targetlo, MeasuredFrequency: freq, Deviation: math.Abs(freq - targetlo)},
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: freq, Power: power},
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
+	udc.measurementMonitor <- result
 
 	if udc.save(result, "LO MON Port - Frequency & Power Measurement") {
 		udc.finish("LO Mon Power & Frequency Measurement Completed", true)
@@ -779,7 +768,7 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
-	defer udc.sa.SetNormalMode()
+	defer udc.sa.SetSAMode()
 
 	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
 		return
@@ -798,6 +787,8 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	if !udc.check(udc.sa.SetPhaseNoiseMeasurement(), "SA: phase noise mode") {
 		return
 	}
+
+	time.Sleep(5 * time.Second)
 
 	result := ConvertorResults{TestName: "LO Mon Port Phase Noise Measurement", TestCode: UCDCLOMonPhaseNoise, PhaseNoiseResults: true}
 

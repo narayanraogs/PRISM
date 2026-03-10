@@ -38,6 +38,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   bool _showConnectionDiagram = false;
   bool _isReportMode = false;
   int? _selectedReportId;
+  final Set<int> _selectedReportIds = {};
   List<UCDCResultEntry> _history = [];
   bool _isLoadingHistory = false;
 
@@ -229,8 +230,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         _externalSGs = metadata.signalGenerators;
 
         if (_converters.isNotEmpty) _selectedConverter = _converters.first;
-        if (_deviceProfiles.isNotEmpty)
+        if (_deviceProfiles.isNotEmpty) {
           _selectedDeviceProfile = _deviceProfiles.first;
+        }
         if (_externalSGs.isNotEmpty) _selectedExternalSG = _externalSGs.first;
 
         _updateDBParams();
@@ -480,7 +482,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         children: [
           ScreenHeader(
             title: 'Up/Down Converter Measurement',
-            subtitle: 'Sequential port-based characterization',
+            subtitle: _isReportMode
+                ? 'Historical measurement analysis and PDF generation'
+                : 'Sequential port-based characterization',
             icon: Icons.swap_vert,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -524,10 +528,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildInstructionBanner(theme),
-                              if (_showConnectionDiagram)
-                                _buildConnectionOverlay(theme),
-                              const SizedBox(height: 16),
+                              if (!_isReportMode) ...[
+                                _buildInstructionBanner(theme),
+                                if (_showConnectionDiagram)
+                                  _buildConnectionOverlay(theme),
+                                const SizedBox(height: 16),
+                              ],
                               if (_isReportMode)
                                 _buildReportView(theme)
                               else if (_isConfigMode)
@@ -565,65 +571,99 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
   Widget _buildSidebar(ThemeData theme) {
     return ContentCard(
-      width: 280,
+      width: 320,
       isSidebar: true,
       margin: const EdgeInsets.only(left: 0),
-      borderRadius:
-          0, // Using 0 to mimic the previous border-left style or just use default sidebar style
-      // Actually, to match the requested style, let's just use ContentCard generally but maybe without left border as it was.
-      // But the request is to Standardize. Standard sidebar is floating card.
-      // Let's make it a floating card on the right.
+      borderRadius: 0,
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
+          // Mode Switcher
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildModeTab(
+                      label: "MEASURE",
+                      icon: Icons.analytics,
+                      isActive: !_isReportMode,
+                      onTap: () => setState(() => _isReportMode = false),
+                      theme: theme,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.settings_suggest,
-                    color: Colors.white,
+                  Expanded(
+                    child: _buildModeTab(
+                      label: "REPORTS",
+                      icon: Icons.picture_as_pdf,
+                      isActive: _isReportMode,
+                      onTap: () {
+                        setState(() {
+                          _isReportMode = true;
+                          _isConfigMode = false;
+                        });
+                        _fetchHistory();
+                      },
+                      theme: theme,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  "MEASUREMENT\nPORTS",
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    height: 1.1,
-                    letterSpacing: 1,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _ports.length,
-              itemBuilder: (context, index) {
-                final port = _ports[index];
-                final isSelected = _selectedPortIndex == index;
-                final isDone = port.tests.every((t) => t.status == "COMPLETE");
 
-                return InkWell(
-                  onTap: _isMeasuring
-                      ? null
-                      : () => setState(() {
-                          _selectedPortIndex = index;
-                          _isPortConnected =
-                              false; // Reset connection status when port changes
-                        }),
-                  child: Opacity(
-                    opacity: _isMeasuring && !isSelected ? 0.5 : 1.0,
+          if (!_isReportMode) ...[
+            // Measurement Flow Sidebar
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.settings_suggest,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "MEASUREMENT PORTS",
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _ports.length,
+                itemBuilder: (context, index) {
+                  final port = _ports[index];
+                  final isSelected = _selectedPortIndex == index;
+                  final isDone = port.tests.every(
+                    (t) => t.status == "COMPLETE",
+                  );
+
+                  return InkWell(
+                    onTap: _isMeasuring
+                        ? null
+                        : () => setState(() {
+                            _selectedPortIndex = index;
+                            _isPortConnected = false;
+                          }),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.symmetric(
@@ -636,11 +676,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                             ? theme.colorScheme.primary.withOpacity(0.08)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? theme.colorScheme.primary.withOpacity(0.2)
-                              : Colors.transparent,
-                        ),
                       ),
                       child: Row(
                         children: [
@@ -674,82 +709,328 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                         ],
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: InkWell(
-              onTap: _isMeasuring
-                  ? null
-                  : () {
-                      setState(() => _isReportMode = !_isReportMode);
-                      if (_isReportMode) _fetchHistory();
-                    },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _isReportMode
-                      ? theme.colorScheme.primary.withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _isReportMode
-                        ? theme.colorScheme.primary.withOpacity(0.3)
-                        : Colors.transparent,
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: ElevatedButton.icon(
+                onPressed: _isMeasuring
+                    ? null
+                    : () => setState(() => _isConfigMode = !_isConfigMode),
+                icon: Icon(_isConfigMode ? Icons.play_arrow : Icons.settings),
+                label: Text(_isConfigMode ? "GO TO MEASURE" : "GO TO SETUP"),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.picture_as_pdf,
-                      size: 20,
-                      color: _isReportMode
-                          ? theme.colorScheme.primary
-                          : Colors.grey.shade400,
+              ),
+            ),
+          ] else ...[
+            // Reports Flow Sidebar
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "CONVERTER",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1,
                     ),
-                    const SizedBox(width: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSidebarDropdown(
+                    value: _selectedConverter,
+                    items: _converters,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedConverter = val;
+                          _selectedReportId = null;
+                          _selectedReportIds.clear();
+                        });
+                        _fetchHistory();
+                      }
+                    },
+                    icon: Icons.swap_vert,
+                    theme: theme,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "SESSIONS",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  if (_selectedReportIds.isNotEmpty)
+                    TextButton(
+                      onPressed: () =>
+                          setState(() => _selectedReportIds.clear()),
+                      child: const Text(
+                        "Clear Selection",
+                        style: TextStyle(fontSize: 11),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _isLoadingHistory
+                  ? const Center(child: CircularProgressIndicator())
+                  : _history.isEmpty
+                  ? Center(
+                      child: Text(
+                        "No history found",
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _history.length,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemBuilder: (context, index) {
+                        final session = _history[index];
+                        return _buildSidebarSessionCard(session, theme);
+                      },
+                    ),
+            ),
+            if (_selectedReportIds.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Column(
+                  children: [
                     Text(
-                      "REPORTS",
+                      "${_selectedReportIds.length} sessions selected",
                       style: GoogleFonts.inter(
-                        fontWeight: _isReportMode
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: _isReportMode
-                            ? theme.colorScheme.primary
-                            : Colors.black87,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _handleGeneratePDF(),
+                      icon: const Icon(Icons.picture_as_pdf),
+                      label: const Text("GENERATE PDF"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: ElevatedButton.icon(
-              onPressed: (_isMeasuring || _isReportMode)
-                  ? null
-                  : () => setState(() => _isConfigMode = !_isConfigMode),
-              icon: Icon(_isConfigMode ? Icons.analytics : Icons.settings),
-              label: Text(
-                _isMeasuring
-                    ? "BATCH IN PROGRESS"
-                    : _isReportMode
-                    ? "EXIT REPORT MODE"
-                    : (_isConfigMode ? "GO TO MEASUREMENT" : "GO TO SETUP"),
-              ),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: _isMeasuring ? Colors.grey.shade200 : null,
-              ),
-            ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeTab({
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+    required ThemeData theme,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? theme.colorScheme.primary : Colors.grey,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isActive ? theme.colorScheme.primary : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarDropdown({
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+    required IconData icon,
+    required ThemeData theme,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.expand_more, size: 20),
+          items: items
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(
+                    e,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarSessionCard(UCDCResultEntry session, ThemeData theme) {
+    final isSelected = _selectedReportIds.contains(session.id);
+    final isViewing = _selectedReportId == session.id;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () => setState(() => _selectedReportId = session.id),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isViewing
+                ? theme.colorScheme.primary.withOpacity(0.05)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isViewing
+                  ? theme.colorScheme.primary.withOpacity(0.2)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              Transform.scale(
+                scale: 0.8,
+                child: Checkbox(
+                  value: isSelected,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selectedReportIds.add(session.id);
+                      } else {
+                        _selectedReportIds.remove(session.id);
+                      }
+                    });
+                  },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.testType,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: isViewing
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: isViewing
+                            ? theme.colorScheme.primary
+                            : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      "${session.date} • ${session.time}",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isViewing)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: theme.colorScheme.primary,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleGeneratePDF() {
+    _addLog("Generating PDF for ${_selectedReportIds.length} sessions...");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Generating PDF for ${_selectedReportIds.length} sessions...",
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blue.shade700,
       ),
     );
   }
@@ -765,7 +1046,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "REPORT GENERATOR",
+                  "SESSION DETAILS",
                   style: GoogleFonts.outfit(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -773,7 +1054,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   ),
                 ),
                 Text(
-                  "Historical measurements for $_selectedConverter",
+                  _selectedReportId != null
+                      ? "Viewing results for session #$_selectedReportId"
+                      : "Select a session from the sidebar to view details",
                   style: GoogleFonts.inter(
                     color: Colors.grey.shade600,
                     fontSize: 13,
@@ -781,106 +1064,84 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 ),
               ],
             ),
-            ElevatedButton.icon(
-              onPressed: () {
-                _addLog("Generating PDF Report...");
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("PDF Generation Started...")),
-                );
-              },
-              icon: const Icon(Icons.download),
-              label: const Text("EXPORT ALL DATA"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
+            if (_selectedReportIds.isNotEmpty)
+              Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
+                  horizontal: 16,
+                  vertical: 8,
                 ),
-                shape: RoundedRectangleBorder(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: theme.colorScheme.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "${_selectedReportIds.length} SESSIONS SELECTED FOR PDF",
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
           ],
         ),
-        const SizedBox(height: 32),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left Column: Sessions
-            Expanded(
-              flex: 2,
+        const SizedBox(height: 24),
+        if (_selectedReportId != null)
+          _buildSessionDetails(theme)
+        else
+          SizedBox(
+            height: 400,
+            child: Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(
+                    Icons.analytics_outlined,
+                    size: 64,
+                    color: Colors.grey.shade200,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    "COMPLETED SESSIONS",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.grey.shade500,
-                      letterSpacing: 1.2,
+                    "NO SESSION SELECTED",
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade400,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (_isLoadingHistory)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (_history.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Text("No history found"),
-                      ),
-                    )
-                  else
-                    ..._history.map((s) => _buildSessionCard(s, theme)),
+                  Text(
+                    "Choose a measurement session from the sidebar",
+                    style: GoogleFonts.inter(color: Colors.grey.shade500),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 32),
-            // Right Column: Details & Selection
-            Expanded(
-              flex: 3,
-              child: _selectedReportId != null
-                  ? _buildSessionDetails(theme)
-                  : ContentCard(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.analytics_outlined,
-                              size: 48,
-                              color: Colors.grey.shade300,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              "SELECT A SESSION TO VIEW RESULTS",
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
+          ),
       ],
     );
   }
 
   Widget _buildSessionDetails(ThemeData theme) {
-    final session = _history.firstWhere((s) => s.id == _selectedReportId);
+    UCDCResultEntry? session;
+    try {
+      session = _history.firstWhere((s) => s.id == _selectedReportId);
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       children: [
         _buildDynamicResult(
@@ -892,81 +1153,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSessionCard(UCDCResultEntry session, ThemeData theme) {
-    bool isSelected = session.id == _selectedReportId;
-
-    return InkWell(
-      onTap: () => setState(() => _selectedReportId = session.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary.withOpacity(0.3)
-                : Colors.grey.shade200,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.1)
-                    : Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.calendar_month,
-                size: 20,
-                color: isSelected ? theme.colorScheme.primary : Colors.grey,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    session.testType,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    "${session.date} • ${session.time}",
-                    style: GoogleFonts.inter(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-          ],
-        ),
-      ),
     );
   }
 
@@ -2152,8 +2338,13 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Widget _buildConnectionOverlay(ThemeData theme) {
+    if (_ports.isEmpty) return const SizedBox.shrink();
     final activePort = _ports[_selectedPortIndex];
-    final isPhysicalInput = _selectedPortIndex == 4;
+    final isInputPort = activePort.name == "Input Port";
+    final inputPort = _ports.firstWhere(
+      (p) => p.name == "Input Port",
+      orElse: () => _ports.first,
+    );
 
     return ContentCard(
       color: theme.colorScheme.primaryContainer.withOpacity(0.4),
@@ -2191,12 +2382,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           AspectRatio(
             aspectRatio: 3 / 1,
             child: InstrumentConnectionDiagram(
-              type: isPhysicalInput
+              type: isInputPort
                   ? DiagramType.converterSimple
                   : DiagramType.converterComplex,
               tsmOutputName: activePort.name,
-              inputPortName: _ports[4].name,
-              outputPortName: _ports[0].name,
+              inputPortName: inputPort.name,
+              outputPortName: activePort.name,
             ),
           ),
         ],
