@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -1022,17 +1025,79 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  void _handleGeneratePDF() {
-    _addLog("Generating PDF for ${_selectedReportIds.length} sessions...");
+  Future<void> _handleGeneratePDF() async {
+    if (_selectedReportIds.isEmpty) return;
+
+    final selectedSessions = _history
+        .where((s) => _selectedReportIds.contains(s.id))
+        .toList();
+
+    _addLog("Generating PDF for ${selectedSessions.length} sessions...");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          "Generating PDF for ${_selectedReportIds.length} sessions...",
+          "Generating PDF for ${selectedSessions.length} sessions...",
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.blue.shade700,
       ),
     );
+
+    try {
+      final serverService = Provider.of<ServerService>(context, listen: false);
+      final request = UCDCResultRequest(
+        name: _selectedConverter,
+        dates: selectedSessions.map((s) => s.date).toList(),
+        times: selectedSessions.map((s) => s.time).toList(),
+      );
+
+      final response = await serverService.generateUCDCPDF(request);
+      if (response.ok) {
+        final pdfData = base64Decode(response.message);
+        final blob = web.Blob(
+          [pdfData.toJS].toJS,
+          web.BlobPropertyBag(type: 'application/pdf'),
+        );
+        final url = web.URL.createObjectURL(blob);
+        final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+        anchor.href = url;
+        anchor.download =
+            'UCDC_Report_${_selectedConverter}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        anchor.click();
+        web.URL.revokeObjectURL(url);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("PDF generated and download started."),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to generate PDF: ${response.message}"),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _addLog("Error generating PDF: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildReportView(ThemeData theme) {

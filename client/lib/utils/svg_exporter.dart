@@ -70,13 +70,29 @@ class SvgExporter {
       if (d > botDepth) botDepth = d;
     }
 
-    final double totalW = maxW + 200;
+    final double contentW = maxW + 200;
     final double topH = topDepth * (nh + gy);
     final double botH = botDepth * (nh + gy);
-    final double totalH = topH + nh + botH + 200;
+    final double contentH = topH + nh + botH + 200;
+
+    // Fix aspect ratio for Landscape A3 (420mm x 297mm) -> ~1.414
+    const double a3Ratio = 420 / 297;
+    double totalW = contentW;
+    double totalH = contentH;
+
+    if (totalW / totalH > a3Ratio) {
+      // Content is wider than A3 ratio, expand height to fit ratio
+      totalH = totalW / a3Ratio;
+    } else {
+      // Content is taller than A3 ratio, expand width to fit ratio
+      totalW = totalH * a3Ratio;
+    }
 
     final double cx = totalW / 2;
-    final double cy = topH + 100 + nh / 2; // Hub center y
+    // Center the entire visual structure vertically
+    // The visual structure height is (topH + nh + botH)
+    // We center the hub in the vertical middle of the final canvas
+    final double cy = totalH / 2; 
 
     List<String> elements = [];
 

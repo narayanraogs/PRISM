@@ -36,7 +36,8 @@ func getBootstrapData(c *gin.Context) {
 	resp.AttnData = getAttnInitialData()
 	resp.GTxData = getGTxMeasurementMetadata()
 	resp.SCPIData = getSCPIData()
-	resp.PlannerData = getPlannerData()
+	resp.PlannerData = getPlannerData("plannerState")
+	resp.PlannerList = getPlannerList()
 
 	c.IndentedJSON(http.StatusOK, resp)
 }
@@ -693,8 +694,23 @@ func getSCPIData() SCPIDetails {
 	return scpiDetails
 }
 
-func getPlannerData() string {
-	plannerPath := filepath.Join(utils.Config.BaseFolder, ".resources", "plannerState.json")
+func getPlannerData(name string) string {
+	if name == "" {
+		name = "plannerState"
+	}
+	plannerPath := filepath.Join(utils.Config.BaseFolder, ".resources", "planners", name+".json")
+	if name == "plannerState" {
+		// Compatibility with old location
+		oldPath := filepath.Join(utils.Config.BaseFolder, ".resources", "plannerState.json")
+		if _, err := os.Stat(plannerPath); os.IsNotExist(err) {
+			if _, err := os.Stat(oldPath); err == nil {
+				data, _ := os.ReadFile(oldPath)
+				os.MkdirAll(filepath.Dir(plannerPath), 0755)
+				os.WriteFile(plannerPath, data, 0644)
+			}
+		}
+	}
+
 	data, err := os.ReadFile(plannerPath)
 	if err != nil {
 		return ""
@@ -702,15 +718,49 @@ func getPlannerData() string {
 	return string(data)
 }
 
+func getPlannerList() []string {
+	plannersDir := filepath.Join(utils.Config.BaseFolder, ".resources", "planners")
+	files, err := os.ReadDir(plannersDir)
+	if err != nil {
+		return []string{}
+	}
+	var list []string
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".json") {
+			list = append(list, strings.TrimSuffix(f.Name(), ".json"))
+		}
+	}
+	return list
+}
+
+func loadPlannerData(c *gin.Context) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "message": "Invalid request"})
+		return
+	}
+	data := getPlannerData(req.Name)
+	c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
+}
+
 func savePlannerData(c *gin.Context) {
 	var req struct {
+		Name string `json:"name"`
 		Data string `json:"data"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"ok": false, "message": "Invalid request"})
 		return
 	}
-	plannerPath := filepath.Join(utils.Config.BaseFolder, ".resources", "plannerState.json")
+	if req.Name == "" {
+		req.Name = "plannerState"
+	}
+	plannersDir := filepath.Join(utils.Config.BaseFolder, ".resources", "planners")
+	os.MkdirAll(plannersDir, 0755)
+
+	plannerPath := filepath.Join(plannersDir, req.Name+".json")
 	err := os.WriteFile(plannerPath, []byte(req.Data), 0644)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "message": "Failed to save data"})

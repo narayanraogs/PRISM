@@ -30,6 +30,7 @@ type BootstrapData struct {
 	GTxData              GTxMeasurementMetadata
 	SCPIData             SCPIDetails
 	PlannerData          string
+	PlannerList          []string
 }
 
 type RFUplinkRequest struct {

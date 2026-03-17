@@ -140,7 +140,7 @@ func RegenerateReport(date string, time string) (string, error) {
 	reportData.Order = order
 	reportData.Screenshots = append(reportData.Screenshots, plots...)
 
-	newPDFPath, err := reports.GenerateResult(reportData)
+	newPDFPath, err := reports.GenerateResult(reportData, true, true, true, true, true)
 	if err != nil {
 		return "", err
 	}

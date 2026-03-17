@@ -8,6 +8,7 @@ import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/utils/svg_exporter.dart';
+import 'package:prism_client/widgets/csv_export_dialog.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -79,13 +80,16 @@ class SolveResult {
 }
 
 class PathStep {
+  final String nodeId;
   final String label;
   final double frequency;
   final double loss;
   final double outputFrequency;
   final double inputPower;
   final double outputPower;
+
   PathStep({
+    required this.nodeId,
     required this.label,
     required this.frequency,
     required this.loss,
@@ -112,6 +116,10 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   final TransformationController _transformationController =
       TransformationController();
   List<CableLossRecord> _allCalibratedRecords = [];
+  List<String> _plannerList = [];
+  String? _selectedPlanner = 'plannerState';
+  final ScrollController _summaryVerticalScroll = ScrollController();
+  final ScrollController _summaryHorizontalScroll = ScrollController();
 
   @override
   void initState() {
@@ -122,6 +130,8 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _summaryVerticalScroll.dispose();
+    _summaryHorizontalScroll.dispose();
     super.dispose();
   }
 
@@ -132,6 +142,13 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       setState(() {
         _calibratedCables = bootstrap.cableLossData.existingCables;
         _tsmData = bootstrap.tsmInternalLossData;
+        _plannerList = bootstrap.plannerList;
+        if (_plannerList.isEmpty) {
+          _plannerList = ['plannerState'];
+        }
+        if (!_plannerList.contains(_selectedPlanner)) {
+          _selectedPlanner = _plannerList.first;
+        }
 
         server.fetchCableMeasuredDetails().then((resp) {
           if (resp != null && resp.ok) {
@@ -152,17 +169,49 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     }
   }
 
-  Future<void> _saveDiagram() async {
+  Future<void> _loadPlanner(String name) async {
+    final server = context.read<ServerService>();
+    final data = await server.loadPlannerData(name);
+    if (data != null) {
+      setState(() {
+        if (data.isEmpty) {
+          _hubNode = null;
+          _initializeHub();
+        } else {
+          try {
+            _hubNode = PlannerNode.fromJson(jsonDecode(data));
+          } catch (e) {
+            AppNotifications.showError(context, 'Failed to Load: $name');
+            return;
+          }
+        }
+        _selectedPlanner = name;
+        _startNodeId = null;
+        _endNodeId = null;
+      });
+      AppNotifications.showSuccess(context, 'Loaded: $name');
+    }
+  }
+
+  Future<void> _saveDiagram({String? name}) async {
     if (_hubNode == null) return;
     final server = context.read<ServerService>();
+    final saveName = name ?? _selectedPlanner ?? 'plannerState';
     final success = await server.savePlannerData(
       jsonEncode(_hubNode!.toJson()),
+      name: saveName,
     );
     if (mounted) {
       if (success) {
+        setState(() {
+          _selectedPlanner = saveName;
+          if (!_plannerList.contains(saveName)) {
+            _plannerList.add(saveName);
+          }
+        });
         AppNotifications.show(
           context,
-          'Configuration Saved Successfully',
+          'Configuration Saved: $saveName',
           type: NotificationType.success,
         );
       } else {
@@ -306,20 +355,24 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   }
 
   SolveResult _solvePath() {
-    final sources = _getTerminals(NodeType.source);
-    final sinks = _getTerminals(NodeType.instrument);
+    return _calculatePath(_startNodeId, _endNodeId);
+  }
 
-    if (_startNodeId == null || _endNodeId == null) {
+  SolveResult _calculatePath(String? startId, String? endId) {
+    if (startId == null || endId == null) {
       return SolveResult(totalLoss: 0.0, finalPower: 0.0, steps: []);
     }
+
+    final sources = _getTerminals(NodeType.source);
+    final sinks = _getTerminals(NodeType.instrument);
 
     // Find nodes or fallback to avoid crash
     PlannerNode? startNode, endNode;
     try {
-      startNode = sources.firstWhere((t) => t.id == _startNodeId);
+      startNode = sources.firstWhere((t) => t.id == startId);
     } catch (_) {}
     try {
-      endNode = sinks.firstWhere((t) => t.id == _endNodeId);
+      endNode = sinks.firstWhere((t) => t.id == endId);
     } catch (_) {}
     if (startNode == null || endNode == null) {
       return SolveResult(totalLoss: 0.0, finalPower: 0.0, steps: []);
@@ -342,6 +395,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       if (node.type == NodeType.source) {
         steps.add(
           PathStep(
+            nodeId: node.id,
             label: node.label,
             frequency: currentFreq,
             loss: 0.0,
@@ -358,6 +412,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         double outFreq = (currentFreq + node.loOffset).abs();
         steps.add(
           PathStep(
+            nodeId: node.id,
             label: node.label,
             frequency: currentFreq,
             loss: loss,
@@ -398,6 +453,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
     }
     steps.add(
       PathStep(
+        nodeId: 'hub-${startChild?.id}-${endChild?.id}',
         label:
             'TSM Hub (${startChild?.label ?? '?'} → ${endChild?.label ?? '?'})',
         frequency: currentFreq,
@@ -426,6 +482,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       double outFreq = (currentFreq + node.loOffset).abs();
       steps.add(
         PathStep(
+          nodeId: node.id,
           label: node.label,
           frequency: currentFreq,
           loss: loss,
@@ -458,16 +515,19 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
             child: Row(
               children: [
                 Expanded(flex: 3, child: _buildSchematicCanvas(theme)),
-                Container(
-                  width: 520,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      left: BorderSide(color: Colors.grey.shade100),
+                Flexible(
+                  flex: 1,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 400, maxWidth: 600),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        left: BorderSide(color: Colors.grey.shade100),
+                      ),
                     ),
+                    child: _buildSummaryPanel(theme),
                   ),
-                  child: _buildSummaryPanel(theme),
                 ),
               ],
             ),
@@ -485,6 +545,36 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedPlanner,
+                hint: const Text('Select Version'),
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade800,
+                ),
+                items: _plannerList.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) _loadPlanner(val);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () {
               setState(() {
@@ -502,13 +592,53 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
-            onPressed: _saveDiagram,
+            onPressed: () => _saveDiagram(),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.save_outlined, size: 16),
             label: const Text('SAVE'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              final controller = TextEditingController();
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Save Configuration As'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Configuration Name',
+                      hintText: 'e.g. TestVariant_1',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CANCEL'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (controller.text.isNotEmpty) {
+                          _saveDiagram(name: controller.text);
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: const Text('SAVE'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.save_as_outlined, size: 16),
+            label: const Text('SAVE AS'),
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
@@ -542,9 +672,129 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
             icon: const Icon(Icons.download_rounded, size: 16),
             label: const Text('EXPORT SVG'),
           ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              final sources = _getTerminals(NodeType.source);
+              final sinks = _getTerminals(NodeType.instrument);
+              showDialog(
+                context: context,
+                builder: (context) => CsvExportDialog(
+                  sources: sources,
+                  sinks: sinks,
+                  onExport: (srcId, saId, pmId, scId) {
+                    _exportToCsv(srcId, saId, pmId, scId);
+                  },
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade600,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.table_view_outlined, size: 16),
+            label: const Text('EXPORT CSV'),
+          ),
         ],
       ),
     );
+  }
+
+  void _exportToCsv(String srcId, String saId, String pmId, String? scId) {
+    try {
+      final saRes = _calculatePath(srcId, saId);
+      final pmRes = _calculatePath(srcId, pmId);
+      final scRes = scId != null && scId.isNotEmpty ? _calculatePath(srcId, scId) : null;
+
+      final allSinks = [
+        'SA',
+        'PM',
+        if (scRes != null) 'SC',
+      ];
+
+      // Step ID to Metadata (label, loss, etc)
+      final Map<String, Map<String, dynamic>> stepData = {};
+      // List to maintain unique node ordering
+      final List<String> orderedNodeIds = [];
+
+      void processPath(List<PathStep> steps, String type) {
+        for (var step in steps) {
+          if (!stepData.containsKey(step.nodeId)) {
+            stepData[step.nodeId] = {
+              'label': step.label,
+              'loss': step.loss,
+              'types': <String>{},
+            };
+            orderedNodeIds.add(step.nodeId);
+          }
+          (stepData[step.nodeId]!['types'] as Set<String>).add(type);
+          
+          // Optimization: If a component is shared but has different losses (unlikely in common segments),
+          // we stick to the first one discovered or could average. Here we stick to first.
+        }
+      }
+
+      processPath(saRes.steps, 'SA');
+      processPath(pmRes.steps, 'PM');
+      if (scRes != null) {
+        processPath(scRes.steps, 'SC');
+      }
+
+      // Build CSV content
+      final buffer = StringBuffer();
+      buffer.writeln('Sl. No, Description, Loss, Type');
+
+      int slNo = 1;
+      for (var nodeId in orderedNodeIds) {
+        final data = stepData[nodeId]!;
+        final double lossVal = data['loss'] as double;
+        if (lossVal == 0) continue;
+
+        final Set<String> types = data['types'];
+        
+        String typeLabel;
+        if (types.length == allSinks.length) {
+          typeLabel = 'Common';
+        } else if (types.length == 1) {
+          typeLabel = types.first;
+        } else {
+          // Combination like "SA, PM"
+          typeLabel = (types.toList()..sort()).join(', ');
+        }
+
+        final label = data['label'].toString().replaceAll('"', '""');
+        final loss = data['loss'].toStringAsFixed(2);
+
+        buffer.writeln('$slNo, "$label", $loss, $typeLabel');
+        slNo++;
+      }
+
+      // Filename logic
+      String filename = 'Export';
+      final sources = _getTerminals(NodeType.source);
+      final sinks = _getTerminals(NodeType.instrument);
+      
+      if (scId != null && scId.isNotEmpty) {
+        try {
+          filename = sinks.firstWhere((s) => s.id == scId).label;
+        } catch (_) {}
+      } else {
+        try {
+          filename = sources.firstWhere((s) => s.id == srcId).label;
+        } catch (_) {}
+      }
+
+      // Download
+      final bytes = utf8.encode(buffer.toString());
+      final base64 = base64Encode(bytes);
+      html.AnchorElement(href: 'data:text/csv;base64,$base64')
+        ..setAttribute('download', '$filename.csv')
+        ..click();
+
+      AppNotifications.showSuccess(context, 'CSV Exported Successfully');
+    } catch (e) {
+      AppNotifications.showError(context, 'Failed to export CSV: $e');
+    }
   }
 
   Widget _buildSchematicCanvas(ThemeData theme) {
@@ -1614,64 +1864,77 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
           const SizedBox(height: 24),
           _label('FREQUENCY-AWARE BREAKDOWN'),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columnSpacing: 16,
-                      headingRowHeight: 40,
-                      headingTextStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.indigo,
-                      ),
-                      dataTextStyle: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
-                      ),
-                      columns: const [
-                        DataColumn(label: Text('Component')),
-                        DataColumn(label: Text('Freq (MHz)')),
-                        DataColumn(label: Text('Loss (dB)')),
-                        DataColumn(label: Text('In (dBm)')),
-                        DataColumn(label: Text('Out (dBm)')),
-                      ],
-                      rows: sol.steps
-                          .map(
-                            (s) => DataRow(
-                              cells: [
-                                DataCell(Text(s.label)),
-                                DataCell(Text(s.frequency.toStringAsFixed(1))),
-                                DataCell(
-                                  Text(
-                                    s.loss.toStringAsFixed(2),
-                                    style: TextStyle(
-                                      color: s.loss > 0
-                                          ? Colors.red
-                                          : Colors.green,
-                                      fontWeight: FontWeight.bold,
+            child: Scrollbar(
+              controller: _summaryVerticalScroll,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _summaryVerticalScroll,
+                scrollDirection: Axis.vertical,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Scrollbar(
+                      controller: _summaryHorizontalScroll,
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        controller: _summaryHorizontalScroll,
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 16,
+                          headingRowHeight: 40,
+                          headingTextStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.indigo,
+                          ),
+                          dataTextStyle: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black87,
+                          ),
+                          columns: const [
+                            DataColumn(label: Text('Component')),
+                            DataColumn(label: Text('Freq (MHz)')),
+                            DataColumn(label: Text('Loss (dB)')),
+                            DataColumn(label: Text('In (dBm)')),
+                            DataColumn(label: Text('Out (dBm)')),
+                          ],
+                          rows: sol.steps
+                              .map(
+                                (s) => DataRow(
+                                  cells: [
+                                    DataCell(Text(s.label)),
+                                    DataCell(
+                                      Text(s.frequency.toStringAsFixed(1)),
                                     ),
-                                  ),
-                                ),
-                                DataCell(Text(s.inputPower.toStringAsFixed(2))),
-                                DataCell(
-                                  Text(
-                                    s.outputPower.toStringAsFixed(2),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                    DataCell(
+                                      Text(
+                                        s.loss.toStringAsFixed(2),
+                                        style: TextStyle(
+                                          color: s.loss > 0
+                                              ? Colors.red
+                                              : Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    DataCell(
+                                      Text(s.inputPower.toStringAsFixed(2)),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        s.outputPower.toStringAsFixed(2),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          )
-                          .toList(),
+                              )
+                              .toList(),
+                        ),
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -1726,7 +1989,8 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
               ),
             ),
           ),
-        ] else
+        ),
+      ] else
           const Spacer(),
       ],
     );

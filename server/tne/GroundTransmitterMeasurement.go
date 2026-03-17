@@ -751,7 +751,7 @@ func (gtm *GroundTransmitterMeasurement) StartMeasurement() {
 	resultDir := filepath.Join(utils.GetTNEResultDirectory(), "GTxMeasurement")
 	_ = os.MkdirAll(resultDir, 0755)
 
-	tempFile, err := reports.GenerateResult(gtm.report)
+	tempFile, err := reports.GenerateResult(gtm.report, true, false, false, false, true)
 	if err != nil {
 		gtm.fail("Failed to generate PDF")
 		return

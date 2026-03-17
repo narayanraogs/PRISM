@@ -9,15 +9,26 @@ import (
 	"strings"
 )
 
-func GenerateResult(report Report) (string, error) {
+func GenerateResult(report Report, resultApplicable bool, remarkApplicable bool, tmApplicable bool,
+	informationApplicable bool, screenshotApplicable bool) (string, error) {
 	var builder strings.Builder
 	builder.WriteString(report.GetHeader())
-	builder.WriteString(report.GetResults())
-	builder.WriteString(report.GetRemarks())
-	builder.WriteString(report.GetPreReqTMTable())
-	builder.WriteString(report.GetLogTMTable())
-	builder.WriteString(report.GetTestInformationTable())
-	builder.WriteString(report.GetScreenshots())
+	if resultApplicable {
+		builder.WriteString(report.GetResults())
+	}
+	if remarkApplicable {
+		builder.WriteString(report.GetRemarks())
+	}
+	if tmApplicable {
+		builder.WriteString(report.GetPreReqTMTable())
+		builder.WriteString(report.GetLogTMTable())
+	}
+	if informationApplicable {
+		builder.WriteString(report.GetTestInformationTable())
+	}
+	if screenshotApplicable {
+		builder.WriteString(report.GetScreenshots())
+	}
 
 	withoutExtension := filepath.Join(utils.Config.BaseFolder, "temp", "report")
 	withoutExtension = utils.GetTimeStampedFileName(withoutExtension)

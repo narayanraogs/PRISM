@@ -170,7 +170,7 @@ func saveSpectrum(c *gin.Context) {
 	image.Caption = "Captured by user"
 	report.SetScreenshots([]reports.Images{image})
 	report.SetRemarks(req.Remark)
-	filename, err := reports.GenerateResult(report)
+	filename, err := reports.GenerateResult(report, false, true, false, false, true)
 	if err != nil {
 		ack.OK = false
 		ack.Message = "Unable to generate Screenshot PDF"

@@ -33,3 +33,13 @@ func GetAllResultsForConverter(name string) ([]UpDownConverter, error) {
 	values, err := dbObject.getAllResultsForConverter(ctx, name)
 	return values, err
 }
+
+func GetUpDownConverterResultWithDateAndTime(name string, date string, time string) (UpDownConverter, error) {
+	ctx := context.Background()
+	var arg getUpDownConverterResultWithDateAndTimeParams
+	arg.Name = name
+	arg.Date = sql.NullString{String: date, Valid: true}
+	arg.Time = sql.NullString{String: time, Valid: true}
+	value, err := dbObject.getUpDownConverterResultWithDateAndTime(ctx, arg)
+	return value, err
+}

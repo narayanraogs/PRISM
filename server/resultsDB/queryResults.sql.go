@@ -582,6 +582,31 @@ func (q *Queries) getUpDownConverterResult(ctx context.Context, arg getUpDownCon
 	return i, err
 }
 
+const getUpDownConverterResultWithDateAndTime = `-- name: getUpDownConverterResultWithDateAndTime :one
+Select ID, Name, TestType, Date, Time, Results from "UpDownConverter"
+where "Name" like ? and "Date" like ? and "Time" like ?
+`
+
+type getUpDownConverterResultWithDateAndTimeParams struct {
+	Name string
+	Date sql.NullString
+	Time sql.NullString
+}
+
+func (q *Queries) getUpDownConverterResultWithDateAndTime(ctx context.Context, arg getUpDownConverterResultWithDateAndTimeParams) (UpDownConverter, error) {
+	row := q.db.QueryRowContext(ctx, getUpDownConverterResultWithDateAndTime, arg.Name, arg.Date, arg.Time)
+	var i UpDownConverter
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TestType,
+		&i.Date,
+		&i.Time,
+		&i.Results,
+	)
+	return i, err
+}
+
 const insertCableLossEntry = `-- name: insertCableLossEntry :exec
 Insert into "CableLosses" ("Date", "Time", "CableName", "CableLength", "Loss")
 Values (?,?,?,?,?)

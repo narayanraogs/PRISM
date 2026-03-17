@@ -56,6 +56,7 @@ class BootstrapData {
   final GTxMeasurementMetadata gtxData;
   final SCPIDetails scpiData;
   final String plannerData;
+  final List<String> plannerList;
 
   BootstrapData({
     required this.rfuData,
@@ -74,6 +75,7 @@ class BootstrapData {
     required this.gtxData,
     required this.scpiData,
     required this.plannerData,
+    required this.plannerList,
   });
 
   factory BootstrapData.fromJson(Map<String, dynamic> json) {
@@ -142,6 +144,7 @@ class BootstrapData {
         () => SCPIDetails.fromJson(json['SCPIData'] ?? {}),
       ),
       plannerData: json['PlannerData'] ?? '',
+      plannerList: List<String>.from(json['PlannerList'] ?? []),
     );
   }
 
@@ -1802,6 +1805,26 @@ class ConvertorResults {
           ? PowerMatchingResults.fromJson(json['PowerMatchingResultValue'])
           : null,
     );
+  }
+}
+
+class UCDCResultRequest {
+  final String name;
+  final List<String> dates;
+  final List<String> times;
+
+  UCDCResultRequest({
+    required this.name,
+    required this.dates,
+    required this.times,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Name': name,
+      'Dates': dates,
+      'Times': times,
+    };
   }
 }
 
@@ -3545,6 +3568,7 @@ class ServerService extends ChangeNotifier {
             gtxData: oldBootstrap.gtxData,
             scpiData: oldBootstrap.scpiData,
             plannerData: oldBootstrap.plannerData,
+            plannerList: oldBootstrap.plannerList,
           );
           _status = ServerStatus(
             satelliteName: _status.satelliteName,
@@ -3662,6 +3686,29 @@ class ServerService extends ChangeNotifier {
     }
   }
 
+  Future<Ack> generateUCDCPDF(UCDCResultRequest request) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:' ? 'https' : 'http';
+    final url = '$protocol://$host/upDownConverterResult';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(request.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        return Ack.fromJson(jsonDecode(response.body));
+      } else {
+        return Ack(ok: false, message: 'Failed with status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error generating UCDC PDF: $e');
+      return Ack(ok: false, message: 'Error: $e');
+    }
+  }
+
   @override
   void dispose() {
     _channel?.sink.close();
@@ -3678,7 +3725,7 @@ class ServerService extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<bool> savePlannerData(String jsonString) async {
+  Future<bool> savePlannerData(String jsonString, {String? name}) async {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     final protocol = web.window.location.protocol == 'https:'
         ? 'https'
@@ -3689,7 +3736,10 @@ class ServerService extends ChangeNotifier {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'data': jsonString}),
+        body: jsonEncode({
+          'name': name ?? 'plannerState',
+          'data': jsonString,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -3700,5 +3750,31 @@ class ServerService extends ChangeNotifier {
       debugPrint('Error saving Planner Data: $e');
     }
     return false;
+  }
+
+  Future<String?> loadPlannerData(String name) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/loadPlannerData';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['ok'] == true) {
+          return data['data'] as String;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading Planner Data: $e');
+    }
+    return null;
   }
 }

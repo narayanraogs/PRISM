@@ -218,7 +218,7 @@ func (test *baseTest) GenerateReport() (map[string]reports.Result, error) {
 	minutes := seconds / 60
 	seconds = seconds % 60
 	test.report.AddTestInformation("Total Time", fmt.Sprintf("%d:%d", minutes, seconds))
-	pdfPath, err := reports.GenerateResult(test.report)
+	pdfPath, err := reports.GenerateResult(test.report, true, true, true, true, true)
 	if err != nil {
 		return nil, err
 	}

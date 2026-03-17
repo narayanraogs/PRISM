@@ -158,3 +158,27 @@ func upDownConverterMeasurement(c *gin.Context) {
 		}
 	}
 }
+
+func upDownConverterResult(c *gin.Context) {
+	type resultRequest struct {
+		Name  string
+		Dates []string
+		Times []string
+	}
+
+	var req resultRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		var ack Ack
+		ack.OK = false
+		ack.Message = "Invalid request"
+		c.IndentedJSON(http.StatusBadRequest, ack)
+		return
+	}
+
+	uc := tne.UpDownConverterMeasurement{}
+	pdf, ok := uc.GeneratePDF(req.Name, req.Dates, req.Times)
+	var ack Ack
+	ack.OK = ok
+	ack.Message = pdf
+	c.IndentedJSON(http.StatusOK, ack)
+}

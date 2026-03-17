@@ -64,9 +64,11 @@ func GetRouter() *gin.Engine {
 	//UpDownConverterRelated
 	r.GET("/upDownConverterMeasurement", upDownConverterMeasurement)
 	r.GET("/getUCDCResults", getUCDCResults)
+	r.POST("/upDownConverterResult", upDownConverterResult)
 	//SCPI
 	r.GET("/scpi", scpi)
 	//PlannerState
 	r.POST("/savePlannerData", savePlannerData)
+	r.POST("/loadPlannerData", loadPlannerData)
 	return r
 }
