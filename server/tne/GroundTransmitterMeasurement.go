@@ -304,13 +304,16 @@ func (gtm *GroundTransmitterMeasurement) powerMeasurement() error {
 	power := resp.Result["ReferenceLevel"].Value - 10 + gtm.outputCableLoss
 	header := []string{"", "Specification [dBm]", "Measured [dBm]", "Deviation [dB]"}
 	values := []string{"Power", "0", fmt.Sprintf("%.2f", power), fmt.Sprintf("%.2f", -power)}
-	fmt.Println("GTx Power is", power, resp.Result["ReferenceLevel"], gtm.outputCableLoss)
 
 	gtm.addReportRow("Power", header, values)
+
+	gtm.sa.SetMaxHold()
+	gtm.sa.WaitForSweeps(2)
 
 	if err := gtm.captureSpectrum("Power Measurement"); err != nil {
 		return err
 	}
+	gtm.sa.SetNormalMode()
 
 	gtm.result.PowerMeasurementCompleted = true
 	gtm.result.PowerSpec = 0
