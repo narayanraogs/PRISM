@@ -304,6 +304,7 @@ func (gtm *GroundTransmitterMeasurement) powerMeasurement() error {
 	power := resp.Result["ReferenceLevel"].Value - 10 + gtm.outputCableLoss
 	header := []string{"", "Specification [dBm]", "Measured [dBm]", "Deviation [dB]"}
 	values := []string{"Power", "0", fmt.Sprintf("%.2f", power), fmt.Sprintf("%.2f", -power)}
+	print("GTx Power is", power, resp.Result["ReferenceLevel"], gtm.outputCableLoss)
 
 	gtm.addReportRow("Power", header, values)
 
