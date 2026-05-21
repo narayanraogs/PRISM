@@ -466,9 +466,25 @@ func (test *rxBaseTest) uplinkWithModulationWithoutRun(runner *StepRunner, raise
 	if runner.execErr != nil {
 		return lock, agc
 	}
+	time.Sleep(1 * time.Second)
 	masterFrameTime := utils.Config.TestRelated.MasterFrameTimeSecs
-	time.Sleep(time.Duration(masterFrameTime) * time.Second)
-	lock, agc = test.tm.getLockAndAGCValue()
+	deadline := time.Now().Add(time.Duration(masterFrameTime) * time.Second)
+	for {
+		lock, agc = test.tm.getLockAndAGCValue()
+		if lock {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		select {
+		case <-runner.Ctx.Done():
+			runner.execErr = fmt.Errorf("user aborted")
+			runner.chainErr = runner.execErr
+			return lock, agc
+		case <-time.After(1 * time.Second):
+		}
+	}
 	if !lock && raiseError {
 		test.failure("Receiver did not Lock")
 		err := fmt.Errorf("receiver did not lock")
@@ -499,9 +515,25 @@ func (test *rxBaseTest) checkForBSLockWithoutRun(runner *StepRunner, raiseError 
 	if runner.Err() != nil {
 		return bsLock
 	}
+	time.Sleep(1 * time.Second)
 	masterFrameTime := utils.Config.TestRelated.MasterFrameTimeSecs
-	time.Sleep(time.Duration(masterFrameTime) * time.Second)
-	bsLock = test.tm.checkRxBitSyncLock()
+	deadline := time.Now().Add(time.Duration(masterFrameTime) * time.Second)
+	for {
+		bsLock = test.tm.checkRxBitSyncLock()
+		if bsLock {
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		select {
+		case <-runner.Ctx.Done():
+			runner.execErr = fmt.Errorf("user aborted")
+			runner.chainErr = runner.execErr
+			return bsLock
+		case <-time.After(1 * time.Second):
+		}
+	}
 	if !bsLock && raiseError {
 		test.failure("Bit Sync did not Lock")
 		err := fmt.Errorf("bit sync did not lock")
