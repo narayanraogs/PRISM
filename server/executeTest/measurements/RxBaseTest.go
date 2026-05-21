@@ -466,6 +466,8 @@ func (test *rxBaseTest) uplinkWithModulationWithoutRun(runner *StepRunner, raise
 	if runner.execErr != nil {
 		return lock, agc
 	}
+	masterFrameTime := utils.Config.TestRelated.MasterFrameTimeSecs
+	time.Sleep(time.Duration(masterFrameTime) * time.Second)
 	lock, agc = test.tm.getLockAndAGCValue()
 	if !lock && raiseError {
 		test.failure("Receiver did not Lock")
@@ -497,6 +499,8 @@ func (test *rxBaseTest) checkForBSLockWithoutRun(runner *StepRunner, raiseError 
 	if runner.Err() != nil {
 		return bsLock
 	}
+	masterFrameTime := utils.Config.TestRelated.MasterFrameTimeSecs
+	time.Sleep(time.Duration(masterFrameTime) * time.Second)
 	bsLock = test.tm.checkRxBitSyncLock()
 	if !bsLock && raiseError {
 		test.failure("Bit Sync did not Lock")

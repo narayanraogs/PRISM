@@ -43,6 +43,7 @@ type testRelated struct {
 	ZerodBmTolerence       float64
 	RxPowerLevelTolerance  float64
 	ChipDopplerRate        float64
+	MasterFrameTimeSecs    int
 }
 
 type mainConfiguration struct {
@@ -90,6 +91,7 @@ func WriteConfig() {
 			ZerodBmTolerence:       0.5,
 			RxPowerLevelTolerance:  0.5,
 			ChipDopplerRate:        0.001461161387,
+			MasterFrameTimeSecs:    16,
 		},
 	}
 	data, err := json.MarshalIndent(Config, "", " ")
