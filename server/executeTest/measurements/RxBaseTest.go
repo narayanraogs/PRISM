@@ -622,10 +622,11 @@ func (test *rxBaseTest) measureFrequencyDeviation(runner *StepRunner) (string, b
 
 func (test *rxBaseTest) setIntermediateFrequency(runner *StepRunner, offset float64) {
 	gtx := test.ctx.Selected.GTx
+	rfFreq := float64(test.rxSpec.Frequency)
 	freq := float64(test.config.IntermediateFrequency.Int64)
 	runner.Exec(setGTxIntermediateFrequency(gtx, test.component, freq+offset))
 	if strings.EqualFold(test.rxSpec.ModulationScheme, "CDMA") {
-		offsetChipRate := (offset / freq) * test.rxSpec.CodeRateInMcps.Float64
+		offsetChipRate := (offset / rfFreq) * test.rxSpec.CodeRateInMcps.Float64
 		chipRateNew := test.rxSpec.CodeRateInMcps.Float64 + offsetChipRate
 		runner.Exec(setGTxIdleOff(gtx))
 		runner.Exec(setGTxChipRateDSSS(gtx, chipRateNew))
