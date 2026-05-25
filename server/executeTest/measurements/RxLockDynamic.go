@@ -53,15 +53,20 @@ func (test *rxLockDynamic) measure(runner *StepRunner) error {
 
 	test.computeZerodBmDifference(runner)
 
+	raiseError := true
+	if strings.EqualFold(test.rxSpec.ModulationScheme, "CDMA") {
+		raiseError = false
+	}
+
 	for _, powerLevel := range test.powerLevels {
 		var result rxLockDynamicResult
 		result.receiverPower = powerLevel
 		test.removeRFLink(runner)
 		actualPower := test.setPowerLevel(runner, powerLevel, true)
 		result.actualPower = actualPower
-		lock, agc := test.uplinkWithoutModulation(runner, true)
+		lock, agc := test.uplinkWithoutModulation(runner, raiseError)
 		if runner.Err() == nil {
-			if !lock {
+			if !lock && raiseError {
 				result.lockStatus = "UNLOCK"
 			} else {
 				result.lockStatus = "LOCK"

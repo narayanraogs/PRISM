@@ -110,7 +110,7 @@ func subscribeToStream(wg *sync.WaitGroup, stream string, params []string, origM
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		for _, p := range params {
-			output <- Parameter{Param: origMap[p], OK: false, Error: "TM server unavailable: " + err.Error()}
+			output <- Parameter{Param: origMap[utils.GetComparableMnemonic(p)], OK: false, Error: "TM server unavailable: " + err.Error()}
 		}
 		return
 	}
@@ -122,7 +122,7 @@ func subscribeToStream(wg *sync.WaitGroup, stream string, params []string, origM
 	for _, p := range params {
 		paramInfo, ok := paramCache[utils.GetComparableMnemonic(p)]
 		if !ok {
-			output <- Parameter{Param: origMap[p], OK: false, Error: "Parameter not found on server"}
+			output <- Parameter{Param: origMap[utils.GetComparableMnemonic(p)], OK: false, Error: "Parameter not found on server"}
 			continue
 		}
 		pidsToRequest = append(pidsToRequest, paramInfo.PID)
@@ -147,7 +147,7 @@ func subscribeToStream(wg *sync.WaitGroup, stream string, params []string, origM
 
 	if err := conn.WriteJSON(req); err != nil {
 		for _, p := range params {
-			output <- Parameter{Param: origMap[p], OK: false, Error: "Failed to send subscription request: " + err.Error()}
+			output <- Parameter{Param: origMap[utils.GetComparableMnemonic(p)], OK: false, Error: "Failed to send subscription request: " + err.Error()}
 		}
 		return
 	}
@@ -158,7 +158,7 @@ func subscribeToStream(wg *sync.WaitGroup, stream string, params []string, origM
 		if err := conn.ReadJSON(&resp); err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				for _, p := range params {
-					output <- Parameter{Param: origMap[p], OK: false, Error: "Connection read error: " + err.Error()}
+					output <- Parameter{Param: origMap[utils.GetComparableMnemonic(p)], OK: false, Error: "Connection read error: " + err.Error()}
 				}
 			}
 			return

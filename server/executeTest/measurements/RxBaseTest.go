@@ -250,6 +250,9 @@ func (test *rxBaseTest) setAttenuationValue(runner *StepRunner, attn float64) fu
 		if fixed && test.progAttnUsed {
 			runner.Exec(setTSMPath(tsm, test.tsm.IncludePad.String))
 		}
+		if test.progAttnUsed && !fixed {
+			runner.Exec(setTSMPath(tsm, test.tsm.ExcludePad.String))
+		}
 		if test.progAttnUsed {
 			tsm.SetAttn(int(test.tsm.AttnNumber.Int64), set)
 		} else {
@@ -339,6 +342,9 @@ func (test *rxBaseTest) uplinkWithoutModulationWithoutRun(runner *StepRunner, ra
 	test.sweep(runner)
 	if runner.execErr != nil {
 		return lock, agc
+	}
+	if !raiseError {
+		time.Sleep(10 * time.Second)
 	}
 	lock, agc = test.tm.getLockAndAGCValue()
 	if !lock && raiseError {

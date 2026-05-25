@@ -638,6 +638,11 @@ func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
 	gtm.result.FrequencyDeviationDeviation = dev
 	gtm.result.FrequencyDeviationMeasurementCompleted = true
 
+	resp = gtm.sa.WaitForSweeps(2)
+	if err := gtm.check(resp, "SA: Captrue Spectrum Timeout"); err != nil {
+		return err
+	}
+
 	gtm.captureSpectrum("Frequency Deviation Measurement")
 	gtm.gtx.SetIdlePatternOff()
 	gtm.publishResult()

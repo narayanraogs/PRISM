@@ -91,6 +91,7 @@ func (test *rxCarrierAcquisition) measure(runner *StepRunner) error {
 	noOfSteps := int(noOfStepsF) + 1
 	stepFrequency := -1 * test.frequencyProfile.MaxFrequency.Float64
 	for i := 0; i < noOfSteps; i++ {
+		lock = false
 		result = rxCarrierAcquisitionResult{}
 		result.setFrequency = float64(test.rxSpec.Frequency) + stepFrequency
 		result.offsetFrequency = stepFrequency
@@ -101,10 +102,30 @@ func (test *rxCarrierAcquisition) measure(runner *StepRunner) error {
 				runner.Exec(setGTxModulationOff(gtx, test.component))
 			} else {
 				runner.Exec(setGTxIdleOff(gtx))
+				runner.Exec(setGTxCarrierOff(gtx, test.component))
+				time.Sleep(5*time.Second)
 			}
 			test.setIntermediateFrequency(runner, stepFrequency)
 			runner.Exec(setGTxCarrierOn(gtx, test.component))
-			lock, agc = test.tm.getLockAndAGCValue()
+			time.Sleep(1 * time.Second)
+			masterFrameTime := 3 * utils.Config.TestRelated.MasterFrameTimeSecs
+			deadline := time.Now().Add(time.Duration(masterFrameTime) * time.Second)
+			for {
+				lock, agc = test.tm.getLockAndAGCValue()
+				if lock {
+					break
+				}
+				if time.Now().After(deadline) {
+					break
+				}
+				select {
+				case <-runner.Ctx.Done():
+					runner.execErr = fmt.Errorf("user aborted")
+					runner.chainErr = runner.execErr
+					return
+				case <-time.After(1 * time.Second):
+				}
+			}
 			if !lock {
 				test.failure("Receiver did not Lock")
 				err := fmt.Errorf("receiver did not lock")
