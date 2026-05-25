@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"prismServer/database"
+	"prismServer/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -114,6 +115,7 @@ func selectTestPhase(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, Ack{OK: false, Message: msg})
 		return
 	}
+	utils.SetTestPhase(req.TestPhase)
 	c.IndentedJSON(http.StatusOK, Ack{OK: true, Message: "Test phase selected"})
 }
 
@@ -128,5 +130,6 @@ func addNewTestPhase(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, Ack{OK: false, Message: msg})
 		return
 	}
+	utils.SetTestPhase(req.NewPhase)
 	c.IndentedJSON(http.StatusOK, Ack{OK: true, Message: "New test phase added"})
 }

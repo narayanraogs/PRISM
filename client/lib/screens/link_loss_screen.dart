@@ -443,6 +443,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
               final service = context.read<ServerService>();
               final ack = await service.selectTestPhase(_selectedTestPhase);
               if (ack != null && ack.ok) {
+                await service.fetchBootstrapData();
                 AppNotifications.show(
                   context,
                   "System Test Phase Updated",
@@ -680,6 +681,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
                 final service = context.read<ServerService>();
                 final ack = await service.addNewTestPhase(name, copyFrom);
                 if (ack != null && ack.ok) {
+                  await service.fetchBootstrapData();
                   Navigator.pop(context);
                   _loadMetadata();
                   AppNotifications.show(

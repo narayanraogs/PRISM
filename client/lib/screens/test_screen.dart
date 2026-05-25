@@ -32,38 +32,6 @@ class _TestScreenState extends State<TestScreen> {
   final TextEditingController _remarkController = TextEditingController();
   bool _isStarting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
-
-  void _fetchData() {
-    setState(() => _isLoading = true);
-    final serverService = Provider.of<ServerService>(context, listen: false);
-
-    // Use bootstrapped data
-    final tests = serverService.status.bootstrapData?.testData;
-
-    if (tests != null) {
-      debugPrint('TestScreen: Using Bootstrapped Metadata');
-      setState(() {
-        _allTests = tests;
-        if (tests.categories.isNotEmpty) {
-          _selectedCategoryIndex = 0;
-          final category = tests.categories[0];
-          if (tests.configurations[category]?.isNotEmpty ?? false) {
-            _selectedConfig = tests.configurations[category]![0];
-          }
-        }
-        _isLoading = false;
-      });
-    } else {
-      debugPrint('TestScreen: Bootstrapped Metadata NOT FOUND');
-      setState(() => _isLoading = false);
-    }
-  }
-
   void _onCategorySelected(int index) {
     setState(() {
       _selectedCategoryIndex = index;
@@ -128,6 +96,33 @@ class _TestScreenState extends State<TestScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final serverService = context.watch<ServerService>();
+    final tests = serverService.status.bootstrapData?.testData;
+
+    if (tests != _allTests) {
+      _allTests = tests;
+      _isLoading = (tests == null);
+      if (tests != null) {
+        if (tests.categories.isNotEmpty) {
+          if (_selectedCategoryIndex >= tests.categories.length) {
+            _selectedCategoryIndex = 0;
+          }
+          final category = tests.categories[_selectedCategoryIndex];
+          if (tests.configurations[category]?.isNotEmpty ?? false) {
+            if (_selectedConfig == null || !tests.configurations[category]!.contains(_selectedConfig)) {
+              _selectedConfig = tests.configurations[category]![0];
+            }
+          } else {
+            _selectedConfig = null;
+          }
+        } else {
+          _selectedCategoryIndex = 0;
+          _selectedConfig = null;
+        }
+      } else {
+        _selectedConfig = null;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,

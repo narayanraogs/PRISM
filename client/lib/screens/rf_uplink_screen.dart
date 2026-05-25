@@ -32,40 +32,6 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
   bool _isMetaLoading = true;
   bool _isStatusLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchInitialData();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  void _fetchInitialData() {
-    setState(() => _isMetaLoading = true);
-    final serverService = Provider.of<ServerService>(context, listen: false);
-
-    // Use bootstrapped data instead of fetching
-    final meta = serverService.status.bootstrapData?.rfuData;
-
-    if (meta != null) {
-      debugPrint('RFUplinkScreen: Using Bootstrapped Metadata');
-      setState(() {
-        _metaData = meta;
-        if (_selectedTSM == "" && meta.tsms.isNotEmpty) {
-          _selectedTSM = meta.tsms[0];
-        }
-        _isMetaLoading = false;
-      });
-      _fetchHardwareStatus();
-    } else {
-      debugPrint('RFUplinkScreen: Bootstrapped Metadata NOT FOUND');
-      setState(() => _isMetaLoading = false);
-    }
-  }
-
   Future<void> _fetchHardwareStatus() async {
     setState(() => _isStatusLoading = true);
     final serverService = Provider.of<ServerService>(context, listen: false);
@@ -99,6 +65,21 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final serverService = context.watch<ServerService>();
+    final meta = serverService.status.bootstrapData?.rfuData;
+
+    if (meta != _metaData) {
+      _metaData = meta;
+      _isMetaLoading = (meta == null);
+      if (meta != null) {
+        if (_selectedTSM == "" && meta.tsms.isNotEmpty) {
+          _selectedTSM = meta.tsms[0];
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _fetchHardwareStatus();
+        });
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
