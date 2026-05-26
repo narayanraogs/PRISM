@@ -9,7 +9,7 @@ func getLineNumber() func() string {
 	lineNo := 0
 	return func() string {
 		lineNo = lineNo + 10
-		return fmt.Sprintf("%d\t", lineNo)
+		return fmt.Sprintf("01.%04d \t", lineNo)
 	}
 }
 
@@ -32,7 +32,7 @@ func CreateProcedure(rxName string, setCmd string, resetCmd string, noOfCommands
 		maxBatchSize := 10
 		lineNumber := getLineNumber()
 		var builder strings.Builder
-		builder.WriteString(fmt.Sprintf("%s Remark Auto generated procedure for %s, with %d commands",
+		builder.WriteString(fmt.Sprintf("%s REMARK Auto generated procedure for %s, with %d commands\n",
 			lineNumber(), rxName, noOfCommands))
 		for noOfCommands > 0 {
 			batch := maxBatchSize
@@ -41,9 +41,9 @@ func CreateProcedure(rxName string, setCmd string, resetCmd string, noOfCommands
 			}
 			noOfCommands = noOfCommands - batch
 			cmds := getSingleBatch(setCmd, resetCmd, batch)
-			builder.WriteString(fmt.Sprintf("%s Send %s\n", lineNumber(), cmds))
+			builder.WriteString(fmt.Sprintf("%s SEND %s\n", lineNumber(), cmds))
 		}
-		builder.WriteString(fmt.Sprintf("%s End\n", lineNumber()))
+		builder.WriteString(fmt.Sprintf("%s END\n", lineNumber()))
 		return builder.String()
 	}
 	return creator

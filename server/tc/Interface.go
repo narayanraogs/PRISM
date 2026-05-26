@@ -160,7 +160,7 @@ func (c *Client) pollForStatus(ctx context.Context, name string, resultChan chan
 			}
 
 			if !ack.Ack {
-				resultChan <- ProcedureResult{Success: false, Status: Status(ack.ExeStatus), Err: fmt.Errorf(ack.ErrorMsg)}
+				resultChan <- ProcedureResult{Success: false, Status: Status(ack.ExeStatus), Err: fmt.Errorf("%s", ack.ErrorMsg)}
 				return
 			}
 

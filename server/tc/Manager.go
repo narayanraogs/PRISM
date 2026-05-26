@@ -2,7 +2,11 @@ package tc
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"prismServer/logger"
+	"strings"
 	"sync"
 )
 
@@ -30,27 +34,36 @@ func RunProcedure(ctx context.Context, name, procedure, subsystem string) (<-cha
 }
 
 func RunProcedureFromProvider(ctx context.Context, name string, procedureProvider func() string, subsystem string) (<-chan ProcedureResult, error) {
+	procedure := procedureProvider()
+
+	// Compute SHA-256 hash of the procedure content
+	hash := sha256.Sum256([]byte(procedure))
+	// Convert the first 8 bytes to a 16-character hex string
+	hashStr := hex.EncodeToString(hash[:8])
+
+	// Create a unique name by appending the hash suffix (e.g., test-a1b2c3d4e5f6g7h8.tst)
+	baseName := strings.TrimSuffix(name, ".tst")
+	uniqueName := fmt.Sprintf("%s-%s.tst", baseName, hashStr)
+
 	manager.mu.Lock()
-	_, found := manager.validatedProcedures[name]
+	_, found := manager.validatedProcedures[uniqueName]
 	manager.mu.Unlock()
 
 	if !found {
-		procedure := procedureProvider()
-
-		if err := manager.client.createProcedure(ctx, name, procedure); err != nil {
+		if err := manager.client.createProcedure(ctx, uniqueName, procedure); err != nil {
 			return nil, err
 		}
 
-		if err := manager.client.validateProcedure(ctx, name, subsystem); err != nil {
+		if err := manager.client.validateProcedure(ctx, uniqueName, subsystem); err != nil {
 			return nil, err
 		}
 
 		manager.mu.Lock()
-		manager.validatedProcedures[name] = true
+		manager.validatedProcedures[uniqueName] = true
 		manager.mu.Unlock()
 	}
 
-	return manager.client.executeProcedure(ctx, name)
+	return manager.client.executeProcedure(ctx, uniqueName)
 }
 
 func ExecuteExistingProcedure(ctx context.Context, name string) (<-chan ProcedureResult, error) {
