@@ -43,7 +43,7 @@ func (c *Client) newRequest(ctx context.Context, method, endpoint string, body i
 		}
 		buf = bytes.NewBuffer(b)
 	}
-	fmt.Println(c.BaseURL+endpoint)
+	fmt.Println(c.BaseURL + endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+endpoint, buf)
 	if err != nil {
@@ -113,7 +113,7 @@ func (c *Client) validateProcedure(ctx context.Context, name string, subsystem s
 func (c *Client) executeProcedure(ctx context.Context, name string) (<-chan ProcedureResult, error) {
 	reqBody := loadRequest{
 		Action:       "execute",
-		ProcName:     "rate-sm-1.tst",
+		ProcName:     name,
 		ProcSrc:      "PRISM",
 		ProcMode:     "auto",
 		ProcPriority: "high",
@@ -141,7 +141,7 @@ func (c *Client) pollForStatus(ctx context.Context, name string, resultChan chan
 
 	reqBody := loadRequest{
 		Action:       "exestatus",
-		ProcName:     "rate-sm-1.tst",
+		ProcName:     name,
 		ProcSrc:      "PRISM",
 		ProcMode:     "auto",
 		ProcPriority: "high",
