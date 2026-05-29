@@ -36,134 +36,7 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  bool _isExpanded = false;
   bool _showNotifications = false;
-
-  final List<NavigationItem> _navItems = [
-    // Category 1: Actions
-    NavigationItem(
-      label: 'RF Uplink',
-      icon: Icons.settings_input_antenna_outlined,
-      selectedIcon: Icons.settings_input_antenna,
-      category: 'ACTIONS',
-    ),
-    NavigationItem(
-      label: 'Tests',
-      icon: Icons.assignment_outlined,
-      selectedIcon: Icons.assignment,
-      category: 'ACTIONS',
-    ),
-    NavigationItem(
-      label: 'Schedule',
-      icon: Icons.calendar_today_outlined,
-      selectedIcon: Icons.calendar_today,
-      category: 'ACTIONS',
-    ),
-
-    // Category 2: Utilities
-    NavigationItem(
-      label: 'Stability',
-      icon: Icons.speed_outlined,
-      selectedIcon: Icons.speed,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'Spectrum Dump',
-      icon: Icons.analytics_outlined,
-      selectedIcon: Icons.analytics,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'Monitor',
-      icon: Icons.monitor_heart_outlined,
-      selectedIcon: Icons.monitor_heart,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'TVAC Cable Calibration',
-      icon: Icons.settings_ethernet,
-      selectedIcon: Icons.settings_ethernet,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'SCPI Commander',
-      icon: Icons.terminal_outlined,
-      selectedIcon: Icons.terminal,
-      category: 'UTILITIES',
-    ),
-
-    // Category 3: T&E
-    NavigationItem(
-      label: 'Cable Loss Measurement',
-      icon: Icons.linear_scale,
-      selectedIcon: Icons.linear_scale,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Path Loss Planner',
-      icon: Icons.map_outlined,
-      selectedIcon: Icons.map,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Attenuation',
-      icon: Icons.import_export,
-      selectedIcon: Icons.import_export,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'TSM Internal Path Loss',
-      icon: Icons.router_outlined,
-      selectedIcon: Icons.router,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'GTx Characterization',
-      icon: Icons.radar,
-      selectedIcon: Icons.radar,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Up Down converter',
-      icon: Icons.compare_arrows,
-      selectedIcon: Icons.compare_arrows,
-      category: 'T&E',
-    ),
-
-    // Category 4: Database
-    NavigationItem(
-      label: 'Database Management',
-      icon: Icons.storage_outlined,
-      selectedIcon: Icons.storage,
-      category: 'DATABASE',
-    ),
-
-    // Category 5: Results
-    NavigationItem(
-      label: 'View Reports',
-      icon: Icons.insert_drive_file_outlined,
-      selectedIcon: Icons.insert_drive_file,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'Stability reports',
-      icon: Icons.assessment_outlined,
-      selectedIcon: Icons.assessment,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'Insights',
-      icon: Icons.lightbulb_outline,
-      selectedIcon: Icons.lightbulb,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'PPT Generation',
-      icon: Icons.slideshow_outlined,
-      selectedIcon: Icons.slideshow,
-      category: 'RESULTS',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -175,122 +48,9 @@ class _MainLayoutState extends State<MainLayout> {
               Expanded(
                 child: Row(
                   children: [
-                    MouseRegion(
-                      onEnter: (_) => setState(() => _isExpanded = true),
-                      onExit: (_) => setState(() => _isExpanded = false),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: _isExpanded ? 240 : 72,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(2, 0),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 20),
-                            // Logo/Brand area
-                            Container(
-                              height: 40,
-                              alignment: Alignment.center,
-                              child: _isExpanded
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: Image.asset(
-                                            'assets/images/logo.jpg',
-                                            height: 32,
-                                            width: 32,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          'PRISM',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium
-                                              ?.copyWith(
-                                                fontSize: 24,
-                                                letterSpacing: 2,
-                                                fontWeight: FontWeight.bold,
-                                                color: const Color(0xFF050A14),
-                                              ),
-                                        ),
-                                      ],
-                                    )
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.asset(
-                                        'assets/images/logo.jpg',
-                                        height: 32,
-                                        width: 32,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Scrollable Navigation Items
-                            Expanded(
-                              child: ListView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                itemCount: _navItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _navItems[index];
-                                  final showCategory =
-                                      _isExpanded &&
-                                      (index == 0 ||
-                                          _navItems[index - 1].category !=
-                                              item.category);
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (showCategory)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 12,
-                                            top: 16,
-                                            bottom: 8,
-                                          ),
-                                          child: Text(
-                                            item.category,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.grey.shade500,
-                                              letterSpacing: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                      _buildNavItem(
-                                        index,
-                                        item.icon,
-                                        item.selectedIcon,
-                                        item.label,
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
+                    SidebarNavigation(
+                      selectedIndex: widget.selectedIndex,
+                      onDestinationSelected: widget.onDestinationSelected,
                     ),
                     Expanded(
                       child: Container(
@@ -599,6 +359,263 @@ class _MainLayoutState extends State<MainLayout> {
         return Icons.info_outline;
     }
   }
+}
+
+class SidebarNavigation extends StatefulWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const SidebarNavigation({
+    super.key,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  State<SidebarNavigation> createState() => _SidebarNavigationState();
+}
+
+class _SidebarNavigationState extends State<SidebarNavigation> {
+  bool _isExpanded = false;
+
+  final List<NavigationItem> _navItems = [
+    // Category 1: Actions
+    NavigationItem(
+      label: 'RF Uplink',
+      icon: Icons.settings_input_antenna_outlined,
+      selectedIcon: Icons.settings_input_antenna,
+      category: 'ACTIONS',
+    ),
+    NavigationItem(
+      label: 'Tests',
+      icon: Icons.assignment_outlined,
+      selectedIcon: Icons.assignment,
+      category: 'ACTIONS',
+    ),
+    NavigationItem(
+      label: 'Schedule',
+      icon: Icons.calendar_today_outlined,
+      selectedIcon: Icons.calendar_today,
+      category: 'ACTIONS',
+    ),
+
+    // Category 2: Utilities
+    NavigationItem(
+      label: 'Stability',
+      icon: Icons.speed_outlined,
+      selectedIcon: Icons.speed,
+      category: 'UTILITIES',
+    ),
+    NavigationItem(
+      label: 'Spectrum Dump',
+      icon: Icons.analytics_outlined,
+      selectedIcon: Icons.analytics,
+      category: 'UTILITIES',
+    ),
+    NavigationItem(
+      label: 'Monitor',
+      icon: Icons.monitor_heart_outlined,
+      selectedIcon: Icons.monitor_heart,
+      category: 'UTILITIES',
+    ),
+    NavigationItem(
+      label: 'TVAC Cable Calibration',
+      icon: Icons.settings_ethernet,
+      selectedIcon: Icons.settings_ethernet,
+      category: 'UTILITIES',
+    ),
+    NavigationItem(
+      label: 'SCPI Commander',
+      icon: Icons.terminal_outlined,
+      selectedIcon: Icons.terminal,
+      category: 'UTILITIES',
+    ),
+
+    // Category 3: T&E
+    NavigationItem(
+      label: 'Cable Loss Measurement',
+      icon: Icons.linear_scale,
+      selectedIcon: Icons.linear_scale,
+      category: 'T&E',
+    ),
+    NavigationItem(
+      label: 'Path Loss Planner',
+      icon: Icons.map_outlined,
+      selectedIcon: Icons.map,
+      category: 'T&E',
+    ),
+    NavigationItem(
+      label: 'Attenuation',
+      icon: Icons.import_export,
+      selectedIcon: Icons.import_export,
+      category: 'T&E',
+    ),
+    NavigationItem(
+      label: 'TSM Internal Path Loss',
+      icon: Icons.router_outlined,
+      selectedIcon: Icons.router,
+      category: 'T&E',
+    ),
+    NavigationItem(
+      label: 'GTx Characterization',
+      icon: Icons.radar,
+      selectedIcon: Icons.radar,
+      category: 'T&E',
+    ),
+    NavigationItem(
+      label: 'Up Down converter',
+      icon: Icons.compare_arrows,
+      selectedIcon: Icons.compare_arrows,
+      category: 'T&E',
+    ),
+
+    // Category 4: Database
+    NavigationItem(
+      label: 'Database Management',
+      icon: Icons.storage_outlined,
+      selectedIcon: Icons.storage,
+      category: 'DATABASE',
+    ),
+
+    // Category 5: Results
+    NavigationItem(
+      label: 'View Reports',
+      icon: Icons.insert_drive_file_outlined,
+      selectedIcon: Icons.insert_drive_file,
+      category: 'RESULTS',
+    ),
+    NavigationItem(
+      label: 'Stability reports',
+      icon: Icons.assessment_outlined,
+      selectedIcon: Icons.assessment,
+      category: 'RESULTS',
+    ),
+    NavigationItem(
+      label: 'Insights',
+      icon: Icons.lightbulb_outline,
+      selectedIcon: Icons.lightbulb,
+      category: 'RESULTS',
+    ),
+    NavigationItem(
+      label: 'PPT Generation',
+      icon: Icons.slideshow_outlined,
+      selectedIcon: Icons.slideshow,
+      category: 'RESULTS',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isExpanded = true),
+      onExit: (_) => setState(() => _isExpanded = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: _isExpanded ? 240 : 72,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(2, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            // Logo/Brand area
+            Container(
+              height: 40,
+              alignment: Alignment.center,
+              child: _isExpanded
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/images/logo.jpg',
+                            height: 32,
+                            width: 32,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'PRISM',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                fontSize: 24,
+                                letterSpacing: 2,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF050A14),
+                              ),
+                        ),
+                      ],
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/logo.jpg',
+                        height: 32,
+                        width: 32,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 20),
+            // Scrollable Navigation Items
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _navItems.length,
+                itemBuilder: (context, index) {
+                  final item = _navItems[index];
+                  final showCategory = _isExpanded &&
+                      (index == 0 ||
+                          _navItems[index - 1].category != item.category);
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (showCategory)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 12,
+                            top: 16,
+                            bottom: 8,
+                          ),
+                          child: Text(
+                            item.category,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade500,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                      _buildNavItem(
+                        index,
+                        item.icon,
+                        item.selectedIcon,
+                        item.label,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildNavItem(
     int index,
@@ -663,3 +680,4 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 }
+

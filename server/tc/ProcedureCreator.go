@@ -32,7 +32,7 @@ func CreateProcedure(rxName string, setCmd string, resetCmd string, noOfCommands
 		maxBatchSize := 10
 		lineNumber := getLineNumber()
 		var builder strings.Builder
-		builder.WriteString(fmt.Sprintf("%s REMARK Auto generated procedure for %s, with %d commands\n",
+		builder.WriteString(fmt.Sprintf("%s FLASH_DISPLAY Auto generated procedure for %s, with %d commands\n",
 			lineNumber(), rxName, noOfCommands))
 		for noOfCommands > 0 {
 			batch := maxBatchSize

@@ -106,40 +106,73 @@ class _RootPageState extends State<RootPage> {
       },
       child: IndexedStack(
         index: _selectedIndex,
-        children: _titles.asMap().entries.map((entry) {
-          final index = entry.key;
-          final title = entry.value;
-          if (index == 0) return RFUplinkScreen(isActive: _selectedIndex == 0);
-          if (index == 1) return TestScreen(isActive: _selectedIndex == 1);
-          if (index == 2) return const ScheduleScreen();
-          if (index == 3) return StabilityScreen(isActive: _selectedIndex == 3);
-          if (index == 4)
-            return SpectrumDumpScreen(isActive: _selectedIndex == 4);
-          if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
-          if (index == 6)
-            return TVACCableLossScreen(isActive: _selectedIndex == 6);
-          if (index == 7)
-            return ScpiCommanderScreen(isActive: _selectedIndex == 7);
-          if (index == 8) return CableLossScreen(isActive: _selectedIndex == 8);
-          if (index == 9)
-            return PathLossPlannerScreen(isActive: _selectedIndex == 9);
-          if (index == 10)
-            return AttenuationScreen(isActive: _selectedIndex == 10);
-          if (index == 11)
-            return TSMInternalPathLossScreen(isActive: _selectedIndex == 11);
-          if (index == 12)
-            return GTxCharacterizationScreen(isActive: _selectedIndex == 12);
-          if (index == 13)
-            return UpDownConverterScreen(isActive: _selectedIndex == 13);
-          if (index == 14) return const LinkLossScreen();
-          if (index == 15)
-            return ViewReportsScreen(isActive: _selectedIndex == 15);
-          if (index == 16) return const StabilityReportsScreen();
-          if (index == 17) return const InsightsScreen();
+        children: List.generate(_titles.length, (index) {
+          final title = _titles[index];
+          return LazyLoadWidget(
+            isActivated: _selectedIndex == index,
+            child: Builder(
+              builder: (context) {
+                if (index == 0) return RFUplinkScreen(isActive: _selectedIndex == 0);
+                if (index == 1) return TestScreen(isActive: _selectedIndex == 1);
+                if (index == 2) return const ScheduleScreen();
+                if (index == 3) return StabilityScreen(isActive: _selectedIndex == 3);
+                if (index == 4)
+                  return SpectrumDumpScreen(isActive: _selectedIndex == 4);
+                if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
+                if (index == 6)
+                  return TVACCableLossScreen(isActive: _selectedIndex == 6);
+                if (index == 7)
+                  return ScpiCommanderScreen(isActive: _selectedIndex == 7);
+                if (index == 8) return CableLossScreen(isActive: _selectedIndex == 8);
+                if (index == 9)
+                  return PathLossPlannerScreen(isActive: _selectedIndex == 9);
+                if (index == 10)
+                  return AttenuationScreen(isActive: _selectedIndex == 10);
+                if (index == 11)
+                  return TSMInternalPathLossScreen(isActive: _selectedIndex == 11);
+                if (index == 12)
+                  return GTxCharacterizationScreen(isActive: _selectedIndex == 12);
+                if (index == 13)
+                  return UpDownConverterScreen(isActive: _selectedIndex == 13);
+                if (index == 14) return const LinkLossScreen();
+                if (index == 15)
+                  return ViewReportsScreen(isActive: _selectedIndex == 15);
+                if (index == 16) return const StabilityReportsScreen();
+                if (index == 17) return const InsightsScreen();
 
-          return GenericScreen(title: title);
-        }).toList(),
+                return GenericScreen(title: title);
+              },
+            ),
+          );
+        }),
       ),
     );
   }
 }
+
+class LazyLoadWidget extends StatefulWidget {
+  final Widget child;
+  final bool isActivated;
+
+  const LazyLoadWidget({
+    super.key,
+    required this.child,
+    required this.isActivated,
+  });
+
+  @override
+  State<LazyLoadWidget> createState() => _LazyLoadWidgetState();
+}
+
+class _LazyLoadWidgetState extends State<LazyLoadWidget> {
+  bool _initialized = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isActivated) {
+      _initialized = true;
+    }
+    return _initialized ? widget.child : const SizedBox.shrink();
+  }
+}
+
