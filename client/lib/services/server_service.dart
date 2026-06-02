@@ -1368,6 +1368,7 @@ class ReportMetadata {
   final String remarks;
   final bool vsaUsed;
   final bool ppmUsed;
+  final bool success;
 
   ReportMetadata({
     required this.phase,
@@ -1379,6 +1380,7 @@ class ReportMetadata {
     required this.remarks,
     required this.vsaUsed,
     required this.ppmUsed,
+    required this.success,
   });
 
   factory ReportMetadata.fromJson(Map<String, dynamic> json) {
@@ -1392,6 +1394,7 @@ class ReportMetadata {
       remarks: json['remarks'] ?? '',
       vsaUsed: json['vsaUsed'] ?? false,
       ppmUsed: json['ppmUsed'] ?? false,
+      success: json['success'] ?? true,
     );
   }
 }

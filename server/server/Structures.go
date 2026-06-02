@@ -379,6 +379,7 @@ type ReportMetadata struct {
 	Remarks      string `json:"remarks"`
 	VSAUsed      bool   `json:"vsaUsed"`
 	PPMUsed      bool   `json:"ppmUsed"`
+	Success      bool   `json:"success"`
 }
 
 type ReportsResponse struct {

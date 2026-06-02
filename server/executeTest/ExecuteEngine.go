@@ -106,6 +106,25 @@ func (e *Engine) Execute(ctx context.Context) error {
 	if err != nil {
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
+		
+		fmt.Println("Generate Failure Report")
+		results, rErr := e.test.GenerateFailureReport(err)
+		if rErr != nil {
+			fmt.Println("Error during failure report Generation", rErr.Error())
+		} else {
+			var sts TestResult
+			sts.Name = make([]string, 0)
+			sts.Result = make([]reports.Result, 0)
+			sts.TestName = e.context.Progress.TestName
+			sts.TestCategory = e.context.Progress.TestCategory
+			sts.Configuration = e.context.Progress.Configuration
+			for k, v := range results {
+				sts.Name = append(sts.Name, k)
+				sts.Result = append(sts.Result, v)
+			}
+			e.context.UpdateChannel <- sts
+		}
+
 		e.context.AskForConfirmation("Press Continue to Rollback/Go to Next test", 0)
 		return err
 	}

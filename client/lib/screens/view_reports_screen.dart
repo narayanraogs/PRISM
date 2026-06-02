@@ -39,6 +39,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
   String _searchQuery = '';
   String _selectedPhase = 'All';
   String _selectedType = 'All';
+  String _selectedStatus = 'Success';
   DateTimeRange? _dateRange;
 
   Uint8List? _pdfData;
@@ -417,8 +418,11 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                 entry.dateTime.isBefore(
                   _dateRange!.end.add(const Duration(days: 1)),
                 ));
+        final matchesStatus = _selectedStatus == 'All' ||
+            (_selectedStatus == 'Success' && meta.success) ||
+            (_selectedStatus == 'Failed' && !meta.success);
 
-        return matchesSearch && matchesPhase && matchesType && matchesDate;
+        return matchesSearch && matchesPhase && matchesType && matchesDate && matchesStatus;
       }).toList();
     });
   }
@@ -683,6 +687,11 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildChipRow('Status', ['All', 'Success', 'Failed'], _selectedStatus, (val) {
+          setState(() => _selectedStatus = val);
+          _applyFilters();
+        }, theme),
+        const SizedBox(height: 8),
         _buildChipRow('Phases', _phases, _selectedPhase, (val) {
           setState(() => _selectedPhase = val);
           _applyFilters();
@@ -772,6 +781,12 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
             final res = entry.metadata;
             final isSelected = _selectedEntry == entry;
             return DataRow(
+              color: MaterialStateProperty.resolveWith<Color?>((states) {
+                if (isSelected) {
+                  return res.success ? theme.colorScheme.primary.withOpacity(0.1) : Colors.red.withOpacity(0.2);
+                }
+                return res.success ? null : Colors.red.withOpacity(0.05);
+              }),
               selected: isSelected,
               onSelectChanged: (val) {
                 setState(() => _selectedEntry = entry);

@@ -249,6 +249,80 @@ func (test *baseTest) GenerateReport() (map[string]reports.Result, error) {
 	return generateResults, nil
 }
 
+func (test *baseTest) GenerateFailureReport(failErr error) (map[string]reports.Result, error) {
+	test.report.OK = false
+	test.report.Message = failErr.Error()
+
+	header := []string{"Measurement Step", "Value"}
+	var data [][]reports.DataCell
+
+	steps := test.ctx.Progress.MeasurementSteps
+	values := test.ctx.Progress.MeasurementValues
+
+	for i := 0; i < len(steps); i++ {
+		stepName := steps[i]
+		val := ""
+		if i < len(values) {
+			val = values[i]
+		}
+		row := []reports.DataCell{
+			reports.GetDataCell(stepName),
+			reports.GetDataCell(val),
+		}
+		data = append(data, row)
+	}
+
+	errorRow := []reports.DataCell{
+		reports.GetDataCell("Failure Error"),
+		reports.GetDataCell(failErr.Error()),
+	}
+	errorRow[0].SetError()
+	errorRow[1].SetError()
+	data = append(data, errorRow)
+
+	test.report.SetOrder([]string{"Failed Execution Steps"})
+	test.report.SetResults("Failed Execution Steps", header, data)
+
+	test.report.SetPreRequisiteTM(test.ctx.Progress.PreTestTMMnemonics, test.ctx.Progress.PreTestTMValues)
+	test.report.SetPostTestTM(test.ctx.Progress.PostTestTMMnemonics, test.ctx.Progress.PostTestTMValues)
+
+	totalTime := time.Since(test.startTime).Round(time.Second)
+	seconds := int64(totalTime.Seconds())
+	minutes := seconds / 60
+	seconds = seconds % 60
+	test.report.AddTestInformation("Total Time", fmt.Sprintf("%d:%d", minutes, seconds))
+
+	pdfPath, err := reports.GenerateResult(test.report, true, true, true, true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	resultDir := utils.GetTestResultDirectory()
+	resultDir = filepath.Join(resultDir, test.testName)
+	_ = os.MkdirAll(resultDir, 0755)
+	fileName := test.testName
+	if strings.TrimSpace(test.testCategory) != "" {
+		fileName = fileName + "-" + test.testCategory
+	}
+	fileName = fileName + "-" + test.configName
+	fileName = utils.GetOldTimeStampedFileName(fileName, test.reportTime) + "-FAILED.pdf"
+	fileName = filepath.Join(resultDir, fileName)
+
+	err = os.Rename(pdfPath, fileName)
+	if err != nil {
+		return nil, err
+	}
+	fileName = strings.Replace(fileName, utils.Config.BaseFolder, "", 1)
+
+	csvPath := test.getRelativeFilenames()
+	err = resultsDB.InsertReport(test.report, fileName, csvPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return test.report.Results, nil
+}
+
 func (test *baseTest) getRelativeFilenames() string {
 	var relativeFilePaths = make([]string, 0)
 	for _, filename := range test.filenames {

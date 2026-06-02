@@ -70,6 +70,7 @@ type Tester interface {
 	SetRollbackMap(r map[string]utils.CommandResponse)
 	Measure(ctx context.Context) error
 	GenerateReport() (map[string]reports.Result, error)
+	GenerateFailureReport(err error) (map[string]reports.Result, error)
 	SetParameters(map[string]interface{}) error
 }
 

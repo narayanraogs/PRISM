@@ -30,6 +30,7 @@ func getResultMetadata(c *gin.Context) {
 			Remarks:      result.Remark.String,
 			VSAUsed:      strings.EqualFold(result.TestCategory.String, "vsa"),
 			PPMUsed:      strings.EqualFold(result.TestCategory.String, "ppm"),
+			Success:      !strings.Contains(result.Report, `"OK": false`) && !strings.Contains(result.Report, `"OK":false`),
 		})
 	}
 	resp.AllPPMParams = utils.GetAllPpmParameters()
