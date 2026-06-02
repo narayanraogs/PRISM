@@ -116,92 +116,122 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 			table := result.GainResultValue.getResultTable()
 			reportName := "Output Port - Gain Measurement - Internal LO - Cable Mode"
 			avail[0] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCGainInternalRadiated:
 			table := result.GainResultValue.getResultTable()
 			reportName := "Output Port - Gain Measurement - Internal LO - Radiated Mode"
 			avail[1] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCFreqMeas:
 			table := result.FrequencyResultValue.getResultTable()
 			reportName := "Output Port - Frequency Measurement"
 			avail[2] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCHarmonicMeas:
 			table := result.HarmonicResultValue.getResultTable()
 			reportName := "Output Port - Harmonics Measurement"
 			avail[3] = reportName
 			for i := 0; i < len(result.HarmonicResultValue.HarmonicNo); i++ {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[i], Caption: fmt.Sprintf("%s - %d Harmonic", reportName, result.HarmonicResultValue.HarmonicNo[i])})
+				if len(result.SpectrumDump) > i {
+					report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[i], Caption: fmt.Sprintf("%s - %d Harmonic", reportName, result.HarmonicResultValue.HarmonicNo[i])})
+				}
 			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCSpuriousInBand:
 			table := result.SpuriousResultValue.getResultTable()
 			reportName := "Output Port - Spurious - In Band"
 			avail[4] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCSpuriousOutBand:
 			table := result.SpuriousResultValue.getResultTable()
 			reportName := "Output Port - Spurious - Out of Band"
 			avail[5] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCLOLeakage:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			reportName := "Output Port - LO Leakage"
 			avail[6] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCInputLeakage:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			reportName := "Output Port - Input Leakage"
 			avail[7] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCGainExternalCable:
 			table := result.GainResultValue.getResultTable()
 			reportName := "Output Port - Gain Measurement - External LO - Cable Mode"
 			avail[8] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCGainExternalRadiated:
 			table := result.GainResultValue.getResultTable()
 			reportName := "Output Port - Gain Measurement - External LO - Radiated Mode"
 			avail[9] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCOutputMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			reportName := "Output Monitor Port - Power Measurement"
 			avail[10] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCInputMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			reportName := "Input Monitor Port - Power Measurement"
 			avail[11] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCLOMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			reportName := "LO Monitor Port - Power Measurement"
 			avail[12] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 			table2 := result.FrequencyResultValue.getResultTable()
 			reportName2 := "LO Monitor Port - Frequency Measurement"
 			avail[13] = reportName2
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName2})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName2})
+			}
 			report.SetResults(reportName2, table2.Header, table2.Data)
 		case UCDCLOMonPhaseNoise:
 			table := result.PhaseNoiseResultValue.getResultTable()
 			reportName := "LO Monitor Port - Phase Noise Measurement"
 			avail[14] = reportName
-			report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			if len(result.SpectrumDump) > 0 {
+				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
+			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCExtLOPowerMatch:
 			table := result.PowerMatchingResultValue.getResultTable()

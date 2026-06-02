@@ -385,8 +385,16 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
     anchor.href = url;
     anchor.download =
         'Report_${_selectedEntry!.metadata.config}_${_selectedEntry!.metadata.date}.pdf';
+    
+    // Append to DOM, click, and remove to ensure browser respects download filename
+    web.document.body?.appendChild(anchor);
     anchor.click();
-    web.URL.revokeObjectURL(url);
+    anchor.remove();
+
+    // Delay revocation to ensure download is successfully initialized
+    Future.delayed(const Duration(milliseconds: 200), () {
+      web.URL.revokeObjectURL(url);
+    });
   }
 
   void _applyFilters() {

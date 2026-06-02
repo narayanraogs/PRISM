@@ -728,9 +728,16 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
     anchor.href = url;
     anchor.download =
         'Stability_${widget.profileName.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+    
+    // Append to DOM, click, and remove to ensure browser respects download filename
+    web.document.body?.appendChild(anchor);
     anchor.click();
+    anchor.remove();
 
-    web.URL.revokeObjectURL(url);
+    // Delay revocation to ensure download is successfully initialized
+    Future.delayed(const Duration(milliseconds: 200), () {
+      web.URL.revokeObjectURL(url);
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Stability data exported successfully.')),

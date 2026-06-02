@@ -465,8 +465,16 @@ class _CableLossScreenState extends State<CableLossScreen> {
         ? "cable_loss_${record.cableName}_${record.date.replaceAll('-', '')}.csv"
         : "cable_loss_history_${DateTime.now().millisecondsSinceEpoch}.csv";
     anchor.download = filename;
+    
+    // Append to DOM, click, and remove to ensure browser respects download filename
+    web.document.body?.appendChild(anchor);
     anchor.click();
-    web.URL.revokeObjectURL(url);
+    anchor.remove();
+
+    // Delay revocation to ensure download is successfully initialized
+    Future.delayed(const Duration(milliseconds: 200), () {
+      web.URL.revokeObjectURL(url);
+    });
 
     _showAppNotification(
       title: 'Export Successful',

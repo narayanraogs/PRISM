@@ -1063,8 +1063,16 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         anchor.href = url;
         anchor.download =
             'UCDC_Report_${_selectedConverter}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        
+        // Append to DOM, click, and remove to guarantee download filename behavior
+        web.document.body?.appendChild(anchor);
         anchor.click();
-        web.URL.revokeObjectURL(url);
+        anchor.remove();
+
+        // Delay revocation to prevent browser from aborting the download
+        Timer(const Duration(milliseconds: 200), () {
+          web.URL.revokeObjectURL(url);
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
