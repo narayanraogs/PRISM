@@ -109,6 +109,25 @@ func GetReportPDF(date string, time string) (string, error) {
 	return base64.StdEncoding.EncodeToString(file), nil
 }
 
+func GetReportJSON(date string, time string) (reports.Report, error) {
+	ctx := context.Background()
+	var args getSingleResultParams
+	args.Date = date
+	args.Time = time
+	storedResult, err := dbObject.getSingleResult(ctx, args)
+	if err != nil {
+		return reports.Report{}, err
+	}
+
+	var reportData reports.Report
+	err = json.Unmarshal([]byte(storedResult.Report), &reportData)
+	if err != nil {
+		return reports.Report{}, err
+	}
+	return reportData, nil
+}
+
+
 func RegenerateReport(date string, time string) (string, error) {
 	ctx := context.Background()
 	var args getSingleResultParams

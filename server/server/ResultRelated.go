@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"prismServer/reports"
 	"prismServer/resultsDB"
 	"prismServer/utils"
 	"strings"
@@ -77,3 +78,24 @@ func getStabilityReports(c *gin.Context) {
 	resp = getStabilityReportsMetadata()
 	c.JSON(200, resp)
 }
+
+func getReportsData(c *gin.Context) {
+	var req ReportsDataRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, Ack{OK: false, Message: "Invalid Request"})
+		return
+	}
+	var resp ReportsDataResponse
+	resp.Reports = make([]reports.Report, 0)
+	for _, session := range req.Sessions {
+		report, err := resultsDB.GetReportJSON(session.Date, session.Time)
+		if err != nil {
+			continue
+		}
+		resp.Reports = append(resp.Reports, report)
+	}
+	resp.OK = true
+	resp.Message = "Success"
+	c.JSON(http.StatusOK, resp)
+}
+

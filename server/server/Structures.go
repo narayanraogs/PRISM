@@ -1,6 +1,7 @@
 package server
 
 import (
+	"prismServer/reports"
 	"prismServer/resultsDB"
 	"prismServer/tne"
 	"prismServer/utilities"
@@ -569,3 +570,19 @@ type UCDCRequest struct {
 	StepSize          float64
 	TestsSelected     []string
 }
+
+type ReportsDataRequest struct {
+	Sessions []SessionKeys `json:"sessions"`
+}
+
+type SessionKeys struct {
+	Date string `json:"date"`
+	Time string `json:"time"`
+}
+
+type ReportsDataResponse struct {
+	Reports []reports.Report `json:"reports"`
+	OK      bool             `json:"ok"`
+	Message string           `json:"message"`
+}
+

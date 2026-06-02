@@ -103,7 +103,7 @@ func (test *pulseUplinkMeasurement) measure(runner *StepRunner) error {
 	for _, power := range test.uplinkPowers {
 		for frequency := startFrequency; frequency <= stopFrequency; frequency = frequency + stepSize {
 
-			runner.Run(fmt.Sprintf("Setting power at %.2 dBm and frequency at %.2f GHz", power, frequency/1e9), false, func() {
+			runner.Run(fmt.Sprintf("Setting power at %.2f dBm and frequency at %.2f GHz", power, frequency/1e9), false, func() {
 				var result pulseUplink
 				result.SetFrequency = frequency
 				result.ExpectedPower = power

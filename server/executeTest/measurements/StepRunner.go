@@ -28,7 +28,7 @@ func (r *StepRunner) Exec(fn func() utils.CommandResponse) utils.CommandResponse
 	default:
 		resp := fn()
 		if !resp.Success {
-			r.execErr = fmt.Errorf(resp.ErrorMessage)
+			r.execErr = fmt.Errorf("%s", resp.ErrorMessage)
 		}
 		return resp
 	}

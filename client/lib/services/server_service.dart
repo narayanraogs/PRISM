@@ -1434,6 +1434,123 @@ class ReportsResponse {
   }
 }
 
+class ReportDataCell {
+  final String value;
+  final bool error;
+  final bool success;
+  final bool warning;
+
+  ReportDataCell({
+    required this.value,
+    required this.error,
+    required this.success,
+    required this.warning,
+  });
+
+  factory ReportDataCell.fromJson(Map<String, dynamic> json) {
+    return ReportDataCell(
+      value: json['Value'] ?? '',
+      error: json['Error'] ?? false,
+      success: json['Success'] ?? false,
+      warning: json['Warning'] ?? false,
+    );
+  }
+}
+
+class TestReportTable {
+  final List<String> header;
+  final List<List<ReportDataCell>> data;
+
+  TestReportTable({
+    required this.header,
+    required this.data,
+  });
+
+  factory TestReportTable.fromJson(Map<String, dynamic> json) {
+    var rawData = json['Data'] as List? ?? [];
+    List<List<ReportDataCell>> parsedData = [];
+    for (var row in rawData) {
+      if (row is List) {
+        parsedData.add(row.map((e) => ReportDataCell.fromJson(e)).toList());
+      }
+    }
+    return TestReportTable(
+      header: (json['Header'] as List?)?.cast<String>() ?? [],
+      data: parsedData,
+    );
+  }
+}
+
+class TestReport {
+  final String spacecraft;
+  final String testType;
+  final String testCategory;
+  final String config;
+  final String date;
+  final String time;
+  final String testPhase;
+  final Map<String, TestReportTable> results;
+  final List<String> order;
+  final String remarks;
+
+  TestReport({
+    required this.spacecraft,
+    required this.testType,
+    required this.testCategory,
+    required this.config,
+    required this.date,
+    required this.time,
+    required this.testPhase,
+    required this.results,
+    required this.order,
+    required this.remarks,
+  });
+
+  factory TestReport.fromJson(Map<String, dynamic> json) {
+    var header = json['Header'] ?? {};
+    var rawResults = json['Results'] as Map<String, dynamic>? ?? {};
+    Map<String, TestReportTable> parsedResults = {};
+    rawResults.forEach((key, value) {
+      parsedResults[key] = TestReportTable.fromJson(value);
+    });
+
+    return TestReport(
+      spacecraft: header['Spacecraft'] ?? '',
+      testType: header['TestType'] ?? '',
+      testCategory: header['TestCategory'] ?? '',
+      config: header['Config'] ?? '',
+      date: header['Date'] ?? '',
+      time: header['Time'] ?? '',
+      testPhase: header['TestPhase'] ?? '',
+      results: parsedResults,
+      order: (json['Order'] as List?)?.cast<String>() ?? [],
+      remarks: json['Remarks'] ?? '',
+    );
+  }
+}
+
+class ReportsDataResponse {
+  final bool ok;
+  final String message;
+  final List<TestReport> reports;
+
+  ReportsDataResponse({
+    required this.ok,
+    required this.message,
+    required this.reports,
+  });
+
+  factory ReportsDataResponse.fromJson(Map<String, dynamic> json) {
+    var rawReports = json['reports'] as List? ?? [];
+    return ReportsDataResponse(
+      ok: json['ok'] ?? false,
+      message: json['message'] ?? '',
+      reports: rawReports.map((e) => TestReport.fromJson(e)).toList(),
+    );
+  }
+}
+
+
 class MeasurementStatus {
   final String message;
   final bool error;
@@ -2919,6 +3036,29 @@ class ServerService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error fetching Reports Metadata: $e');
+    }
+    return null;
+  }
+
+  Future<ReportsDataResponse?> fetchReportsData(List<Map<String, String>> sessions) async {
+    final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
+    final protocol = web.window.location.protocol == 'https:'
+        ? 'https'
+        : 'http';
+    final url = '$protocol://$host/getReportsData';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'sessions': sessions}),
+      );
+
+      if (response.statusCode == 200) {
+        return ReportsDataResponse.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching Reports Data: $e');
     }
     return null;
   }

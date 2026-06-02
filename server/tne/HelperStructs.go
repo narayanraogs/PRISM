@@ -146,9 +146,9 @@ func (res *SpuriousResults) getResultTable() reports.Result {
 	for i := 0; i < len(res.Frequency); i++ {
 		row := make([]reports.DataCell, 0)
 		row = append(row, reports.GetDataCell(fmt.Sprintf("%d", i+1)))
-		row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", res.Frequency[i])))
-		row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", res.MeasuredPowerdBm[i])))
-		row = append(row, reports.GetDataCell(fmt.Sprintf("%.2f", res.SpuriousLeveldBC[i])))
+		row = append(row, reports.GetDataCell(res.Frequency[i]))
+		row = append(row, reports.GetDataCell(res.MeasuredPowerdBm[i]))
+		row = append(row, reports.GetDataCell(res.SpuriousLeveldBC[i]))
 		result.Data = append(result.Data, row)
 	}
 	return result

@@ -74,7 +74,7 @@ func (rx *rxRelated) getFrequencyProfile(profileName sql.NullString) error {
 	var ok bool
 	rx.frequencyProfile, ok = database.GetFrequencyProfile(profileName.String)
 	if !ok {
-		return fmt.Errorf("unable to get frequency profile details details for %s", profileName)
+		return fmt.Errorf("unable to get frequency profile details details for %s", profileName.String)
 	}
 	return nil
 }

@@ -636,7 +636,6 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 		}
 		peaks = append(peaks, resp.Result["MarkerY"].Value)
 		frequencies = append(frequencies, resp.Result["MarkerX"].Value)
-		repeat = false
 	}
 
 	ret := getSuccessResponse()

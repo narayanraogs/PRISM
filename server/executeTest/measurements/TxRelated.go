@@ -51,7 +51,7 @@ func (tx *txRelated) readTxHarmonicsDetails(txName sql.NullString) error {
 
 	harmonicDetails, ok := database.GetTxHarmonicsDetails(txName.String)
 	if !ok {
-		return fmt.Errorf("unable to get Harmonic details for %s", txName)
+		return fmt.Errorf("unable to get Harmonic details for %s", txName.String)
 	}
 	tx.txSpecHarmonic = make([]database.SpecTxHarmonic, 0)
 	tx.txSpecHarmonic = append(tx.txSpecHarmonic, harmonicDetails...)

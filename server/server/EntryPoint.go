@@ -56,6 +56,7 @@ func GetRouter() *gin.Engine {
 	r.POST("/getResultMetadata", getResultMetadata)
 	r.POST("/getReportPDF", getReportPDF)
 	r.POST("/regenerateReport", regenerateReport)
+	r.POST("/getReportsData", getReportsData)
 	//TSMInternalLossRelated
 	r.GET("/measureTSMInternalLoss", measureTSMInternalLoss)
 	r.POST("/createNewTSMTable", createNewTSMTable)
