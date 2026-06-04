@@ -43,3 +43,9 @@ func GetUpDownConverterResultWithDateAndTime(name string, date string, time stri
 	value, err := dbObject.getUpDownConverterResultWithDateAndTime(ctx, arg)
 	return value, err
 }
+
+func GetDistinctConvertersFromResultDB() ([]string, error) {
+	ctx := context.Background()
+	values, err := dbObject.getDistinctConvertersFromResultDB(ctx)
+	return values, err
+}

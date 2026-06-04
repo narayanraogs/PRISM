@@ -148,3 +148,6 @@ where "Name" like ? and "Date" like ? and "Time" like ?;
 Select * from "UpDownConverter" where "Name" like ?
 Order by "ID" Desc;
 
+
+-- name: getDistinctConvertersFromResultDB :many
+SELECT DISTINCT "Name" FROM "UpDownConverter";

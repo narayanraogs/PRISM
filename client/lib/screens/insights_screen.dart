@@ -1272,7 +1272,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
               color: sessionColor,
               barWidth: isRef ? 5 : 2.5,
               isCurved: spots.length > 2,
-              dotData: const FlDotData(show: false),
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: isRef ? 5 : 3.5,
+                    color: sessionColor,
+                    strokeWidth: isRef ? 1.5 : 1,
+                    strokeColor: Colors.white,
+                  );
+                },
+              ),
               belowBarData: isRef
                   ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
                   : null,
@@ -1310,7 +1320,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
             color: sessionColor,
             barWidth: isRef ? 5 : 2.5,
             isCurved: true,
-            dotData: const FlDotData(show: false),
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: isRef ? 5 : 3.5,
+                  color: sessionColor,
+                  strokeWidth: isRef ? 1.5 : 1,
+                  strokeColor: Colors.white,
+                );
+              },
+            ),
             belowBarData: isRef
                 ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
                 : null,

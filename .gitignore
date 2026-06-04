@@ -67,3 +67,4 @@ server/data/
 # --- Build Artifacts ---
 server/web/
 prism-server
+server/prism-server

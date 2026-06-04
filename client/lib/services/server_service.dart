@@ -511,6 +511,7 @@ class UCDCTestMetadata {
 
 class UCDCMetadata {
   final List<String> converters;
+  final List<String> resultConverters;
   final Map<String, UCDCDetails> converterDetails;
   final List<String> deviceProfiles;
   final Map<String, DeviceProfileDetails> deviceMapping;
@@ -521,6 +522,7 @@ class UCDCMetadata {
 
   UCDCMetadata({
     required this.converters,
+    required this.resultConverters,
     required this.converterDetails,
     required this.deviceProfiles,
     required this.deviceMapping,
@@ -547,6 +549,7 @@ class UCDCMetadata {
 
     return UCDCMetadata(
       converters: List<String>.from(json['Converters'] ?? []),
+      resultConverters: List<String>.from(json['ResultConverters'] ?? []),
       converterDetails: converterDetailsMap,
       deviceProfiles: List<String>.from(json['DeviceProfiles'] ?? []),
       deviceMapping: deviceMappingMap,

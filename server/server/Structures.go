@@ -500,6 +500,7 @@ type GTxSpectrum struct {
 
 type UCDCMetadata struct {
 	Converters       []string
+	ResultConverters []string
 	ConverterDetails map[string]UCDCDetails
 	DeviceProfiles   []string
 	DeviceMapping    map[string]DeviceProfileDetails

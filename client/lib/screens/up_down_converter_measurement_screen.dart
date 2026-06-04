@@ -48,6 +48,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   // --- Real Data from Server ---
   UCDCMetadata? _metadata;
   List<String> _converters = ['UC-S-X-01', 'UC-KA-KU-02', 'DC-Q-V-01'];
+  List<String> _resultConverters = [];
   List<String> _deviceProfiles = [
     'Standard Profile',
     'High Temp Profile',
@@ -135,11 +136,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   final TextEditingController _outBandRBWController = TextEditingController(
     text: "10000",
   );
-  final TextEditingController _outBandVBWController = TextEditingController(
-    text: "3000",
-  );
+  final TextEditingController _outBandVBWController = TextEditingController();
 
   String _selectedConverter = 'UC-S-X-01';
+  String _selectedResultConverter = '';
   String _selectedDeviceProfile = 'Standard Profile';
   String _selectedExternalSG = 'SG-KEYSIGHT-01';
 
@@ -229,10 +229,16 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       setState(() {
         _metadata = metadata;
         _converters = metadata.converters;
+        _resultConverters = metadata.resultConverters;
         _deviceProfiles = metadata.deviceProfiles;
         _externalSGs = metadata.signalGenerators;
 
         if (_converters.isNotEmpty) _selectedConverter = _converters.first;
+        if (_resultConverters.isNotEmpty) {
+          _selectedResultConverter = _resultConverters.first;
+        } else if (_converters.isNotEmpty) {
+          _selectedResultConverter = _converters.first;
+        }
         if (_deviceProfiles.isNotEmpty) {
           _selectedDeviceProfile = _deviceProfiles.first;
         }
@@ -245,11 +251,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Future<void> _fetchHistory() async {
-    if (_selectedConverter.isEmpty) return;
+    if (_selectedResultConverter.isEmpty) return;
+
     setState(() => _isLoadingHistory = true);
     try {
       final serverService = Provider.of<ServerService>(context, listen: false);
-      final response = await serverService.getUCDCResults(_selectedConverter);
+      final response = await serverService.getUCDCResults(_selectedResultConverter);
       if (response.ok) {
         setState(() {
           _history = response.history.reversed.toList();
@@ -750,12 +757,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildSidebarDropdown(
-                    value: _selectedConverter,
-                    items: _converters,
+                    value: _selectedResultConverter,
+                    items: _resultConverters.isEmpty ? _converters : _resultConverters,
                     onChanged: (val) {
                       if (val != null) {
                         setState(() {
-                          _selectedConverter = val;
+                          _selectedResultConverter = val;
                           _selectedReportId = null;
                           _selectedReportIds.clear();
                         });
@@ -1046,7 +1053,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     try {
       final serverService = Provider.of<ServerService>(context, listen: false);
       final request = UCDCResultRequest(
-        name: _selectedConverter,
+        name: _selectedResultConverter,
         dates: selectedSessions.map((s) => s.date).toList(),
         times: selectedSessions.map((s) => s.time).toList(),
       );
@@ -1062,7 +1069,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
         anchor.href = url;
         anchor.download =
-            'UCDC_Report_${_selectedConverter}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+            'UCDC_Report_${_selectedResultConverter}_${DateTime.now().millisecondsSinceEpoch}.pdf';
         
         // Append to DOM, click, and remove to guarantee download filename behavior
         web.document.body?.appendChild(anchor);

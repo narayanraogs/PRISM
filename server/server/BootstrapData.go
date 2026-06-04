@@ -526,6 +526,15 @@ func getUCDCMetadata() UCDCMetadata {
 		return resp
 	}
 	resp.Converters = converters
+
+	resultConverters, err := resultsDB.GetDistinctConvertersFromResultDB()
+	if err != nil {
+		// Just log or assign empty if not found, it might be empty
+		resp.ResultConverters = []string{}
+	} else {
+		resp.ResultConverters = resultConverters
+	}
+
 	resp.ConverterDetails = make(map[string]UCDCDetails)
 	for _, converter := range converters {
 		var converterDetails UCDCDetails

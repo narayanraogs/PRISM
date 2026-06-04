@@ -225,6 +225,33 @@ func (q *Queries) getCableNamesForCableLoss(ctx context.Context) ([]string, erro
 	return items, nil
 }
 
+const getDistinctConvertersFromResultDB = `-- name: getDistinctConvertersFromResultDB :many
+SELECT DISTINCT "Name" FROM "UpDownConverter"
+`
+
+func (q *Queries) getDistinctConvertersFromResultDB(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getDistinctConvertersFromResultDB)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var Name string
+		if err := rows.Scan(&Name); err != nil {
+			return nil, err
+		}
+		items = append(items, Name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMeasuredTSMInternalLoss = `-- name: getMeasuredTSMInternalLoss :one
 Select "PathMnemonic","MeasuredLosses" from "TSMInternalLoss"
 where "InputPort" = ? and "OutputPort" = ?
