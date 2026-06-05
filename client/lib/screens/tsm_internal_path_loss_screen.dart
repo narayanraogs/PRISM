@@ -34,6 +34,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
   // Dependency State (from Server)
   bool _isPmReferenced = false;
   bool _isCableMeasured = false;
+  InternalLossPMOrCableEntry? _pmEntry;
+  InternalLossPMOrCableEntry? _cableEntry;
   List<String> _profiles = [];
   List<InternalLossEntry> _allPaths = [];
   List<String> _uniqueInputPorts = [];
@@ -69,6 +71,8 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
 
         _isPmReferenced = metadata.measuredLoss.pm.measured;
         _isCableMeasured = metadata.measuredLoss.cable.measured;
+        _pmEntry = metadata.measuredLoss.pm;
+        _cableEntry = metadata.measuredLoss.cable;
 
         _allPaths = metadata.measuredLoss.paths;
         _uniqueInputPorts = _allPaths.map((e) => e.inputPort).toSet().toList()
@@ -140,6 +144,32 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
               children: [
                 IconButton.filledTonal(
                   onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Confirm Regeneration'),
+                        content: const Text(
+                          'Are you sure you want to regenerate the table?\n\n'
+                          'This will remove all current measurements and you will have to start from the beginning.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Regenerate'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm != true) return;
+
                     setState(() => _isLoading = true);
                     final server = context.read<ServerService>();
                     final ack = await server.createNewTSMTable();
@@ -226,6 +256,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
 
   Widget _buildTopStatusCards(ThemeData theme) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. Power Meter Card
         _buildStatusCard(
@@ -234,6 +265,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           value: _isPmReferenced ? 'Measured' : 'Zeroing Required',
           icon: Icons.speed,
           color: _isPmReferenced ? Colors.green : Colors.orange,
+          details: _buildFreqLossDetails(_pmEntry, theme),
           action: ElevatedButton.icon(
             onPressed: () => _startMeasurement('PM'),
             icon: Icon(
@@ -263,6 +295,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           color: _isCableMeasured
               ? Colors.green
               : (_isPmReferenced ? Colors.blue : Colors.grey),
+          details: _buildFreqLossDetails(_cableEntry, theme),
           action: ElevatedButton.icon(
             onPressed: _isPmReferenced
                 ? () => _startMeasurement('Cable Loss')
@@ -291,12 +324,14 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     required String value,
     required IconData icon,
     required Color color,
+    Widget? details,
     Widget? action,
   }) {
     return Expanded(
       child: ContentCard(
         padding: const EdgeInsets.all(20),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(12),
@@ -327,6 +362,10 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                       fontSize: 16,
                     ),
                   ),
+                  if (details != null) ...[
+                    const SizedBox(height: 8),
+                    details,
+                  ],
                 ],
               ),
             ),
@@ -334,6 +373,37 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFreqLossDetails(
+      InternalLossPMOrCableEntry? entry, ThemeData theme) {
+    if (entry == null || !entry.measured || entry.frequencies.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: List.generate(entry.frequencies.length, (index) {
+        final freq = entry.frequencies[index];
+        final loss = entry.losses[index];
+        final freqInGHz = (freq > 1e6) ? freq / 1e9 : freq / 1e3;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Text(
+            '${freqInGHz.toStringAsFixed(2)}GHz: ${loss.toStringAsFixed(2)}dB',
+            style: GoogleFonts.robotoMono(
+              fontSize: 11,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        );
+      }),
     );
   }
 

@@ -166,11 +166,15 @@ func (sa *SA) GetMaxMarkerValue() utils.CommandResponse {
 	if sa.device == nil {
 		return getDeviceNotAvailable()
 	}
-	resp := sa.device.setMarkerMaxPeak(1)
+	resp := sa.WaitForSweeps(2)
 	if !resp.Success {
 		return resp
 	}
-	resp = sa.WaitForSweeps(2)
+	resp = sa.device.setMarkerMaxPeak(1)
+	if !resp.Success {
+		return resp
+	}
+	resp = sa.WaitForSweeps(1)
 	if !resp.Success {
 		return resp
 	}

@@ -190,6 +190,8 @@ func (test *baseTest) SetRollbackMap(r map[string]utils.CommandResponse) {
 }
 
 func (test *baseTest) GenerateReport() (map[string]reports.Result, error) {
+	test.report.OK = true
+	test.report.Message = "Success"
 
 	generateResults, order, plots, err := results.GenerateResults(test.testName, test.filenames)
 	if err != nil {

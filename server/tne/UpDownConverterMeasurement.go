@@ -440,7 +440,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	if !udc.check(udc.sa.SetReferenceNominal(), "SA: find carrier") {
 		return
 	}
-	time.Sleep(time.Second)
+	udc.sa.WaitForSweeps(2)
 
 	if !udc.check(udc.sa.PeakSearch(true, 1), "SA: peak search") {
 		return
