@@ -5,6 +5,9 @@ import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import '../services/server_service.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
+import 'dart:convert';
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 class TSMInternalPathLossScreen extends StatefulWidget {
   final bool isActive;
@@ -827,7 +830,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                   children: [
                     _buildIconButton(Icons.picture_as_pdf, 'PDF', Colors.red),
                     const SizedBox(width: 8),
-                    _buildIconButton(Icons.table_chart, 'CSV', Colors.green),
+                    _buildIconButton(Icons.table_chart, 'CSV', Colors.green, onPressed: _exportCSV),
                   ],
                 ),
               ],
@@ -1078,9 +1081,9 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     );
   }
 
-  Widget _buildIconButton(IconData icon, String label, Color color) {
+  Widget _buildIconButton(IconData icon, String label, Color color, {VoidCallback? onPressed}) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 16),
       label: Text(label),
       style: ElevatedButton.styleFrom(
@@ -1090,6 +1093,63 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
       ),
     );
+  }
+
+  void _exportCSV() {
+    List<String> header = [
+      'Input Port',
+      'Output Port',
+      'Path',
+      'Freq (GHz)',
+      'Loss (dB)'
+    ];
+
+    String csv = header.join(',') + '\n';
+
+    for (final path in _allPaths) {
+      if (path.frequencies.isEmpty) {
+        List<String> row = [
+          path.inputPort,
+          path.outputPort,
+          path.pathMnemonic,
+          'N/A',
+          'N/A'
+        ];
+        csv += row.join(',') + '\n';
+      } else {
+        for (int i = 0; i < path.frequencies.length; i++) {
+          final freq = path.frequencies[i] / 1000.0;
+          final loss = path.losses[i];
+          List<String> row = [
+            path.inputPort,
+            path.outputPort,
+            path.pathMnemonic,
+            freq.toStringAsFixed(2),
+            loss.toStringAsFixed(2)
+          ];
+          csv += row.join(',') + '\n';
+        }
+      }
+    }
+
+    final bytes = utf8.encode(csv);
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/csv'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.document.createElement('a') as web.HTMLAnchorElement
+      ..href = url
+      ..download = "tsm_internal_loss_history_${DateTime.now().millisecondsSinceEpoch}.csv";
+
+    web.document.body?.appendChild(anchor);
+    anchor.click();
+    
+    // Delay revocation to allow download
+    Future.delayed(const Duration(milliseconds: 100), () {
+      web.document.body?.removeChild(anchor);
+      web.URL.revokeObjectURL(url);
+    });
   }
 
   Widget _buildConnectionsOverlay(ThemeData theme) {

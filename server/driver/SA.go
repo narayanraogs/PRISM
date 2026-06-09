@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"fmt"
 	"math"
 	"prismServer/database"
 	"prismServer/utils"
@@ -605,6 +606,10 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	if !resp.Success {
 		return resp
 	}
+	resp = sa.WaitForSweeps(5)
+	if !resp.Success {
+		return resp
+	}
 	resp = sa.CheckIfCarrierIsPresent()
 	if !resp.Success {
 		return resp
@@ -613,6 +618,14 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	minPeak := resp.Result["MinValue"].Value
 
 	resp = sa.device.setPeakThresholdAndExcursion(minPeak, excursion, markerNo)
+	if !resp.Success {
+		return resp
+	}
+	resp = sa.device.setMaxHold()
+	if !resp.Success {
+		return resp
+	}
+	resp = sa.WaitForSweeps(5)
 	if !resp.Success {
 		return resp
 	}
@@ -629,13 +642,19 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	peaks = append(peaks, resp.Result["MarkerY"].Value)
 	frequencies = append(frequencies, resp.Result["MarkerX"].Value)
 	repeat := true
+	fmt.Println("Center Peak",peaks)
 	for repeat == true {
 		resp = sa.SetMarkerNextPeak(markerNo)
 		if !resp.Success {
 			return resp
 		}
+		resp = sa.GetMarkerValue(markerNo)
+		if !resp.Success {
+			return resp
+		}
 		if resp.Result["MarkerX"].Value == frequencies[len(frequencies)-1] {
 			repeat = false
+			fmt.Println("returning Peaks",peaks)
 			continue
 		}
 		peaks = append(peaks, resp.Result["MarkerY"].Value)

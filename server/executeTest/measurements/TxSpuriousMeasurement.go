@@ -2,6 +2,7 @@ package measurements
 
 import (
 	"fmt"
+	"math"
 	"prismServer/executeTest"
 	"prismServer/executeTest/results"
 	"prismServer/reports"
@@ -62,15 +63,14 @@ func (test *txSpuriousMeasurement) measure(runner *StepRunner) error {
 	var peaks = make([]float64, 0)
 
 	runner.Run("Detecting Spurious", false, func() {
-		runner.Exec(sa.SetMaxHold)
-		runner.Exec(waitForSweeps(sa, 5))
-		runner.Exec(getTraceDump(sa, 1001))
 		resp := runner.Exec(getAllPeaksAbove(sa, 10, 1))
 		if runner.execErr != nil {
 			return
 		}
+		runner.Exec(getTraceDump(sa, 1001))
 		freqs = resp.Result["Frequencies"].Values
 		peaks = resp.Result["Peaks"].Values
+		carrierPower := peaks[0]
 		expectedFrequencies := make([]float64, 0)
 		expectedFrequencies = append(expectedFrequencies, float64(test.txSpec.Frequency))
 		for _, f := range test.subCarrierFrequencies {
@@ -81,7 +81,7 @@ func (test *txSpuriousMeasurement) measure(runner *StepRunner) error {
 		allowedFrequencyDeviation := test.txSpec.AllowedFrequencyDeviation
 		for _, expectedFreq := range expectedFrequencies {
 			for i := 0; i < len(freqs); i++ {
-				if freqs[i]-expectedFreq <= allowedFrequencyDeviation {
+				if math.Abs(freqs[i]-expectedFreq) <= allowedFrequencyDeviation {
 					removeAtIndex = append(removeAtIndex, i)
 				}
 			}
@@ -90,8 +90,8 @@ func (test *txSpuriousMeasurement) measure(runner *StepRunner) error {
 		for i := 0; i < len(freqs); i++ {
 			if !slices.Contains(removeAtIndex, i) {
 				resultData := txSpuriousResult{
-					FrequencyKHz: freqs[i] / 1e3,
-					LevelDBc:     peaks[i],
+					FrequencyKHz: (freqs[i] / 1e3) - float64(test.txSpec.Frequency/1e3),
+					LevelDBc:     peaks[i] - carrierPower,
 					Spec:         spurSpec,
 				}
 				if header == nil {

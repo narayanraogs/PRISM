@@ -59,7 +59,8 @@ class _CableLossScreenState extends State<CableLossScreen> {
   Set<String> _selectedFrequencyNames = {};
   List<CableLossRecord> _history = [];
   final Set<int> _selectedSlNos = {};
-
+  String _searchCableName = '';
+  String _searchCableLength = '';
   final List<Color> _plotColors = [
     const Color(0xFF2196F3), // Blue
     const Color(0xFFF44336), // Red
@@ -1141,6 +1142,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
     final isMulti = selectedRecords.length > 1;
     final primaryRecord = selectedRecords.last;
 
+    final sortedFreqValues = _availableFrequencies.map((f) => f.value).toList()..sort();
+    final double maxFreq = sortedFreqValues.isNotEmpty ? sortedFreqValues.last : 30.0;
+    final double interval = maxFreq > 0 ? (maxFreq / 6).ceilToDouble() : 5.0;
+
     return ContentCard(
       isSidebar: false,
       padding: const EdgeInsets.all(24),
@@ -1169,12 +1174,11 @@ class _CableLossScreenState extends State<CableLossScreen> {
               ),
               Row(
                 children: [
-                  if (isMulti)
-                    TextButton.icon(
-                      onPressed: () => setState(() => _selectedSlNos.clear()),
-                      icon: const Icon(Icons.clear_all, size: 18),
-                      label: const Text('Clear'),
-                    ),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _selectedSlNos.clear()),
+                    icon: const Icon(Icons.clear_all, size: 18),
+                    label: const Text('Clear All'),
+                  ),
                   IconButton(
                     onPressed: () => _exportToCSV(
                       record: isMulti ? null : primaryRecord,
@@ -1192,11 +1196,16 @@ class _CableLossScreenState extends State<CableLossScreen> {
             child: LineChart(
               LineChartData(
                 minX: 0,
-                maxX: (_availableFrequencies.length - 1).toDouble(),
+                maxX: maxFreq + (interval * 0.5),
                 gridData: FlGridData(
                   show: true,
                   drawHorizontalLine: true,
+                  drawVerticalLine: true,
                   getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey.withOpacity(0.1),
+                    strokeWidth: 1,
+                  ),
+                  getDrawingVerticalLine: (value) => FlLine(
                     color: Colors.grey.withOpacity(0.1),
                     strokeWidth: 1,
                   ),
@@ -1206,25 +1215,20 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 60,
-                      interval: 1,
+                      reservedSize: 40,
+                      interval: interval,
                       getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= _availableFrequencies.length) {
+                        if (value < 0 || value > maxFreq + interval) {
                           return const SizedBox();
                         }
-                        final freq = _availableFrequencies[index].value;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
-                          child: RotatedBox(
-                            quarterTurns: 1,
-                            child: Text(
-                              freq.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          child: Text(
+                            value == 0 ? '0' : '${value.toInt()}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         );
@@ -1261,16 +1265,10 @@ class _CableLossScreenState extends State<CableLossScreen> {
                       List<MeasurementPoint>.from(record.measurements)
                         ..sort((a, b) => a.frequency.compareTo(b.frequency));
 
-                  // Map to global available frequencies indices
                   final spots = <FlSpot>[];
-                  for (int i = 0; i < _availableFrequencies.length; i++) {
-                    final targetFreq = _availableFrequencies[i].value;
-                    final match = sortedMeasurements.firstWhere(
-                      (m) => (m.frequency - targetFreq).abs() < 0.001,
-                      orElse: () => MeasurementPoint(frequency: targetFreq, loss: 0),
-                    );
-                    if (match.loss != 0) {
-                      spots.add(FlSpot(i.toDouble(), match.loss));
+                  for (final measurement in sortedMeasurements) {
+                    if (measurement.loss != 0) {
+                      spots.add(FlSpot(measurement.frequency, measurement.loss));
                     }
                   }
 
@@ -1346,10 +1344,43 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => _exportToCSV(),
-                icon: const Icon(Icons.file_download),
-                label: const Text('Export All'),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Filter by Cable Name',
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (val) => setState(() => _searchCableName = val),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 150,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Filter by Length',
+                        prefixIcon: const Icon(Icons.straighten, size: 18),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (val) => setState(() => _searchCableLength = val),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  TextButton.icon(
+                    onPressed: () => _exportToCSV(),
+                    icon: const Icon(Icons.file_download),
+                    label: const Text('Export All'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1361,7 +1392,15 @@ class _CableLossScreenState extends State<CableLossScreen> {
   }
 
   Widget _buildHistoryTable(ThemeData theme) {
-    if (_history.isEmpty) {
+    final filteredHistory = _history.where((record) {
+      final matchName = _searchCableName.isEmpty ||
+          record.cableName.toLowerCase().contains(_searchCableName.toLowerCase());
+      final matchLength = _searchCableLength.isEmpty ||
+          record.length.toString().contains(_searchCableLength);
+      return matchName && matchLength;
+    }).toList();
+
+    if (filteredHistory.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(child: Text('No historical data available')),
@@ -1420,7 +1459,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                       label: Text('Action', style: _tableHeaderStyle()),
                     ),
                   ],
-                  rows: _history.reversed.map((record) {
+                  rows: filteredHistory.reversed.map((record) {
                     return DataRow(
                       cells: [
                         DataCell(Text('${record.slNo}')),
