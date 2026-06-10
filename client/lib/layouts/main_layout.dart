@@ -53,15 +53,63 @@ class _MainLayoutState extends State<MainLayout> {
                       onDestinationSelected: widget.onDestinationSelected,
                     ),
                     Expanded(
-                      child: Container(
-                        color: Theme.of(context).colorScheme.background,
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(24),
-                            bottomLeft: Radius.circular(24),
-                          ),
-                          child: widget.child,
-                        ),
+                      child: Consumer<ServerService>(
+                        builder: (context, server, child) {
+                          final satName = server.status.satelliteName;
+                          
+                          Widget content = Container(
+                            color: Theme.of(context).colorScheme.background,
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(24),
+                                bottomLeft: Radius.circular(24),
+                              ),
+                              child: widget.child,
+                            ),
+                          );
+
+                          if (satName.isEmpty) return content;
+
+                          return Stack(
+                            children: [
+                              content,
+                              Positioned(
+                                top: 0,
+                                right: 32,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepOrange.shade700,
+                                    borderRadius: const BorderRadius.only(
+                                      bottomLeft: Radius.circular(8),
+                                      bottomRight: Radius.circular(8),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    satName.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontFamily: 'Roboto Mono',
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                      letterSpacing: 1.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -527,7 +575,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             const SizedBox(height: 20),
             // Logo/Brand area
             Container(
-              height: 40,
+              height: 50,
               alignment: Alignment.center,
               child: _isExpanded
                   ? Row(
@@ -537,23 +585,48 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
                             'assets/images/logo.jpg',
-                            height: 32,
-                            width: 32,
+                            height: 36,
+                            width: 36,
                             fit: BoxFit.cover,
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          'PRISM',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                fontSize: 24,
-                                letterSpacing: 2,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF050A14),
-                              ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PRISM',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontSize: 22,
+                                    letterSpacing: 2,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF050A14),
+                                    height: 1.0,
+                                  ),
+                            ),
+                            Consumer<ServerService>(
+                              builder: (context, server, child) {
+                                final satName = server.status.satelliteName;
+                                if (satName.isEmpty) return const SizedBox.shrink();
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    satName.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Theme.of(context).colorScheme.primary,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     )

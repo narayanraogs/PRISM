@@ -44,11 +44,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'PRISM',
-      theme: AppTheme.lightTheme,
-      home: const RootPage(),
+    return Selector<ServerService, String>(
+      selector: (context, server) => server.status.satelliteName,
+      builder: (context, satelliteName, child) {
+        final appTitle =
+            satelliteName.isNotEmpty ? '$satelliteName - PRISM' : 'PRISM';
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: appTitle,
+          theme: AppTheme.getDynamicTheme(satelliteName),
+          home: const RootPage(),
+        );
+      },
     );
   }
 }

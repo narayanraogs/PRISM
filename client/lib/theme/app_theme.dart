@@ -12,43 +12,64 @@ class AppTheme {
   static const Color surfaceColor = Colors.white;
   static const Color errorColor = Color(0xFFD32F2F);
 
-  static ThemeData get lightTheme {
+  static ThemeData get lightTheme => _buildTheme(primaryColor);
+
+  static ThemeData getDynamicTheme(String satelliteName) {
+    if (satelliteName.isEmpty) return _buildTheme(primaryColor);
+
+    // Curated professional palette
+    final List<Color> palette = [
+      const Color(0xFF0D47A1), // Deep Blue (Default)
+      const Color(0xFF00695C), // Emerald Green
+      const Color(0xFF4527A0), // Royal Purple
+      const Color(0xFFC62828), // Crimson Red
+      const Color(0xFFE65100), // Burnt Orange
+      const Color(0xFF37474F), // Slate Grey
+      const Color(0xFF2E7D32), // Forest Green
+    ];
+
+    // Dart's hashCode provides excellent distribution even for 1-char differences
+    final int index = satelliteName.hashCode.abs() % palette.length;
+    return _buildTheme(palette[index]);
+  }
+
+  static ThemeData _buildTheme(Color themeColor) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        primary: primaryColor,
+        seedColor: themeColor,
+        primary: themeColor,
         secondary: accentColor,
         surface: surfaceColor,
         background: backgroundColor,
         error: errorColor,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onSurface: Color(0xFF1A1C1E),
-        onBackground: Color(0xFF1A1C1E),
+        onSurface: const Color(0xFF1A1C1E),
+        onBackground: const Color(0xFF1A1C1E),
       ),
       scaffoldBackgroundColor: backgroundColor,
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.outfit(
           fontWeight: FontWeight.bold,
-          color: primaryColor,
+          color: themeColor,
         ),
         displayMedium: GoogleFonts.outfit(
           fontWeight: FontWeight.bold,
-          color: primaryColor,
+          color: themeColor,
         ),
         headlineMedium: GoogleFonts.outfit(
           fontWeight: FontWeight.w600,
-          color: primaryColor,
+          color: themeColor,
         ),
         titleLarge: GoogleFonts.outfit(
           fontWeight: FontWeight.w600,
-          color: primaryColor,
+          color: themeColor,
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: surfaceColor,
-        foregroundColor: primaryColor,
+        foregroundColor: themeColor,
         elevation: 0,
         centerTitle: false,
       ),
@@ -58,10 +79,10 @@ class AppTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: surfaceColor,
-        selectedIconTheme: const IconThemeData(color: primaryColor),
+        selectedIconTheme: IconThemeData(color: themeColor),
         unselectedIconTheme: IconThemeData(color: Colors.grey.shade400),
         selectedLabelTextStyle: GoogleFonts.inter(
-          color: primaryColor,
+          color: themeColor,
           fontWeight: FontWeight.bold,
         ),
         unselectedLabelTextStyle: GoogleFonts.inter(
@@ -71,12 +92,12 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: 2,
-        shadowColor: primaryColor.withOpacity(0.1),
+        shadowColor: themeColor.withOpacity(0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: themeColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
