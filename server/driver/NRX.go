@@ -38,7 +38,7 @@ func (device *nrx) loadLANDetails(name string) bool {
 func (device *nrx) loadCommands() bool {
 	inst := readCSV(nrxInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read CSV")
+		logger.Log.Error("Unable to read CSV")
 		return false
 	}
 	device.commands = inst
@@ -70,14 +70,14 @@ func (device *nrx) communicate(cmds []utils.Command, port string, connect bool) 
 	if connect {
 		ok := device.connection.Connect(port)
 		if !ok {
-			fmt.Println("Connection timeout")
+			logger.Log.Error("Connection timeout")
 			return nil
 		}
 	} else {
 		if !device.connected {
 			ok := device.connection.Connect(port)
 			if !ok {
-				fmt.Println("Connection timeout")
+				logger.Log.Error("Connection timeout")
 				return nil
 			}
 			device.connected = true
@@ -85,7 +85,7 @@ func (device *nrx) communicate(cmds []utils.Command, port string, connect bool) 
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values

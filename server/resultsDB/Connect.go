@@ -2,8 +2,9 @@ package resultsDB
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
+
+	"prismServer/logger"
 
 	_ "modernc.org/sqlite"
 )
@@ -19,7 +20,7 @@ func Connect(path string) bool {
 	}
 	db, err = sql.Open("sqlite", path)
 	if err != nil {
-		fmt.Println("Unable to connect to Results database", err.Error())
+		logger.Log.Error("Unable to connect to Results database", "error", err)
 		return false
 	}
 	db.SetMaxOpenConns(1)
@@ -41,7 +42,7 @@ func checkIfDatabaseExists(path string) bool {
 func createSchema(db *sql.DB) bool {
 	_, err := db.Exec(createQuery)
 	if err != nil {
-		fmt.Println("Unable to create schema", err.Error())
+		logger.Log.Error("Unable to create schema", "error", err)
 		return false
 	}
 	return true

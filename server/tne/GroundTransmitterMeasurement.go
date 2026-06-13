@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/reports"
 	"prismServer/utils"
 	"strconv"
@@ -132,6 +133,7 @@ func (gtm *GroundTransmitterMeasurement) notify(msg string, completed bool) {
 }
 
 func (gtm *GroundTransmitterMeasurement) fail(msg string) {
+	logger.Log.Error("Ground Transmitter Measurement Error", "error", msg)
 	gtm.statusMonitor <- RTStatus{
 		Completed: true,
 		Success:   false,
@@ -320,6 +322,7 @@ func (gtm *GroundTransmitterMeasurement) powerMeasurement() error {
 	gtm.result.PowerMeasured = power
 	gtm.result.PowerDeviation = -power
 
+	logger.Log.Info("GTx Power Measurement Point", "measuredPower", power, "deviation", -power)
 	gtm.publishResult()
 	gtm.notify("Power Measurement Completed", false)
 	return nil
@@ -363,6 +366,7 @@ func (gtm *GroundTransmitterMeasurement) frequencyMeasurement() error {
 	gtm.result.FreqMeasuredMHz = frequency / 1e6
 	gtm.result.FreqDeviationkHz = deviation / 1e3
 
+	logger.Log.Info("GTx Frequency Measurement Point", "measuredFreq", frequency, "deviation", deviation)
 	gtm.publishResult()
 	gtm.notify("Frequency Measurement Completed", false)
 	return nil
@@ -433,6 +437,7 @@ func (gtm *GroundTransmitterMeasurement) spuriousMeasurement(inBand bool) error 
 		currentOffset := spuriousFreq - gtm.intermediateFrequency
 		currentPowerOffset := spuriousVal - powerOut
 
+		logger.Log.Info("GTx Spurious Measurement Point", "spurType", spurType, "freqOffset", currentOffset, "powerOffset", currentPowerOffset)
 		gtm.addReportRow("Spurious "+spurType, header, []string{
 			spurType,
 			fmt.Sprintf("%.6f", spuriousFreq/1e6),
@@ -523,6 +528,7 @@ func (gtm *GroundTransmitterMeasurement) harmonicsMeasurement() error {
 			fmt.Sprintf("%.2f", noiseFloor),
 		})
 
+		logger.Log.Info("GTx Harmonics Measurement Point", "harmonicFreq", harmonicFreq, "power", powerVal, "noiseFloor", noiseFloor)
 		gtm.result.HarmonicsFreqMHz = append(gtm.result.HarmonicsFreqMHz, harmonicFreq/1e6)
 		gtm.result.HarmonicsMeasureddBm = append(gtm.result.HarmonicsMeasureddBm, powerVal)
 		gtm.result.HarmonicsPresent = append(gtm.result.HarmonicsPresent, isPresent)
@@ -589,6 +595,7 @@ func (gtm *GroundTransmitterMeasurement) modIndexMeasurement() error {
 	gtm.result.ModIndexDeviation = (devL + devR) / 2
 	gtm.result.ModIndexMeasurementCompleted = true
 
+	logger.Log.Info("GTx Mod Index Measurement Point", "measuredMI", (modL+modR)/2, "deviation", (devL+devR)/2)
 	gtm.captureSpectrum("Phase Modulation Measurement")
 	gtm.gtx.SetIdlePatternOff()
 	gtm.publishResult()
@@ -638,6 +645,7 @@ func (gtm *GroundTransmitterMeasurement) freqDeviationMeasurement() error {
 	gtm.result.FrequencyDeviationDeviation = dev
 	gtm.result.FrequencyDeviationMeasurementCompleted = true
 
+	logger.Log.Info("GTx Freq Deviation Measurement Point", "measuredDev", freqDev, "deviation", dev)
 	resp = gtm.sa.WaitForSweeps(2)
 	if err := gtm.check(resp, "SA: Captrue Spectrum Timeout"); err != nil {
 		return err
@@ -705,12 +713,14 @@ func (gtm *GroundTransmitterMeasurement) phaseNoiseMeasurement() error {
 	gtm.result.PhaseNoiseAt100Khz, _ = strconv.ParseFloat(results[2], 64)
 	gtm.result.PhaseNoiseAt1Mhz, _ = strconv.ParseFloat(results[3], 64)
 
+	logger.Log.Info("GTx Phase Noise Measurement Point", "1kHz", results[0], "10kHz", results[1], "100kHz", results[2], "1MHz", results[3])
 	gtm.publishResult()
 	gtm.notify("Completed Measurement for phaseNoise", false)
 	return nil
 }
 
 func (gtm *GroundTransmitterMeasurement) StartMeasurement() {
+	logger.Log.Info("Starting Ground Transmitter Measurement", "deviceProfile", gtm.deviceProfile, "component", gtm.component)
 	defer gtm.stopMeasurement()
 
 	stages := []func() error{
@@ -774,6 +784,7 @@ func (gtm *GroundTransmitterMeasurement) StartMeasurement() {
 		return
 	}
 
+	logger.Log.Info("Completed Ground Transmitter Measurement", "success", true)
 	gtm.notify("Report Saved", true)
 	close(gtm.resultMonitor)
 	close(gtm.statusMonitor)

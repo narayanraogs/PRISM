@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"prismServer/logger"
 )
 
 type Chart struct {
@@ -117,7 +119,7 @@ func (c *Chart) Save(fileName string) bool {
 	cmd := exec.Command("gnuplot", gnuPlotFile)
 	val, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("Error when executing gnuplot", string(val))
+		logger.Log.Error("Error when executing gnuplot", "output", string(val), "error", err)
 	}
 
 	return true

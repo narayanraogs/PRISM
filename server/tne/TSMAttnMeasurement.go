@@ -5,6 +5,7 @@ import (
 	"os"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/utils"
 	"strconv"
 	"strings"
@@ -47,6 +48,7 @@ func (tsm *TSMAttnMeasurement) finish(msg string, success bool) {
 }
 
 func (tsm *TSMAttnMeasurement) setError(msg string) {
+	logger.Log.Error("TSM Attenuation Measurement Error", "error", msg)
 	tsm.finish(msg, false)
 }
 
@@ -122,6 +124,7 @@ func (tsm *TSMAttnMeasurement) loadDetails() bool {
 }
 
 func (tsm *TSMAttnMeasurement) StartMeasurement() {
+	logger.Log.Info("Starting TSM Attenuation Measurement", "rxName", tsm.rxName, "frequency", tsm.frequency, "maxPower", tsm.maxPower, "minPower", tsm.minPower)
 	tsm.notify("TSM Attenuation Measurement Started")
 
 	if !tsm.check(tsm.sa.SetAlignmentOff(), "SA: alignment off") {
@@ -241,6 +244,7 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 			PlotDeviation: true,
 		}
 		measure.AddData(slNo, attn, actualAttn, diff)
+		logger.Log.Info("TSM Attn Measurement Point", "setAttn", attn, "measuredAttn", actualAttn, "deviation", diff)
 		tsm.statusMonitor <- measure
 		tsm.currentStatus = append(tsm.currentStatus, []string{strconv.Itoa(slNo), fmt.Sprintf("%.3f", attn), fmt.Sprintf("%.3f", actualAttn), fmt.Sprintf("%.3f", diff)})
 		time.Sleep(200 * time.Millisecond)
@@ -248,6 +252,7 @@ func (tsm *TSMAttnMeasurement) StartMeasurement() {
 
 	tsm.notify("Saving Results")
 	tsm.saveAndCalculate(fixedPower)
+	logger.Log.Info("Completed TSM Attenuation Measurement", "success", true)
 	tsm.finish("Measurement Completed", true)
 }
 
@@ -294,7 +299,7 @@ func (tsm *TSMAttnMeasurement) saveAndCalculate(fixedPad float64) {
 	for _, rx := range tsm.linkedRxs {
 		path := fmt.Sprintf("%s/.resources/tsm-%s.csv", utils.Config.BaseFolder, rx)
 		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
-			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
+			logger.Log.Error("Failed to write TSM Attn CSV", "rx", rx, "error", err)
 		}
 	}
 }

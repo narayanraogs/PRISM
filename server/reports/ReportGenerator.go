@@ -1,12 +1,13 @@
 package reports
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"prismServer/utils"
 	"strings"
+
+	"prismServer/logger"
 )
 
 func GenerateResult(report Report, resultApplicable bool, remarkApplicable bool, tmApplicable bool,
@@ -52,8 +53,7 @@ func compile(typstname string, pdfname string) error {
 	command := exec.Command(cmd, options...)
 	log, err := command.CombinedOutput()
 	if err != nil {
-		fmt.Println(err.Error())
-		fmt.Println(log)
+		logger.Log.Error("Failed to compile typst report", "error", err, "log", string(log))
 		return err
 	}
 	return nil

@@ -2,6 +2,7 @@ package utilities
 
 import (
 	"prismServer/driver"
+	"prismServer/logger"
 	"strings"
 	"time"
 )
@@ -53,19 +54,21 @@ func (info *saStability) addMonitor(mode string, desc string, center float64, sp
 	info.spans = append(info.spans, tbc)
 }
 
-func startSAStability(saName string, info *saStability, dataChannel chan StabilityUpdate) {
+func startSAStability(id int64, saName string, info *saStability, dataChannel chan StabilityUpdate) {
+	logger.Log.Info("Starting SA Stability Measurement", "stabilityId", id, "saName", saName)
 	var sa driver.SA
 	ok := sa.LoadDevice(saName)
 	if !ok {
+		logger.Log.Error("Failed to load SA device for stability", "stabilityId", id, "saName", saName)
 		return
 	}
 	response := sa.SystemPreset()
 	if !response.Success {
-		//todo: add an empty point
+		logger.Log.Error("SA Stability Setup Error", "stabilityId", id, "step", "Preset", "error", response.ErrorMessage)
 	}
 	response = sa.SetAlignmentOff()
 	if !response.Success {
-		//todo: add an empty point
+		logger.Log.Error("SA Stability Setup Error", "stabilityId", id, "step", "Alignment Off", "error", response.ErrorMessage)
 	}
 
 	for i, span := range info.spans {
@@ -76,6 +79,7 @@ func startSAStability(saName string, info *saStability, dataChannel chan Stabili
 		}
 	}
 
+	pointsMeasured := 0
 	for !info.stop {
 		for _, span := range info.spans {
 			sa.SetSpectrum(span.centerFrequency, span.span, span.rbw, span.vbw)
@@ -83,22 +87,37 @@ func startSAStability(saName string, info *saStability, dataChannel chan Stabili
 			sa.PeakSearch(false, 1)
 			if span.frequencyPresent {
 				response = sa.GetFrequencyInCounterMode(1)
+				if !response.Success {
+					logger.Log.Error("SA Stability Measurement Error", "stabilityId", id, "parameter", "Frequency", "error", response.ErrorMessage)
+					continue
+				}
 				frequency := response.Result["Frequency"].Value
 				dataChannel <- StabilityUpdate{
 					Description: span.frequencyDescription,
 					Value:       frequency,
 					Timestamp:   time.Now(),
 				}
+				pointsMeasured++
 			}
 			if span.powerPresent {
 				response = sa.GetMaxMarkerValue()
+				if !response.Success {
+					logger.Log.Error("SA Stability Measurement Error", "stabilityId", id, "parameter", "Power", "error", response.ErrorMessage)
+					continue
+				}
 				power := response.Result["MarkerY"].Value
 				dataChannel <- StabilityUpdate{
 					Description: span.powerDescription,
 					Value:       power,
 					Timestamp:   time.Now(),
 				}
+				pointsMeasured++
 			}
 		}
+
+		if pointsMeasured > 0 && pointsMeasured%1000 == 0 {
+			logger.Log.Info("SA Stability Heartbeat", "stabilityId", id, "pointsMeasured", pointsMeasured)
+		}
 	}
+	logger.Log.Info("Completed SA Stability Measurement", "stabilityId", id, "totalPointsMeasured", pointsMeasured)
 }

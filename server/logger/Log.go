@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -20,15 +21,16 @@ func InitializeLog(path string) {
 		fmt.Println("Failed to open log file", err.Error())
 		return
 	}
-	Log = slog.New(slog.NewTextHandler(logFile, nil))
-	fmt.Println("New Log Started")
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	Log = slog.New(slog.NewTextHandler(multiWriter, nil))
+	Log.Info("New Log Started", "file", fileName)
 }
 
 func CloseLog() {
+	Log.Info("Closing Log File")
 	err := logFile.Close()
 	if err != nil {
-		fmt.Println("Unable to close Log file")
+		Log.Error("Unable to close Log file", "error", err)
 		return
 	}
-	fmt.Println("Log File Closed")
 }

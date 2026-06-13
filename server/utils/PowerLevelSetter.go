@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
+
+	"prismServer/logger"
 )
 
 type attenuationEntry struct {
@@ -45,7 +46,7 @@ func (t *AttenuationTable) GetFixedPadValue() float64 {
 func (t *AttenuationTable) GetValueToBeSet(required float64) (float64, bool) {
 	fixedPadRequired := false
 	if len(t.values) == 0 {
-		fmt.Println("error when getting required value for", required)
+		logger.Log.Error("error when getting required value", "required", required)
 		return 0.0, fixedPadRequired
 	}
 	if t.fixedPadApplicable {
@@ -58,20 +59,20 @@ func (t *AttenuationTable) GetValueToBeSet(required float64) (float64, bool) {
 		return t.values[i].achievedValue >= required
 	})
 	if i == len(t.values) {
-		fmt.Println("Required Attn:", required, "to be set", t.values[i-1].setValue)
+		logger.Log.Debug("Required Attn", "required", required, "toBeSet", t.values[i-1].setValue)
 		return t.values[i-1].setValue, fixedPadRequired
 	}
 	if i == 0 {
-		fmt.Println("Required Attn:", required, "to be set", t.values[0].setValue)
+		logger.Log.Debug("Required Attn", "required", required, "toBeSet", t.values[0].setValue)
 		return t.values[0].setValue, fixedPadRequired
 	}
 	val1 := math.Abs(t.values[i-1].achievedValue - required)
 	val2 := math.Abs(t.values[i].achievedValue - required)
 	if val1 < val2 {
-		fmt.Println("Required Attn:", required, "to be set", t.values[i-1].setValue)
+		logger.Log.Debug("Required Attn", "required", required, "toBeSet", t.values[i-1].setValue)
 		return t.values[i-1].setValue, fixedPadRequired
 	}
-	fmt.Println("Required Attn:", required, "to be set", t.values[i].setValue)
+	logger.Log.Debug("Required Attn", "required", required, "toBeSet", t.values[i].setValue)
 	return t.values[i].setValue, fixedPadRequired
 }
 

@@ -39,7 +39,7 @@ func (device *dp) loadLANDetails(name string) bool {
 func (device *dp) loadCommands() bool {
 	inst := readCSV(dpInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read Instructions CSV")
+		logger.Log.Error("Unable to read Instructions CSV")
 		return false
 	}
 	device.commands = inst
@@ -211,7 +211,6 @@ func (device *dp) getCommandPacket(cmd utils.Command) []byte {
 	}
 	checksum := computeChecksum(packet)
 	packet = append(packet, checksum...)
-	fmt.Printf("% 02X\n", packet)
 	return packet
 }
 func computeChecksum(packet []byte) []byte {
@@ -254,12 +253,12 @@ func (device *dp) getCommands(mnemonics []string, arguments []string, replace []
 func (device *dp) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
-		fmt.Println("Connection timeout")
+		logger.Log.Error("Connection timeout")
 		return nil
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values
@@ -276,93 +275,93 @@ func (device *dp) checkConnection() utils.CommandResponse {
 //----------------------Functions not implemented for DataPattern---------------------
 
 func (device *dp) setFrequencyDeviationTC(component string, deviation float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 func (device *dp) setFrequencyDeviationTone(component string, deviation float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 func (device *dp) setModIndexTC(component string, modIndex float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setModIndexTone(component string, modIndex float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 func (device *dp) setRangingToneFrequency(frequency float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setOnlyTC(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setOnlyRanging(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setTCAndRanging(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setSweepRate(component string, sweepRate float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setSweepStep(component string, sweepStep float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) triggerSweep(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) sweepHold(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) sweepContinuous(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) enableDoppler(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) startSweep(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 func (device *dp) stopSweep(component string) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setSweepRange(component string, sweepRange float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setPower(component string, power float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 
 func (device *dp) setChipRate(component string, chipRate float64) utils.CommandResponse {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return getSuccessResponse()
 }
 func (device *dp) setDopplerCompensationEnable() utils.CommandResponse {
@@ -401,16 +400,16 @@ func (device *dp) setDopplerCompensationTable(timeOffset int, frequencies []int,
 }
 
 func (device *dp) getValue(packet []byte, command string) int {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return -1
 }
 
 func (device *dp) getReadPacket(component utils.Component) []byte {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return nil
 }
 
 func (device *dp) getToggleIdlePatternPacket() []byte {
-	fmt.Println("Not implemented for DataPattern")
+	logger.Log.Error("Not implemented for DataPattern")
 	return nil
 }

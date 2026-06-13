@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+
+	"prismServer/logger"
 )
 
 func GetAllPpmParameters() []string {
@@ -274,12 +276,12 @@ func SetSelectedPPMParameter(parameters []string) {
 
 	data, err := json.MarshalIndent(SelectedParameters, "", " ")
 	if err != nil {
-		fmt.Println("Unable to create default parameters")
+		logger.Log.Error("Unable to create default parameters", "error", err)
 		return
 	}
 	err = os.WriteFile(filename, data, 0666)
 	if err != nil {
-		fmt.Println("Unable to create default parameters")
+		logger.Log.Error("Unable to create default parameters", "error", err)
 		return
 	}
 
@@ -287,7 +289,7 @@ func SetSelectedPPMParameter(parameters []string) {
 }
 
 func SetSelectedVSAParameter(parameters []string) {
-	fmt.Println(parameters)
+	logger.Log.Debug("SetSelectedVSAParameter called", "parameters", parameters)
 	var vsa VSAParameters
 	if slices.Contains(parameters, "AverageTxPowerVSA") {
 		vsa.AverageTxPower = true
@@ -367,12 +369,12 @@ func SetSelectedVSAParameter(parameters []string) {
 	filename := filepath.Join(Config.BaseFolder, ".resources/pulseParametersSelected.json")
 	data, err := json.MarshalIndent(SelectedParameters, "", " ")
 	if err != nil {
-		fmt.Println("Unable to create default parameters")
+		logger.Log.Error("Unable to create default parameters", "error", err)
 		return
 	}
 	err = os.WriteFile(filename, data, 0666)
 	if err != nil {
-		fmt.Println("Unable to create default parameters")
+		logger.Log.Error("Unable to create default parameters", "error", err)
 		return
 	}
 

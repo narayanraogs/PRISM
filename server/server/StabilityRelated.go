@@ -95,8 +95,8 @@ func stability(c *gin.Context) {
 		}
 	}()
 
-	go stab.StartStability()
 	id, _ := resultsDB.StartNewStability()
+	go stab.StartStability(id)
 	resp.Updates = make([]utilities.StabilityUpdate, 0)
 	resp.OK = true
 	resp.Message = "Success"

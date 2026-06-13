@@ -38,7 +38,7 @@ func (device *indTSM) loadLANDetails(name string) bool {
 func (device *indTSM) loadCommands() bool {
 	inst := readCSV(indTSMInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read CSV")
+		logger.Log.Error("Unable to read CSV")
 		return false
 	}
 	device.commands = inst
@@ -65,12 +65,12 @@ func (device *indTSM) getCommands(mnemonics []string, arguments []string, replac
 func (device *indTSM) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
-		fmt.Println("Connection timeout")
+		logger.Log.Error("Connection timeout")
 		return nil
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values

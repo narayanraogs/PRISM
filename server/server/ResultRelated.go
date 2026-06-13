@@ -99,4 +99,3 @@ func getReportsData(c *gin.Context) {
 	resp.Message = "Success"
 	c.JSON(http.StatusOK, resp)
 }
-

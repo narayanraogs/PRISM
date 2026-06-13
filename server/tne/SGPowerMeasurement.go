@@ -5,6 +5,7 @@ import (
 	"os"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/utils"
 	"strconv"
 	"strings"
@@ -44,6 +45,7 @@ func (sg *SGPowerMeasurement) finish(msg string, success bool) {
 }
 
 func (sg *SGPowerMeasurement) setError(msg string) {
+	logger.Log.Error("SG Power Measurement Error", "error", msg)
 	sg.finish(msg, false)
 }
 
@@ -115,6 +117,7 @@ func (sg *SGPowerMeasurement) loadDetails() bool {
 }
 
 func (sg *SGPowerMeasurement) StartMeasurement() {
+	logger.Log.Info("Starting SG Power Measurement", "rxName", sg.rxName, "frequency", sg.frequency, "maxPower", sg.maxPower, "minPower", sg.minPower)
 	sg.notify("SG Power Measurement Started")
 
 	if !sg.check(sg.sa.SetAlignmentOff(), "SA: alignment off") {
@@ -187,6 +190,7 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 			PlotDeviation: true,
 		}
 		measure.AddData(slNo, power, measuredPower, diff)
+		logger.Log.Info("SG Power Measurement Point", "setPower", power, "measuredPower", measuredPower, "deviation", diff)
 		sg.statusMonitor <- measure
 
 		sg.currentStatus = append(sg.currentStatus, []string{
@@ -199,6 +203,7 @@ func (sg *SGPowerMeasurement) StartMeasurement() {
 
 	sg.notify("Saving Results")
 	sg.saveResults()
+	logger.Log.Info("Completed SG Power Measurement", "success", true)
 	sg.finish("Measurement Completed", true)
 }
 
@@ -239,7 +244,7 @@ func (sg *SGPowerMeasurement) saveResults() {
 	for _, rx := range sg.linkedRxs {
 		path := fmt.Sprintf("%s/.resources/sg-%s.csv", utils.Config.BaseFolder, rx)
 		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
-			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
+			logger.Log.Error("Failed to write SG Power CSV", "rx", rx, "error", err)
 		}
 	}
 }

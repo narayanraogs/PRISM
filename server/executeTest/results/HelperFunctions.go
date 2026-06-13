@@ -74,9 +74,8 @@ func (d *details) getTRMDetails() string {
 	lines := strings.Split(d.filedata, "\n")
 	for _, line := range lines {
 		temp := strings.Split(line, ",")
-			return strings.TrimSpace(temp[0])
-		}
-	
+		return strings.TrimSpace(temp[0])
+	}
+
 	return ""
 }
-

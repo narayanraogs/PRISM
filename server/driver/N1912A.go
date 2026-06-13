@@ -38,7 +38,7 @@ func (device *n1912a) loadLANDetails(name string) bool {
 func (device *n1912a) loadCommands() bool {
 	inst := readCSV(n1912aInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read CSV")
+		logger.Log.Error("Unable to read CSV")
 		return false
 	}
 	device.commands = inst
@@ -70,14 +70,14 @@ func (device *n1912a) communicate(cmds []utils.Command, port string, connect boo
 	if connect {
 		ok := device.connection.Connect(port)
 		if !ok {
-			fmt.Println("Connection timeout")
+			logger.Log.Error("Connection timeout")
 			return nil
 		}
 	} else {
 		if !device.connected {
 			ok := device.connection.Connect(port)
 			if !ok {
-				fmt.Println("Connection timeout")
+				logger.Log.Error("Connection timeout")
 				return nil
 			}
 			device.connected = true
@@ -85,7 +85,7 @@ func (device *n1912a) communicate(cmds []utils.Command, port string, connect boo
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values
@@ -342,7 +342,6 @@ func (device *n1912a) setPulseParameters(pulseWidth float64, pulsePeriod float64
 		mnemonics = append(mnemonics, "setPulseMeasurementMode")
 		index = 1
 	}
-	fmt.Println("YDiv is ", yDiv)
 	mnemonics = append(mnemonics, "setTraceScreen", "setVBWOff",
 		"setGate1Start", "setGate1Length", "setXStart", "setXScalePerDivision",
 		"setYMax", "setYScalePerDivision", "setTriggerSource", "setTriggerLevel",
@@ -368,9 +367,6 @@ func (device *n1912a) setPulseParameters(pulseWidth float64, pulsePeriod float64
 	arguments[9+index] = fmt.Sprintf("%.2f", triggerLevel)
 
 	var cmds = device.getCommands(mnemonics, arguments, replacements)
-	for _, cmd := range cmds {
-		fmt.Printf("%+v\n", cmd)
-	}
 	retVal := device.communicate(cmds, "Control", true)
 	if retVal == nil {
 		return getErrorResponse("Cannot Communicate with N1912A")

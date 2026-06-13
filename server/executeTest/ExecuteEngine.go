@@ -3,6 +3,7 @@ package executeTest
 import (
 	"context"
 	"fmt"
+	"prismServer/logger"
 	"prismServer/reports"
 	"prismServer/tm"
 	"prismServer/utils"
@@ -18,6 +19,7 @@ type Engine struct {
 }
 
 func NewTestExecutor(init Initializer, params map[string]interface{}, input chan string, updateChannel chan interface{}) *Engine {
+	logger.Log.Info("Initializing Test Engine", "testName", init.TestName, "testCategory", init.TestCategory, "configName", init.ConfigName, "parameters", params)
 	var e Engine
 	var t func() Tester
 	var ok bool
@@ -65,35 +67,41 @@ func (e *Engine) Execute(ctx context.Context) error {
 	defer close(e.context.UpdateChannel)
 	defer e.executeRollbacks()
 
-	fmt.Println("DBValidate")
+	logger.Log.Info("Test Phase Started: DBValidate", "testName", e.context.Progress.TestName)
 	err := e.test.DBValidate()
 	if err != nil {
 		e.context.Progress.DBValidationStatus = "Failed"
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
+		logger.Log.Error("Test Phase Failed: DBValidate", "testName", e.context.Progress.TestName, "error", err.Error())
 		return err
 	}
 
 	e.context.Progress.DBValidationStatus = "Success"
 	e.context.UpdateChannel <- *e.context.Progress
+	logger.Log.Info("Test Phase Completed: DBValidate", "testName", e.context.Progress.TestName)
 
-	fmt.Println("InstrumentConnection")
+	logger.Log.Info("Test Phase Started: InstrumentConnection", "testName", e.context.Progress.TestName)
 	err = e.checkInstrumentConnection(ctx)
 	if err != nil {
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
+		logger.Log.Error("Test Phase Failed: InstrumentConnection", "testName", e.context.Progress.TestName, "error", err.Error())
 		return err
 	}
+	logger.Log.Info("Test Phase Completed: InstrumentConnection", "testName", e.context.Progress.TestName)
 
-	fmt.Println("Pre-Test")
+	logger.Log.Info("Test Phase Started: PreTestTM", "testName", e.context.Progress.TestName)
 	err = e.getPreTestTM(ctx)
 	if err != nil {
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
+		logger.Log.Error("Test Phase Failed: PreTestTM", "testName", e.context.Progress.TestName, "error", err.Error())
 		return err
 	}
+	logger.Log.Info("Test Phase Completed: PreTestTM", "testName", e.context.Progress.TestName)
 
-	fmt.Println("Measurement")
+	logger.Log.Info("Test Phase Started: Measurement", "testName", e.context.Progress.TestName)
 	e.context.Progress.CurrentStep = "Measurement"
 	if len(e.context.Progress.MeasurementStatus) == 0 {
 		e.context.Progress.MeasurementStatus = append(e.context.Progress.MeasurementStatus, "InProgress")
@@ -104,14 +112,16 @@ func (e *Engine) Execute(ctx context.Context) error {
 
 	err = e.test.Measure(ctx)
 	if err != nil {
+		logger.Log.Error("Test Phase Failed: Measurement", "testName", e.context.Progress.TestName, "error", err.Error(), "progress", e.context.Progress)
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
-		
-		fmt.Println("Generate Failure Report")
+
+		logger.Log.Info("Test Phase Started: GenerateFailureReport", "testName", e.context.Progress.TestName)
 		results, rErr := e.test.GenerateFailureReport(err)
 		if rErr != nil {
-			fmt.Println("Error during failure report Generation", rErr.Error())
+			logger.Log.Error("Test Phase Failed: GenerateFailureReport", "testName", e.context.Progress.TestName, "error", rErr.Error())
 		} else {
+			logger.Log.Info("Test Phase Completed: GenerateFailureReport", "testName", e.context.Progress.TestName)
 			var sts TestResult
 			sts.Name = make([]string, 0)
 			sts.Result = make([]reports.Result, 0)
@@ -128,22 +138,24 @@ func (e *Engine) Execute(ctx context.Context) error {
 		e.context.AskForConfirmation("Press Continue to Rollback/Go to Next test", 0)
 		return err
 	}
+	logger.Log.Info("Test Phase Completed: Measurement", "testName", e.context.Progress.TestName, "progress", e.context.Progress)
 
-	fmt.Println("Post-Test")
+	logger.Log.Info("Test Phase Started: PostTestTM", "testName", e.context.Progress.TestName)
 	err = e.getPostTestTM(ctx)
 	if err != nil {
-		fmt.Println("Exiting in post test")
+		logger.Log.Error("Test Phase Failed: PostTestTM", "testName", e.context.Progress.TestName, "error", err.Error())
 		e.context.Progress.ErrorMessage = err.Error()
 		e.context.UpdateChannel <- *e.context.Progress
 		return err
 	}
+	logger.Log.Info("Test Phase Completed: PostTestTM", "testName", e.context.Progress.TestName)
 
-	fmt.Println("Generate Report")
+	logger.Log.Info("Test Phase Started: GenerateReport", "testName", e.context.Progress.TestName)
 	results, err := e.test.GenerateReport()
 	if err != nil {
-		fmt.Println("Error during report Generation", err.Error())
+		logger.Log.Error("Test Phase Failed: GenerateReport", "testName", e.context.Progress.TestName, "error", err.Error())
 	} else {
-		fmt.Printf("Generated %d reports for summary\n", len(results))
+		logger.Log.Info("Test Phase Completed: GenerateReport", "testName", e.context.Progress.TestName, "reportsGenerated", len(results))
 		var sts TestResult
 		sts.Name = make([]string, 0)
 		sts.Result = make([]reports.Result, 0)
@@ -157,7 +169,7 @@ func (e *Engine) Execute(ctx context.Context) error {
 		e.context.UpdateChannel <- sts
 	}
 
-	fmt.Println("Completed")
+	logger.Log.Info("Test Lifecycle Completed", "testName", e.context.Progress.TestName)
 	e.context.Progress.CurrentStep = "Completed"
 	e.context.UpdateChannel <- *e.context.Progress
 
@@ -165,10 +177,10 @@ func (e *Engine) Execute(ctx context.Context) error {
 }
 
 func (e *Engine) executeRollbacks() {
-	fmt.Println("Executing rollbacks")
+	logger.Log.Info("Executing Rollbacks", "testName", e.context.Progress.TestName)
 	err := e.test.Rollback()
 	if err != nil {
-		fmt.Println("Error executing rollback steps:", err)
+		logger.Log.Error("Error executing rollback steps", "testName", e.context.Progress.TestName, "error", err.Error())
 	}
 }
 
@@ -220,6 +232,7 @@ TMSubscriptionLoop:
 		index := slices.Index(values, "")
 		param := mnemonics[index]
 
+		logger.Log.Warn("Auto Fetch Failed, requesting manual input", "testName", e.context.Progress.TestName, "parameter", param)
 		e.context.Ui.Prompt = "Auto Fetch failed for " + param + ". Please enter value manually"
 		e.context.Ui.UserConfirmation = false
 		e.context.Ui.UserInput = true

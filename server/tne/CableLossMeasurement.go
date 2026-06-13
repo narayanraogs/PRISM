@@ -6,6 +6,7 @@ import (
 	"math"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/resultsDB"
 	"prismServer/utils"
 	"slices"
@@ -43,6 +44,7 @@ func (clm *CableLossMeasurement) finish(msg string, success bool) {
 }
 
 func (clm *CableLossMeasurement) setError(msg string) {
+	logger.Log.Error("Cable Loss Measurement Error", "error", msg)
 	clm.finish(msg, false)
 }
 
@@ -191,6 +193,7 @@ func (clm *CableLossMeasurement) measureForFrequencies(freqs []string, offset ma
 			return nil, false
 		}
 
+		logger.Log.Info("Cable Loss Measurement Point", "frequency", f, "measuredPower", val)
 		results = append(results, val)
 		clm.sg.SetRFOff()
 	}
@@ -199,6 +202,7 @@ func (clm *CableLossMeasurement) measureForFrequencies(freqs []string, offset ma
 }
 
 func (clm *CableLossMeasurement) MeasurePMReference() {
+	logger.Log.Info("Starting PM Reference Measurement")
 	allFreqs := clm.prepareSession()
 	if len(allFreqs) == 0 {
 		clm.setError("No frequencies found in database")
@@ -222,11 +226,13 @@ func (clm *CableLossMeasurement) MeasurePMReference() {
 	}
 
 	if clm.saveResults(points, "PM_REF", "", 0) {
+		logger.Log.Info("Completed PM Reference Measurement", "success", true)
 		clm.finish("Reference measurement completed", true)
 	}
 }
 
 func (clm *CableLossMeasurement) MeasureCableLoss(cableName, cableLength string) {
+	logger.Log.Info("Starting Cable Loss Measurement", "cableName", cableName, "cableLength", cableLength)
 	allFreqs := clm.prepareSession()
 	if len(allFreqs) == 0 {
 		clm.setError("No frequencies found in database")
@@ -255,6 +261,7 @@ func (clm *CableLossMeasurement) MeasureCableLoss(cableName, cableLength string)
 
 	length, _ := strconv.ParseFloat(cableLength, 64)
 	if clm.saveResults(points, "CABLE", cableName, length) {
+		logger.Log.Info("Completed Cable Loss Measurement", "success", true)
 		clm.finish("Cable measurement completed", true)
 	}
 }

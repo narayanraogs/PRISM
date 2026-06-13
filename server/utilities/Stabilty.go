@@ -120,14 +120,14 @@ func (stab *Stability) GetDataChannel() chan StabilityUpdate {
 	return stab.dataChannel
 }
 
-func (stab *Stability) StartStability() {
+func (stab *Stability) StartStability(id int64) {
 	for name, pm := range stab.pms {
-		go startPMStability(name, pm, stab.dataChannel)
+		go startPMStability(id, name, pm, stab.dataChannel)
 	}
 	for name, sa := range stab.sas {
-		go startSAStability(name, sa, stab.dataChannel)
+		go startSAStability(id, name, sa, stab.dataChannel)
 	}
 	for name, ppm := range stab.ppms {
-		go startPPMStability(name, ppm, stab.dataChannel)
+		go startPPMStability(id, name, ppm, stab.dataChannel)
 	}
 }

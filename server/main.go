@@ -49,29 +49,29 @@ func main() {
 
 	webFS, err := fs.Sub(embeddedFiles, "web")
 	if err != nil {
-		fmt.Println(err)
+		logger.Log.Error("Failed to access embedded web files", "error", err)
 	}
 	router.NoRoute(func(c *gin.Context) {
 		http.FileServer(http.FS(webFS)).ServeHTTP(c.Writer, c.Request)
 	})
 
-	fmt.Printf("Server started on PORT %d\n", *portNo)
+	logger.Log.Info("Server started", "port", *portNo)
 	err = router.Run(fmt.Sprintf(":%d", *portNo))
 	if err != nil {
-		fmt.Println(err)
+		logger.Log.Error("Server encountered an error while running", "error", err)
 	}
 }
 
 func connectToDatabases() {
 	ok := database.Connect(utils.Config.Database.DBPath)
 	if !ok {
-		fmt.Println("Cannot Connect to Database")
+		logger.Log.Error("Cannot Connect to Database", "path", utils.Config.Database.DBPath)
 		os.Exit(0)
 	}
 	resultsDB.Connect(utils.Config.Database.ResultsDBPath)
 	tp, ok := database.GetSelectedTestPhase()
 	if !ok {
-		logger.Log.Info("Unable to get selected Test Phase")
+		logger.Log.Warn("Unable to get selected Test Phase, defaulting to Unknown")
 		tp = "Unknown"
 	}
 	utils.SetTestPhase(tp)
@@ -82,7 +82,7 @@ func createFolders() {
 	directoryName := utils.Config.BaseFolder + "/.resources"
 	err := os.MkdirAll(directoryName, 0755)
 	if err != nil {
-		fmt.Println("Error creating directory", err)
+		logger.Log.Error("Error creating directory", "error", err, "path", directoryName)
 		return
 	}
 }

@@ -53,63 +53,15 @@ class _MainLayoutState extends State<MainLayout> {
                       onDestinationSelected: widget.onDestinationSelected,
                     ),
                     Expanded(
-                      child: Consumer<ServerService>(
-                        builder: (context, server, child) {
-                          final satName = server.status.satelliteName;
-                          
-                          Widget content = Container(
-                            color: Theme.of(context).colorScheme.background,
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(24),
-                                bottomLeft: Radius.circular(24),
-                              ),
-                              child: widget.child,
-                            ),
-                          );
-
-                          if (satName.isEmpty) return content;
-
-                          return Stack(
-                            children: [
-                              content,
-                              Positioned(
-                                top: 0,
-                                right: 32,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.deepOrange.shade700,
-                                    borderRadius: const BorderRadius.only(
-                                      bottomLeft: Radius.circular(8),
-                                      bottomRight: Radius.circular(8),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    satName.toUpperCase(),
-                                    style: const TextStyle(
-                                      fontFamily: 'Roboto Mono',
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                      letterSpacing: 1.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      child: Container(
+                        color: Theme.of(context).colorScheme.background,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(24),
+                            bottomLeft: Radius.circular(24),
+                          ),
+                          child: widget.child,
+                        ),
                       ),
                     ),
                   ],

@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"fmt"
 	"math"
 	"prismServer/database"
 	"prismServer/utils"
@@ -231,7 +230,6 @@ func (vsa *VSA) MeasureBW(centerFreq float64, firstMarker string, secondMarker s
 	}
 	vsa.SA.WaitForSweeps(1)
 	bandwidth := math.Abs(freq1 - freq2)
-	fmt.Println("Bandwidth is...", bandwidth)
 
 	ret := getSuccessResponse()
 	ret.Result["Bandwidth"] = utils.CommandResult{

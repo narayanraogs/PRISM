@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"fmt"
 	"math"
 	"prismServer/database"
 	"prismServer/utils"
@@ -642,7 +641,6 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	peaks = append(peaks, resp.Result["MarkerY"].Value)
 	frequencies = append(frequencies, resp.Result["MarkerX"].Value)
 	repeat := true
-	fmt.Println("Center Peak",peaks)
 	for repeat == true {
 		resp = sa.SetMarkerNextPeak(markerNo)
 		if !resp.Success {
@@ -654,7 +652,6 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 		}
 		if resp.Result["MarkerX"].Value == frequencies[len(frequencies)-1] {
 			repeat = false
-			fmt.Println("returning Peaks",peaks)
 			continue
 		}
 		peaks = append(peaks, resp.Result["MarkerY"].Value)

@@ -37,7 +37,7 @@ func (device *ml2488b) loadLANDetails(name string) bool {
 func (device *ml2488b) loadCommands() bool {
 	inst := readCSV(ml2488bInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read CSV")
+		logger.Log.Error("Unable to read CSV")
 		return false
 	}
 	device.commands = inst
@@ -69,14 +69,14 @@ func (device *ml2488b) communicate(cmds []utils.Command, port string, connect bo
 	if connect {
 		ok := device.connection.Connect(port)
 		if !ok {
-			fmt.Println("Connection timeout")
+			logger.Log.Error("Connection timeout")
 			return nil
 		}
 	} else {
 		if !device.connected {
 			ok := device.connection.Connect(port)
 			if !ok {
-				fmt.Println("Connection timeout")
+				logger.Log.Error("Connection timeout")
 				return nil
 			}
 			device.connected = true
@@ -84,7 +84,7 @@ func (device *ml2488b) communicate(cmds []utils.Command, port string, connect bo
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values
@@ -335,7 +335,6 @@ func (device *ml2488b) getPeakPower(channel string, connect bool) utils.CommandR
 		ResultType: "Value",
 		Value:      fValue[7],
 	}
-	fmt.Println(response.Result["PulsePeakPower"].Value)
 	return response
 
 }
@@ -406,7 +405,6 @@ func (device *ml2488b) getRiseTime(channel string, connect bool) utils.CommandRe
 		ResultType: "Value",
 		Value:      fValue[0],
 	}
-	fmt.Println("RiseTime...", response.Result["RiseTime"].Value)
 	return response
 }
 
@@ -437,7 +435,6 @@ func (device *ml2488b) getFallTime(channel string, connect bool) utils.CommandRe
 		ResultType: "Value",
 		Value:      fValue[0],
 	}
-	fmt.Println("FallTime...", response.Result["FallTime"].Value)
 	return response
 }
 
@@ -540,7 +537,6 @@ func (device *ml2488b) getDutyCycle(channel string, connect bool) utils.CommandR
 		ResultType: "Value",
 		Value:      dutyCycle,
 	}
-	fmt.Println("DutyCycle...", response.Result["DutyCycle"].Value)
 	return response
 }
 

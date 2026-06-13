@@ -3,6 +3,7 @@ package executeTest
 import (
 	"context"
 	"fmt"
+	"prismServer/logger"
 	"prismServer/utils"
 	"strings"
 	"time"
@@ -47,6 +48,8 @@ func NewOrchestrator(configs, testTypes, testCategories, remarks []string, extra
 	o.InputChannel = input
 	o.ctx, o.cancel = context.WithCancel(context.Background())
 
+	logger.Log.Info("Orchestrator Sequence Created", "totalTests", len(configs), "testTypes", testTypes)
+
 	o.Progress.TestStatus = make([]TestStatus, 0)
 	for i := 0; i < len(configs); i++ {
 		var t TestStatus
@@ -69,9 +72,11 @@ func (o *Orchestrator) Abort() {
 func (o *Orchestrator) RunTests() {
 	defer close(o.CommChannel)
 
+	logger.Log.Info("Orchestrator Sequence Started", "totalTests", len(o.TestTypes))
 	var details map[string]utils.CommandResponse
 
 	for i := range o.TestTypes {
+		logger.Log.Info("Starting Orchestrator Test", "index", i, "testType", o.TestTypes[i], "config", o.ConfigNames[i])
 		o.Progress.TestStatus[i].TestStatus = "InProgress"
 		o.CommChannel <- o.Progress
 
@@ -102,6 +107,7 @@ func (o *Orchestrator) RunTests() {
 
 		engine := NewTestExecutor(init, o.Parameters, o.InputChannel, updateChannel)
 		if engine == nil {
+			logger.Log.Error("Orchestrator Failed to Initialize Test Engine", "index", i, "testType", o.TestTypes[i])
 			o.Progress.TestStatus[i].TestStatus = "Failure"
 			o.CommChannel <- o.Progress
 			continue
@@ -127,8 +133,10 @@ func (o *Orchestrator) RunTests() {
 		err := engine.Execute(o.ctx)
 		time.Sleep(1 * time.Second)
 		if err != nil {
+			logger.Log.Error("Orchestrator Test Failed", "index", i, "testType", o.TestTypes[i], "error", err.Error())
 			o.Progress.TestStatus[i].TestStatus = "Failure"
 		} else {
+			logger.Log.Info("Orchestrator Test Completed Successfully", "index", i, "testType", o.TestTypes[i])
 			o.Progress.TestStatus[i].TestStatus = "Success"
 			if i == 0 {
 				details = engine.getRollbackDetails()
@@ -137,6 +145,7 @@ func (o *Orchestrator) RunTests() {
 		o.CommChannel <- o.Progress
 
 		if o.ctx.Err() != nil {
+			logger.Log.Warn("Orchestrator Sequence Aborted by User")
 			for j := i + 1; j < len(o.TestTypes); j++ {
 				o.Progress.TestStatus[j].TestStatus = "Aborted"
 			}

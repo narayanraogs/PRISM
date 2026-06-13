@@ -74,6 +74,7 @@ func (lan *instrument) Connect(port string) bool {
 	managed, ok := connections.connections[connString]
 	connections.mutex.RUnlock()
 	if !ok {
+		logger.Log.Debug("Driver Connecting", "address", connString)
 		conn, err := d.Dial("tcp", connString)
 		if err != nil {
 			logger.Log.Error(err.Error())
@@ -129,6 +130,7 @@ func (lan *instrument) write(value string) bool {
 	if err != nil {
 		return false
 	}
+	logger.Log.Debug("Driver TX", "IP", lan.IPAddress, "command", strings.TrimSpace(value))
 	_, err = lan.conn.connection.Write([]byte(value))
 	if err != nil {
 		return false
@@ -141,6 +143,7 @@ func (lan *instrument) writeBinary(data []byte) bool {
 	if err != nil {
 		return false
 	}
+	logger.Log.Debug("Driver TX Binary", "IP", lan.IPAddress, "bytes", len(data))
 	_, err = lan.conn.connection.Write(data)
 	if err != nil {
 		return false
@@ -187,6 +190,11 @@ func (lan *instrument) read(binary bool) (string, bool) {
 		return "", false
 	}
 	readValue = strings.TrimSpace(readValue)
+	if binary {
+		logger.Log.Debug("Driver RX Binary", "IP", lan.IPAddress, "bytes", len(tbr))
+	} else {
+		logger.Log.Debug("Driver RX", "IP", lan.IPAddress, "response", readValue)
+	}
 	return readValue, true
 }
 

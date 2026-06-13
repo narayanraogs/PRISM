@@ -5,6 +5,7 @@ import (
 	"os"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/utils"
 	"strconv"
 	"strings"
@@ -45,6 +46,7 @@ func (gtx *GTxAttnMeasurement) finish(msg string, success bool) {
 }
 
 func (gtx *GTxAttnMeasurement) setError(msg string) {
+	logger.Log.Error("GTx Attenuation Measurement Error", "error", msg)
 	gtx.finish(msg, false)
 }
 
@@ -117,6 +119,7 @@ func (gtx *GTxAttnMeasurement) loadDetails() bool {
 }
 
 func (gtx *GTxAttnMeasurement) StartMeasurement() {
+	logger.Log.Info("Starting GTx Attenuation Measurement", "rxName", gtx.rxName, "frequency", gtx.frequency, "maxPower", gtx.maxPower, "minPower", gtx.minPower, "component", gtx.component)
 	gtx.notify("GTx Power Measurement Started")
 
 	if !gtx.check(gtx.sa.SetAlignmentOff(), "SA: alignment off") {
@@ -188,6 +191,7 @@ func (gtx *GTxAttnMeasurement) StartMeasurement() {
 			PlotDeviation: true,
 		}
 		measure.AddData(slNo, power, measuredPower, diff)
+		logger.Log.Info("GTx Attn Measurement Point", "setPower", power, "measuredPower", measuredPower, "deviation", diff)
 		gtx.statusMonitor <- measure
 
 		gtx.currentStatus = append(gtx.currentStatus, []string{
@@ -200,6 +204,7 @@ func (gtx *GTxAttnMeasurement) StartMeasurement() {
 
 	gtx.notify("Saving Results")
 	gtx.saveResults()
+	logger.Log.Info("Completed GTx Attenuation Measurement", "success", true)
 	gtx.finish("Measurement Completed", true)
 }
 
@@ -240,7 +245,7 @@ func (gtx *GTxAttnMeasurement) saveResults() {
 	for _, rx := range gtx.linkedRxs {
 		path := fmt.Sprintf("%s/.resources/gtx-%s.csv", utils.Config.BaseFolder, rx)
 		if err := os.WriteFile(path, []byte(csv.String()), 0644); err != nil {
-			fmt.Printf("Warning: Failed to write CSV for %s: %v\n", rx, err)
+			logger.Log.Error("Failed to write GTx Attenuation CSV", "rx", rx, "error", err)
 		}
 	}
 }

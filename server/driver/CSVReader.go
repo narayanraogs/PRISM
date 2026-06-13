@@ -1,7 +1,7 @@
 package driver
 
 import (
-	"fmt"
+	"prismServer/logger"
 	"prismServer/utils"
 	"slices"
 	"strconv"
@@ -37,7 +37,7 @@ func readComponents(fileData string) map[string]utils.Component {
 			tempSlNo := strings.TrimSpace(values[slNoIndex])
 			slNoInt, err = strconv.Atoi(tempSlNo)
 			if err != nil {
-				fmt.Println(err.Error())
+				logger.Log.Error(err.Error())
 				return nil
 			}
 			comp.SlNo = slNoInt
@@ -52,7 +52,7 @@ func readComponents(fileData string) map[string]utils.Component {
 			tempCode := strings.TrimSpace(values[componentCodeIndex])
 			compCodeInt, err := strconv.ParseInt(tempCode, 16, 64)
 			if err != nil {
-				fmt.Println(tempCode, err.Error())
+				logger.Log.Error("Error: " + err.Error())
 				return nil
 			}
 			comp.ComponentCode = compCodeInt
@@ -103,7 +103,7 @@ func readCSV(fileData string) map[string]utils.Command {
 			tempSlNo := strings.TrimSpace(values[slNoIndex])
 			slNoInt, err = strconv.Atoi(tempSlNo)
 			if err != nil {
-				fmt.Println(err.Error())
+				logger.Log.Error(err.Error())
 				return nil
 			}
 			inst.SlNo = slNoInt
@@ -118,7 +118,7 @@ func readCSV(fileData string) map[string]utils.Command {
 			tempDelay := strings.TrimSpace(values[delayIndex])
 			delay, err := strconv.ParseFloat(tempDelay, 64)
 			if err != nil {
-				fmt.Println(slNoInt, err.Error())
+				logger.Log.Error("Error: " + err.Error())
 				return nil
 			}
 			inst.Delay = delay

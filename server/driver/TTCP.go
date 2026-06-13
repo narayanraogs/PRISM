@@ -43,12 +43,12 @@ func (device *ttcp) loadLANDetails(name string) bool {
 func (device *ttcp) loadCommands() bool {
 	inst := readCSV(ttcpInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read Instructions CSV")
+		logger.Log.Error("Unable to read Instructions CSV")
 		return false
 	}
 	comp := readComponents(ttcpComponents)
 	if comp == nil {
-		fmt.Println("Unable to read Components CSV")
+		logger.Log.Error("Unable to read Components CSV")
 		return false
 	}
 	device.commands = inst
@@ -644,7 +644,6 @@ func (device *ttcp) getDeviceTime() utils.CommandResponse {
 	}
 	readPacket, _ := base64.StdEncoding.DecodeString(retVal[0])
 	tbr := device.getValue(readPacket, cmds[0].Command)
-	fmt.Printf("% 02X\n", readPacket)
 	response := getSuccessResponse()
 	response.Result["Time"] = utils.CommandResult{
 		ResultType: "Integer",
@@ -693,6 +692,7 @@ func (device *ttcp) setIdlePatternOff() utils.CommandResponse {
 	}
 	return device.setModulationOn("IFM-1")
 }
+
 /*
 func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []int, extendedFrequencies []int, times []int) utils.CommandResponse {
 	var mnemonics = make([]string, 0)
@@ -709,7 +709,6 @@ func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []in
 
 	sequence := 0
 	deviceTime := response.Result["Time"].Integer
-	fmt.Println("Time:", deviceTime)
 	requiredTime := deviceTime + timeOffset
 	completeTimes := times
 	completeFrequencies := frequencies
@@ -760,7 +759,6 @@ func (device *ttcp) setDopplerCompensationTable(timeOffset int, frequencies []in
 		}
 		sequence = sequence + 1
 	}
-	fmt.Println("After Upklinking table", time.Now())
 	return getSuccessResponse()
 }*/
 
@@ -986,12 +984,12 @@ func (device *ttcp) getCommands(mnemonics []string, arguments []string, replace 
 func (device *ttcp) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
-		fmt.Println("Connection timeout")
+		logger.Log.Error("Connection timeout")
 		return nil
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values

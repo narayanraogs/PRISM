@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"prismServer/logger"
 	"prismServer/utils"
 	"strconv"
 	"strings"
@@ -43,34 +44,40 @@ func (c *Client) newRequest(ctx context.Context, method, endpoint string, body i
 		}
 		buf = bytes.NewBuffer(b)
 	}
-	fmt.Println(c.BaseURL + endpoint)
+	logger.Log.Info("Procedure Request Sent", "method", method, "endpoint", endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+endpoint, buf)
 	if err != nil {
+		logger.Log.Error("Failed to create HTTP request", "endpoint", endpoint, "error", err)
 		return nil, fmt.Errorf("failed to create http request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
+		logger.Log.Error("Procedure Request Failed", "endpoint", endpoint, "error", err)
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Log.Error("Failed to read procedure response", "endpoint", endpoint, "error", err)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		logger.Log.Error("Procedure Request Failed", "endpoint", endpoint, "status", resp.Status)
 		return nil, fmt.Errorf("http request failed with status %s: %s", resp.Status, string(respBody))
 	}
 
 	var ack response
 	if err := json.Unmarshal(respBody, &ack); err != nil {
+		logger.Log.Error("Failed to unmarshal response", "endpoint", endpoint, "error", err)
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	logger.Log.Info("Procedure Request Completed", "endpoint", endpoint, "status", resp.StatusCode)
 	return &ack, nil
 }
 
@@ -155,9 +162,12 @@ func (c *Client) pollForStatus(ctx context.Context, name string, resultChan chan
 		case <-ticker.C:
 			ack, err := c.newRequest(ctx, http.MethodPost, "/getExeStatus", reqBody)
 			if err != nil {
+				logger.Log.Error("Polling procedure status failed", "procedure", name, "error", err)
 				resultChan <- ProcedureResult{Success: false, Err: fmt.Errorf("polling failed: %w", err)}
 				return
 			}
+			
+			logger.Log.Debug("Polling Procedure Status", "procedure", name, "status", ack.ExeStatus)
 
 			if !ack.Ack {
 				resultChan <- ProcedureResult{Success: false, Status: Status(ack.ExeStatus), Err: fmt.Errorf("%s", ack.ErrorMsg)}

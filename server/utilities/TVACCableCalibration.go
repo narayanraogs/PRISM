@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/resultsDB"
 	"strconv"
 	"strings"
@@ -195,6 +196,7 @@ func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string
 				tclm.setError("Power read is less than -60dBm. Check PM Connection")
 				return nil, false
 			}
+			logger.Log.Info("TVAC Cable Loss Measurement Point", "frequency", f, "measuredPower", response.Result["Power"].Value)
 			measuredLosses = append(measuredLosses, response.Result["Power"].Value)
 		} else {
 			response = tclm.pm.SetChannelB(f)
@@ -211,6 +213,7 @@ func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string
 				tclm.setError("Power read is less than -60dBm. Check PM Connection")
 				return nil, false
 			}
+			logger.Log.Info("TVAC Cable Loss Measurement Point", "frequency", f, "measuredPower", response.Result["Power"].Value)
 			measuredLosses = append(measuredLosses, response.Result["Power"].Value)
 		}
 		response = tclm.sg.SetRFOff()
@@ -223,6 +226,7 @@ func (tclm *TVACCableLossMeasurement) measureForFrequencies(frequencies []string
 }
 
 func (tclm *TVACCableLossMeasurement) MeasurePMReference() {
+	logger.Log.Info("Starting TVAC PM Reference Measurement")
 	frequencies := tclm.startMeasurement()
 	if frequencies == nil {
 		return
@@ -262,11 +266,13 @@ func (tclm *TVACCableLossMeasurement) MeasurePMReference() {
 		Error:   false,
 		Message: "Measurement Completed",
 	}
+	logger.Log.Info("Completed TVAC PM Reference Measurement", "success", true)
 	tclm.statusMonitor <- measure
 	close(tclm.statusMonitor)
 }
 
 func (tclm *TVACCableLossMeasurement) MeasureTVACReference(cableName string, testPhase string) {
+	logger.Log.Info("Starting TVAC Cable Reference Measurement", "cableName", cableName, "testPhase", testPhase)
 	frequencies := tclm.startMeasurement()
 	if frequencies == nil {
 		return
@@ -300,6 +306,7 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACReference(cableName string, tes
 		Error:   false,
 		Message: "Measurement Completed",
 	}
+	logger.Log.Info("Completed TVAC Cable Reference Measurement", "success", true)
 	tclm.statusMonitor <- measure
 	close(tclm.statusMonitor)
 
@@ -340,6 +347,7 @@ func (tclm *TVACCableLossMeasurement) getTVACCableReference(cableName string) ma
 }
 
 func (tclm *TVACCableLossMeasurement) MeasureTVACCableLoss(cableName string, testPhase string) {
+	logger.Log.Info("Starting TVAC Cable Loss Measurement", "cableName", cableName, "testPhase", testPhase)
 	frequencies := tclm.startMeasurement()
 	if frequencies == nil {
 		return
@@ -377,12 +385,14 @@ func (tclm *TVACCableLossMeasurement) MeasureTVACCableLoss(cableName string, tes
 		Error:   false,
 		Message: "Measurement Completed",
 	}
+	logger.Log.Info("Completed TVAC Cable Loss Measurement", "success", true)
 	tclm.statusMonitor <- measure
 
 	close(tclm.statusMonitor)
 }
 
 func (tclm *TVACCableLossMeasurement) setError(message string) {
+	logger.Log.Error("TVAC Cable Loss Measurement Error", "error", message)
 	var measure = MeasurementStatus{
 		Message: message,
 		Error:   true,

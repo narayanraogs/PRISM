@@ -36,7 +36,7 @@ func (device *e82x7d) loadLANDetails(name string) bool {
 func (device *e82x7d) loadCommands() bool {
 	inst := readCSV(e82x7dInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read CSV")
+		logger.Log.Error("Unable to read CSV")
 		return false
 	}
 	device.commands = inst
@@ -67,12 +67,12 @@ func (device *e82x7d) getCommands(mnemonics []string, arguments []string, replac
 func (device *e82x7d) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
-		fmt.Println("Connection timeout")
+		logger.Log.Error("Connection timeout")
 		return nil
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values

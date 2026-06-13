@@ -103,7 +103,7 @@ func (test *rxCarrierAcquisition) measure(runner *StepRunner) error {
 			} else {
 				runner.Exec(setGTxIdleOff(gtx))
 				runner.Exec(setGTxCarrierOff(gtx, test.component))
-				time.Sleep(5*time.Second)
+				time.Sleep(5 * time.Second)
 			}
 			test.setIntermediateFrequency(runner, stepFrequency)
 			runner.Exec(setGTxCarrierOn(gtx, test.component))

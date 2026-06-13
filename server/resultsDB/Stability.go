@@ -2,8 +2,9 @@ package resultsDB
 
 import (
 	"context"
-	"fmt"
 	"time"
+
+	"prismServer/logger"
 )
 
 type StabilityPoint struct {
@@ -30,7 +31,7 @@ func InsertPoints(id int64, points []StabilityPoint) bool {
 	ctx := context.Background()
 	tx, err := db.Begin()
 	if err != nil {
-		fmt.Println("Unable to get Transaction Lock")
+		logger.Log.Error("Unable to get Transaction Lock", "error", err)
 		return false
 	}
 	defer tx.Rollback()

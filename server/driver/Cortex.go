@@ -43,12 +43,12 @@ func (device *cortex) loadLANDetails(name string) bool {
 func (device *cortex) loadCommands() bool {
 	inst := readCSV(cortexInstructions)
 	if inst == nil {
-		fmt.Println("Unable to read Instructions CSV")
+		logger.Log.Error("Unable to read Instructions CSV")
 		return false
 	}
 	comp := readComponents(cortexComponents)
 	if comp == nil {
-		fmt.Println("Unable to read Components CSV")
+		logger.Log.Error("Unable to read Components CSV")
 		return false
 	}
 	device.commands = inst
@@ -1079,12 +1079,12 @@ func (device *cortex) getCommands(mnemonics []string, arguments []string, replac
 func (device *cortex) communicate(cmds []utils.Command, port string) []string {
 	ok := device.connection.Connect(port)
 	if !ok {
-		fmt.Println("Connection timeout")
+		logger.Log.Error("Connection timeout")
 		return nil
 	}
 	values, err := device.connection.Communicate(cmds)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Error(err.Error())
 		return nil
 	}
 	return values

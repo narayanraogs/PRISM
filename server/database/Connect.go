@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"prismServer/logger"
 
@@ -20,7 +19,7 @@ func Connect(path string) bool {
 	var err error
 	db, err = sql.Open("sqlite", path)
 	if err != nil {
-		fmt.Println("Unable to connect to database", err.Error())
+		logger.Log.Error("Unable to connect to database", "error", err)
 		return false
 	}
 	db.SetMaxOpenConns(1)
@@ -37,7 +36,7 @@ func GetSelectedTestPhase() (string, bool) {
 	ctx := context.Background()
 	tp, err := dbObject.getSelectedTestPhase(ctx)
 	if err != nil {
-		logger.Log.Info("Cannot load Selected test phase")
+		logger.Log.Warn("Cannot load Selected test phase")
 		return "", false
 	}
 	return tp, true

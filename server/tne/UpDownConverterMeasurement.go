@@ -8,6 +8,7 @@ import (
 	"os"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/reports"
 	"prismServer/resultsDB"
 	"prismServer/utils"
@@ -72,6 +73,7 @@ func (udc *UpDownConverterMeasurement) finish(msg string, success bool) {
 }
 
 func (udc *UpDownConverterMeasurement) setError(msg string) {
+	logger.Log.Error("Up/Down Converter Measurement Error", "error", msg)
 	udc.finish(msg, false)
 }
 
@@ -346,6 +348,7 @@ func (udc *UpDownConverterMeasurement) Stop() {
 }
 
 func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, cable bool) {
+	logger.Log.Info("Starting UDC Gain Measurement", "cable", cable)
 	udc.notify("Gain Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -409,16 +412,19 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 		result.GainResultValue.Gain = append(result.GainResultValue.Gain, gain)
 		result.GainResultValue.AverageGain = mean(result.GainResultValue.Gain)
 
+		logger.Log.Info("UDC Gain Measurement Point", "setPower", p, "outPower", outPower, "gain", gain)
 		udc.measurementMonitor <- result
 		udc.notify(fmt.Sprintf("Completed measurement for %.3f dBm", p))
 	}
 
 	if udc.save(result, testName) {
+		logger.Log.Info("Completed UDC Gain Measurement", "success", true)
 		udc.finish("Gain Measurement Completed", true)
 	}
 }
 
 func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
+	logger.Log.Info("Starting UDC Frequency Measurement")
 	udc.notify("Frequency Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -466,6 +472,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
+	logger.Log.Info("Completed UDC Frequency Measurement", "measuredFreq", freq, "deviation", deviation)
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
 		udc.finish("Frequency Measurement Completed", true)
@@ -473,6 +480,7 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 }
 
 func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
+	logger.Log.Info("Starting UDC Harmonics Measurement")
 	udc.notify("Harmonics Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -543,16 +551,19 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 		result.HarmonicResultValue.NoiseFloor = append(result.HarmonicResultValue.NoiseFloor, noiseFloor)
 		result.SpectrumDump = append(result.SpectrumDump, respSpectrum.Result["SpectrumDump"].String)
 
+		logger.Log.Info("UDC Harmonics Measurement Point", "harmonicFreq", hFreq, "carrierLevel", levelStr, "noiseFloor", noiseFloor)
 		udc.measurementMonitor <- result
 		udc.notify(fmt.Sprintf("Harmonics measurement completed for %.2f MHz", hFreq/1e6))
 	}
 
 	if udc.save(result, result.TestName) {
+		logger.Log.Info("Completed UDC Harmonics Measurement", "success", true)
 		udc.finish("Harmonics Measurement Completed", true)
 	}
 }
 
 func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
+	logger.Log.Info("Starting UDC Spurious Measurement", "inBand", inBand)
 	udc.notify("Spurious Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -624,6 +635,7 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 		result.SpuriousResultValue.MeasuredPowerdBm = make([]string, len(frequencies)-1)
 		result.SpuriousResultValue.SpuriousLeveldBC = make([]string, len(frequencies)-1)
 		for i := 1; i < len(frequencies); i++ {
+			logger.Log.Info("UDC Spurious Measurement Point", "freq", frequencies[i], "power", peaks[i])
 			result.SpuriousResultValue.Frequency[i-1] = fmt.Sprintf("%.6f", frequencies[i])
 			result.SpuriousResultValue.MeasuredPowerdBm[i-1] = fmt.Sprintf("%.2f", peaks[i])
 			result.SpuriousResultValue.SpuriousLeveldBC[i-1] = fmt.Sprintf("%.2f", carrierPower-peaks[i])
@@ -633,11 +645,13 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	udc.measurementMonitor <- result
 
 	if udc.save(result, testName) {
+		logger.Log.Info("Completed UDC Spurious Measurement", "success", true)
 		udc.finish("Spurious Measurement Completed", true)
 	}
 }
 
 func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
+	logger.Log.Info("Starting UDC LO Leakage Measurement")
 	udc.notify("LO Leakage Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -676,6 +690,7 @@ func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
+	logger.Log.Info("Completed UDC LO Leakage Measurement", "leakage", leakage)
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
 		udc.finish("LO Leakage Measurement Completed", true)
@@ -683,6 +698,7 @@ func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 }
 
 func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
+	logger.Log.Info("Starting UDC Input Leakage Measurement")
 	udc.notify("Input Leakage Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -720,6 +736,7 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
+	logger.Log.Info("Completed UDC Input Leakage Measurement", "leakage", power)
 	udc.measurementMonitor <- result
 	if udc.save(result, result.TestName) {
 		udc.finish("Input Leakage Measurement Completed", true)
@@ -727,6 +744,7 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 }
 
 func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float64, cable bool) {
+	logger.Log.Info("Starting UDC External LO Gain Measurement", "cable", cable)
 	udc.notify("External LO Gain Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -807,11 +825,13 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 		result.GainResultValue.Gain = append(result.GainResultValue.Gain, outPower-p)
 		result.GainResultValue.AverageGain = mean(result.GainResultValue.Gain)
 
+		logger.Log.Info("UDC External LO Gain Measurement Point", "setPower", p, "outPower", outPower, "gain", outPower-p)
 		udc.measurementMonitor <- result
 		udc.notify(fmt.Sprintf("Completed for %.3f dBm", p))
 	}
 
 	if udc.save(result, testName) {
+		logger.Log.Info("Completed UDC External LO Gain Measurement", "success", true)
 		udc.finish("External LO Gain Measurement Completed", true)
 	}
 }
@@ -823,6 +843,7 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 		testName, testCode = "Output Monitor Port - Power Measurement", UCDCOutputMonPower
 		targetFreq = udc.converter.OutputFrequency
 	}
+	logger.Log.Info("Starting UDC Monitor Power Measurement", "isOutput", isOutput)
 	udc.notify(testName + " Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -866,6 +887,7 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
 
+	logger.Log.Info("Completed UDC Monitor Power Measurement", "power", power)
 	udc.measurementMonitor <- result
 	if udc.save(result, testName) {
 		udc.finish(testName+" Completed", true)
@@ -873,6 +895,7 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 }
 
 func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
+	logger.Log.Info("Starting UDC LO Monitor Freq Power Measurement")
 	udc.notify("LO MON Port Frequency & Power Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -918,6 +941,7 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 		PowerOrLeakageResultValue: PowerOrLeakageResults{Frequency: freq, Power: power},
 	}
 	result.SpectrumDump = []string{respSpectrum.Result["SpectrumDump"].String}
+	logger.Log.Info("Completed UDC LO Monitor Freq Power Measurement", "power", power, "freq", freq)
 	udc.measurementMonitor <- result
 
 	if udc.save(result, "LO MON Port - Frequency & Power Measurement") {
@@ -926,6 +950,7 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 }
 
 func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
+	logger.Log.Info("Starting UDC LO Monitor Phase Noise Measurement")
 	udc.notify("LO Mon Port Phase Noise Measurement Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -964,6 +989,7 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 		}
 
 		val := resp.Result["MarkerY"].Value
+		logger.Log.Info("UDC LO Monitor Phase Noise Point", "freq", float64(i), "phaseNoise", val)
 		result.PhaseNoiseResultValue.Frequency = append(result.PhaseNoiseResultValue.Frequency, float64(i))
 		result.PhaseNoiseResultValue.PhaseNoise = append(result.PhaseNoiseResultValue.PhaseNoise, val)
 	}
@@ -977,11 +1003,13 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	udc.measurementMonitor <- result
 
 	if udc.save(result, "LO MON Port - Phase Noise Measurement") {
+		logger.Log.Info("Completed UDC LO Monitor Phase Noise Measurement", "success", true)
 		udc.finish("LO Mon Phase Noise Measurement Completed", true)
 	}
 }
 
 func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
+	logger.Log.Info("Starting UDC External LO Power Match")
 	udc.notify("External LO Power Matching Started")
 	defer udc.sa.SetAlignmentOn()
 	defer udc.sa.SystemPreset()
@@ -1049,6 +1077,7 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 		}
 		extLoMeasured = mResp.Result["MarkerY"].Value
 		powerDev = loPowerSA - extLoMeasured
+		logger.Log.Info("UDC External LO Power Match Point", "extLoMeasured", extLoMeasured, "powerDev", powerDev)
 	}
 
 	result := ConvertorResults{
@@ -1062,6 +1091,7 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 
 	udc.measurementMonitor <- result
 	if udc.save(result, "External LO Power Matching") {
+		logger.Log.Info("Completed UDC External LO Power Match", "success", true)
 		udc.finish("External LO Power Matching Completed", true)
 	}
 }

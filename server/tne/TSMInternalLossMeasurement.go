@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"prismServer/database"
 	"prismServer/driver"
+	"prismServer/logger"
 	"prismServer/resultsDB"
 	"prismServer/utils"
 	"slices"
@@ -41,6 +42,7 @@ func (tsm *TSMInternalLoss) finish(msg string, success bool) {
 }
 
 func (tsm *TSMInternalLoss) setError(msg string) {
+	logger.Log.Error("TSM Internal Loss Measurement Error", "error", msg)
 	tsm.finish(msg, false)
 }
 
@@ -119,9 +121,9 @@ func (tsm *TSMInternalLoss) CreateNewTable() bool {
 	}
 
 	if ok := tsm.createNewDBEntry(); ok {
-		fmt.Println("TSM Internal Loss Table created")
+		logger.Log.Info("TSM Internal Loss Table created")
 	} else {
-		fmt.Println("Error in TSM Internal Loss Table creation")
+		logger.Log.Error("Error in TSM Internal Loss Table creation")
 	}
 	return true
 }
@@ -281,6 +283,7 @@ func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset m
 			tsm.setError("Power too low (<-60dBm). Check connection.")
 			return false
 		}
+		logger.Log.Info("TSM Internal Loss Measurement Point", "frequency", freq, "measuredPower", val)
 		tsm.currentMeasurement[freq] = val
 		tsm.sg.SetRFOff()
 	}
@@ -305,6 +308,7 @@ func (tsm *TSMInternalLoss) measurePMReference(frequencies []string) {
 
 	data, _ := json.MarshalIndent(m, "", " ")
 	if tsm.updateDB(string(data), "PM_OFFSET", "", "") {
+		logger.Log.Info("Completed TSM Internal Loss Measurement", "mode", "PM Reference", "success", true)
 		tsm.finish("Reference Measurement Completed", true)
 	}
 }
@@ -327,6 +331,7 @@ func (tsm *TSMInternalLoss) measureCableLoss(pmOffset cableLossMeasured) {
 
 	data, _ := json.MarshalIndent(m, "", " ")
 	if tsm.updateDB(string(data), "CABLE_LOSS", "", "") {
+		logger.Log.Info("Completed TSM Internal Loss Measurement", "mode", "Cable Loss", "success", true)
 		tsm.finish("Cable Loss Measurement Completed", true)
 	}
 }
@@ -391,11 +396,13 @@ func (tsm *TSMInternalLoss) measurePathLoss(inputPort, outputPort string) {
 
 	data, _ := json.MarshalIndent(m, "", " ")
 	if tsm.updateDB(string(data), "PATH_LOSS", inputPort, outputPort) {
+		logger.Log.Info("Completed TSM Internal Loss Measurement", "mode", "Path Loss", "success", true)
 		tsm.finish("Path Loss Measurement Completed", true)
 	}
 }
 
 func (tsm *TSMInternalLoss) MeasureForConfig(mode, inputPort, outputPort string) {
+	logger.Log.Info("Starting TSM Internal Loss Measurement", "mode", mode, "inputPort", inputPort, "outputPort", outputPort)
 	data, ok := resultsDB.GetTSMInternalLossPMOffset()
 	if !ok {
 		tsm.setError("Unable to read PM offsets from database")
