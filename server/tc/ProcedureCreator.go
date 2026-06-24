@@ -29,11 +29,17 @@ func getSingleBatch(setCmd string, resetCmd string, noOfCommands int) string {
 
 func CreateProcedure(rxName string, setCmd string, resetCmd string, noOfCommands int) func() string {
 	var creator = func() string {
+		isSingleCommand := noOfCommands == 1
 		maxBatchSize := 10
 		lineNumber := getLineNumber()
 		var builder strings.Builder
 		builder.WriteString(fmt.Sprintf("%s FLASH_DISPLAY Auto generated procedure for %s, with %d commands\n",
 			lineNumber(), rxName, noOfCommands))
+
+		if isSingleCommand {
+			builder.WriteString(fmt.Sprintf("%s SET TC TC_MODE dryrun\n", lineNumber()))
+		}
+
 		for noOfCommands > 0 {
 			batch := maxBatchSize
 			if batch > noOfCommands {
@@ -43,6 +49,11 @@ func CreateProcedure(rxName string, setCmd string, resetCmd string, noOfCommands
 			cmds := getSingleBatch(setCmd, resetCmd, batch)
 			builder.WriteString(fmt.Sprintf("%s SEND %s\n", lineNumber(), cmds))
 		}
+
+		if isSingleCommand {
+			builder.WriteString(fmt.Sprintf("%s Set TC TC_MODE nml\n", lineNumber()))
+		}
+
 		builder.WriteString(fmt.Sprintf("%s END\n", lineNumber()))
 		return builder.String()
 	}
