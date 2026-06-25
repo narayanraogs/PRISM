@@ -164,6 +164,37 @@ func (r *tpModIndexResult) ToRow() []string {
 	}
 }
 
+type tpToneRangingResult struct {
+	ReceiverIPPower      float64
+	SpecUplinkToneMI     float64
+	MeasuredUplinkTone   string
+	SpecDownlinkToneMI   float64
+	MeasuredDownlinkTone resultValue
+	Deviation            resultValue
+}
+
+func (r *tpToneRangingResult) ToHeader() []string {
+	return []string{
+		"Receiver I/P Power (dBm)",
+		"Spec of Uplink Tone MI (rad)",
+		"Measured uplink Tone MI (rad)",
+		"Spec of Downlink Tone MI (rad)",
+		"Measured downlink Tone MI (rad)",
+		"Deviation (%)",
+	}
+}
+
+func (r *tpToneRangingResult) ToRow() []string {
+	return []string{
+		fmt.Sprintf("%.2f", r.ReceiverIPPower),
+		fmt.Sprintf("%.3f", r.SpecUplinkToneMI),
+		r.MeasuredUplinkTone,
+		fmt.Sprintf("%.3f", r.SpecDownlinkToneMI),
+		r.MeasuredDownlinkTone.String("%.3f"),
+		r.Deviation.String("%.2f"),
+	}
+}
+
 type txBandwidthResult struct {
 	CentreFrequencyMHz float64
 	MeasuredBW         resultValue
@@ -433,5 +464,45 @@ func (p *pulseUplink) ToRow() []string {
 		fmt.Sprintf("%.3f", p.SetFrequency),
 		fmt.Sprintf("%.2f", p.ExpectedPower),
 		fmt.Sprintf("%.2f", p.MeasuredPower),
+	}
+}
+
+type tpSimCmdRangingResult struct {
+	ReceiverIPPower      float64
+	SpecUplinkTCMI       float64
+	MeasuredUplinkTCMI   string
+	SpecUplinkToneMI     float64
+	MeasuredUplinkTone   string
+	SpecDownlinkToneMI   float64
+	MeasuredDownlinkTone resultValue
+	CommandsSent         int
+	CommandsExecuted     int
+}
+
+func (r *tpSimCmdRangingResult) ToHeader() []string {
+	return []string{
+		"Receiver I/P Power (dBm)",
+		"Spec of Uplink TC MI (rad)",
+		"Measured Uplink TC MI (rad)",
+		"Spec of Uplink Tone MI (rad)",
+		"Measured Uplink Tone MI (rad)",
+		"Spec of Downlink Tone MI (rad)",
+		"Measured downlink Tone MI (rad)",
+		"Cmds Sent",
+		"Cmds Executed",
+	}
+}
+
+func (r *tpSimCmdRangingResult) ToRow() []string {
+	return []string{
+		fmt.Sprintf("%.2f", r.ReceiverIPPower),
+		fmt.Sprintf("%.3f", r.SpecUplinkTCMI),
+		r.MeasuredUplinkTCMI,
+		fmt.Sprintf("%.3f", r.SpecUplinkToneMI),
+		r.MeasuredUplinkTone,
+		fmt.Sprintf("%.3f", r.SpecDownlinkToneMI),
+		r.MeasuredDownlinkTone.String("%.3f"),
+		fmt.Sprintf("%d", r.CommandsSent),
+		fmt.Sprintf("%d", r.CommandsExecuted),
 	}
 }

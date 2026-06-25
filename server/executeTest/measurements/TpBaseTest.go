@@ -27,7 +27,6 @@ type tpBaseTest struct {
 	dopplerTimes       []int
 	dopplerFrequencies []int
 	tm                 rxTM
-	profile            database.SpectrumProfile
 }
 
 func (test *tpBaseTest) validateAndPrepare(readExtraData func() error) error {
@@ -103,7 +102,7 @@ func (test *tpBaseTest) measureModulationTone(runner *StepRunner) string {
 		switch strings.ToUpper(test.rxSpec.ModulationScheme) {
 		case "PM":
 			measurementRequired = true
-			measuredValue, confirmationRequired = test.rxBaseTest.measureModIndex(runner)
+			measuredValue, confirmationRequired = test.measureModIndexTone(runner)
 			measured = measuredValue
 		case "FM":
 			measurementRequired = true
@@ -128,15 +127,20 @@ func (test *tpBaseTest) measureModulationTone(runner *StepRunner) string {
 	return measured
 }
 
-func (test *tpBaseTest) setupSAForDownlinkForDifferentProfiles(runner *StepRunner) error {
+func (test *tpBaseTest) setupSAForDownlinkForDifferentProfiles(runner *StepRunner, profileName string) error {
 	sa := test.ctx.Selected.SA
+	profile, ok := database.GetSpectrumProfile(profileName)
+	if !ok {
+		runner.execErr = fmt.Errorf("spectrum profile %s not found", profileName)
+		return runner.execErr
+	}
 
 	runner.Run("Presetting SA", true, func() {
 		runner.Exec(sa.SystemPreset)
 	})
 	runner.Run("Settting SA Profile", true, func() {
-		runner.Exec(setSpectrum(sa, test.profile.CenterFrequency, test.profile.Span,
-			float64(test.profile.RBW), float64(test.profile.VBW)))
+		runner.Exec(setSpectrum(sa, profile.CenterFrequency, profile.Span,
+			float64(profile.RBW), float64(profile.VBW)))
 	})
 	runner.Run("Settting Reference Level", true, func() {
 		runner.Exec(sa.SetReferenceNominal)

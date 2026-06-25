@@ -121,6 +121,13 @@ func (gtx *GTX) SetOnlyTC(component string) utils.CommandResponse {
 	return gtx.device.setOnlyTC(component)
 }
 
+func (gtx *GTX) SetTCAndRanging(component string) utils.CommandResponse {
+	if gtx.device == nil {
+		return getDeviceNotAvailable()
+	}
+	return gtx.device.setTCAndRanging(component)
+}
+
 func (gtx *GTX) SetOnlyRanging(component string) utils.CommandResponse {
 	if gtx.device == nil {
 		return getDeviceNotAvailable()

@@ -149,6 +149,12 @@ func setOnlyRanging(gtx driver.GTX, component string) func() utils.CommandRespon
 	}
 }
 
+func setTCAndRanging(gtx driver.GTX, component string) func() utils.CommandResponse {
+	return func() utils.CommandResponse {
+		return gtx.SetTCAndRanging(component)
+	}
+}
+
 func setRangingToneFrequency(gtx driver.GTX, frequency float64) func() utils.CommandResponse {
 	return func() utils.CommandResponse {
 		return gtx.SetRangingToneFrequency(frequency)
