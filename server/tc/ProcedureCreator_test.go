@@ -9,7 +9,7 @@ import (
 func TestGenerateProcedures(t *testing.T) {
 	// Create outputs in the current workspace or a folder we can inspect.
 	// We will write them directly to /home/narayan/development/PRISM/server/tc or /home/narayan/development/PRISM/
-	basePath := "/home/narayan/development/PRISM"
+	basePath := "../.."
 
 	tests := []struct {
 		filename string
