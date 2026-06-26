@@ -379,9 +379,8 @@ func (test *rxBaseTest) executeCommands(runner *StepRunner, noOfCommands int) {
 	} else {
 		p := <-data
 		if !p.Success {
-			test.failure(p.Err.Error())
-			runner.execErr = p.Err
-			runner.chainErr = p.Err
+			prompt := fmt.Sprintf("Unable to confirm execution of %d commands, Please send %d commands manually and press continue", noOfCommands, noOfCommands)
+			test.ctx.AskForConfirmation(prompt, 0)
 		}
 	}
 }
