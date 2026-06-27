@@ -4,11 +4,12 @@ class StatusBar extends StatelessWidget {
   final bool isConnected;
   final VoidCallback onReconnect;
   final VoidCallback onNotificationsTap;
+  final VoidCallback onSearchTap;
   final String cpuUsage;
   final String memoryUsage;
   final String satelliteName;
   final String testPhase;
-
+  
   final int notificationCount;
 
   const StatusBar({
@@ -16,6 +17,7 @@ class StatusBar extends StatelessWidget {
     required this.isConnected,
     required this.onReconnect,
     required this.onNotificationsTap,
+    required this.onSearchTap,
     required this.satelliteName,
     required this.testPhase,
     this.cpuUsage = '12%',
@@ -71,13 +73,27 @@ class StatusBar extends StatelessWidget {
 
           const Spacer(),
 
-          // Right Side: System Stats, Connection, Notification
+          // Right Side: System Stats, Connection, Search, Notification
           Row(
             children: [
               _buildStatItem(Icons.memory, memoryUsage),
               const SizedBox(width: 16),
               _buildStatItem(Icons.developer_board, cpuUsage),
               const SizedBox(width: 24),
+              const VerticalDivider(width: 1, indent: 8, endIndent: 8),
+              const SizedBox(width: 24),
+
+              // Search Button
+              IconButton(
+                onPressed: onSearchTap,
+                icon: const Icon(Icons.search, size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
+                color: Colors.grey.shade600,
+                tooltip: 'Search (Cmd+K)',
+              ),
+              const SizedBox(width: 16),
               const VerticalDivider(width: 1, indent: 8, endIndent: 8),
               const SizedBox(width: 24),
 

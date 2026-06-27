@@ -179,7 +179,15 @@ class _LazyLoadWidgetState extends State<LazyLoadWidget> {
     if (widget.isActivated) {
       _initialized = true;
     }
-    return _initialized ? widget.child : const SizedBox.shrink();
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _initialized 
+          ? KeyedSubtree(
+              key: const ValueKey('loaded'),
+              child: widget.child,
+            )
+          : const SizedBox.shrink(key: ValueKey('empty')),
+    );
   }
 }
 

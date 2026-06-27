@@ -4,6 +4,8 @@ import 'package:prism_client/widgets/status_bar.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:prism_client/services/notification_service.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
+import 'dart:ui';
 
 class NavigationItem {
   final String label;
@@ -18,6 +20,132 @@ class NavigationItem {
     required this.category,
   });
 }
+
+final List<NavigationItem> kNavItems = [
+  // Category 1: Actions
+  NavigationItem(
+    label: 'RF Uplink',
+    icon: Icons.settings_input_antenna_outlined,
+    selectedIcon: Icons.settings_input_antenna,
+    category: 'ACTIONS',
+  ),
+  NavigationItem(
+    label: 'Tests',
+    icon: Icons.assignment_outlined,
+    selectedIcon: Icons.assignment,
+    category: 'ACTIONS',
+  ),
+  NavigationItem(
+    label: 'Schedule',
+    icon: Icons.calendar_today_outlined,
+    selectedIcon: Icons.calendar_today,
+    category: 'ACTIONS',
+  ),
+
+  // Category 2: Utilities
+  NavigationItem(
+    label: 'Stability',
+    icon: Icons.speed_outlined,
+    selectedIcon: Icons.speed,
+    category: 'UTILITIES',
+  ),
+  NavigationItem(
+    label: 'Spectrum Dump',
+    icon: Icons.analytics_outlined,
+    selectedIcon: Icons.analytics,
+    category: 'UTILITIES',
+  ),
+  NavigationItem(
+    label: 'Monitor',
+    icon: Icons.monitor_heart_outlined,
+    selectedIcon: Icons.monitor_heart,
+    category: 'UTILITIES',
+  ),
+  NavigationItem(
+    label: 'TVAC Cable Calibration',
+    icon: Icons.settings_ethernet,
+    selectedIcon: Icons.settings_ethernet,
+    category: 'UTILITIES',
+  ),
+  NavigationItem(
+    label: 'SCPI Commander',
+    icon: Icons.terminal_outlined,
+    selectedIcon: Icons.terminal,
+    category: 'UTILITIES',
+  ),
+
+  // Category 3: T&E
+  NavigationItem(
+    label: 'Cable Loss Measurement',
+    icon: Icons.linear_scale,
+    selectedIcon: Icons.linear_scale,
+    category: 'T&E',
+  ),
+  NavigationItem(
+    label: 'Path Loss Planner',
+    icon: Icons.map_outlined,
+    selectedIcon: Icons.map,
+    category: 'T&E',
+  ),
+  NavigationItem(
+    label: 'Attenuation',
+    icon: Icons.import_export,
+    selectedIcon: Icons.import_export,
+    category: 'T&E',
+  ),
+  NavigationItem(
+    label: 'TSM Internal Path Loss',
+    icon: Icons.router_outlined,
+    selectedIcon: Icons.router,
+    category: 'T&E',
+  ),
+  NavigationItem(
+    label: 'GTx Characterization',
+    icon: Icons.radar,
+    selectedIcon: Icons.radar,
+    category: 'T&E',
+  ),
+  NavigationItem(
+    label: 'Up Down converter',
+    icon: Icons.compare_arrows,
+    selectedIcon: Icons.compare_arrows,
+    category: 'T&E',
+  ),
+
+  // Category 4: Database
+  NavigationItem(
+    label: 'Database Management',
+    icon: Icons.storage_outlined,
+    selectedIcon: Icons.storage,
+    category: 'DATABASE',
+  ),
+
+  // Category 5: Results
+  NavigationItem(
+    label: 'View Reports',
+    icon: Icons.insert_drive_file_outlined,
+    selectedIcon: Icons.insert_drive_file,
+    category: 'RESULTS',
+  ),
+  NavigationItem(
+    label: 'Stability reports',
+    icon: Icons.assessment_outlined,
+    selectedIcon: Icons.assessment,
+    category: 'RESULTS',
+  ),
+  NavigationItem(
+    label: 'Insights',
+    icon: Icons.lightbulb_outline,
+    selectedIcon: Icons.lightbulb,
+    category: 'RESULTS',
+  ),
+  NavigationItem(
+    label: 'PPT Generation',
+    icon: Icons.slideshow_outlined,
+    selectedIcon: Icons.slideshow,
+    category: 'RESULTS',
+  ),
+];
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -37,6 +165,20 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   bool _showNotifications = false;
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SearchPaletteDialog(
+          onSelected: (index) {
+            widget.onDestinationSelected(index);
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +228,7 @@ class _MainLayoutState extends State<MainLayout> {
                         notifications.markAllAsRead();
                       }
                     },
+                    onSearchTap: _showSearchDialog,
                   );
                 },
               ),
@@ -99,10 +242,13 @@ class _MainLayoutState extends State<MainLayout> {
                 });
                 context.read<NotificationService>().markAllAsRead();
               },
-              child: Container(
-                color: Colors.transparent,
-                width: double.infinity,
-                height: double.infinity,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
+                child: Container(
+                  color: Colors.black.withOpacity(0.1),
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
             ),
             Positioned(
@@ -377,138 +523,30 @@ class SidebarNavigation extends StatefulWidget {
 
 class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _isExpanded = false;
+  Timer? _hoverTimer;
 
-  final List<NavigationItem> _navItems = [
-    // Category 1: Actions
-    NavigationItem(
-      label: 'RF Uplink',
-      icon: Icons.settings_input_antenna_outlined,
-      selectedIcon: Icons.settings_input_antenna,
-      category: 'ACTIONS',
-    ),
-    NavigationItem(
-      label: 'Tests',
-      icon: Icons.assignment_outlined,
-      selectedIcon: Icons.assignment,
-      category: 'ACTIONS',
-    ),
-    NavigationItem(
-      label: 'Schedule',
-      icon: Icons.calendar_today_outlined,
-      selectedIcon: Icons.calendar_today,
-      category: 'ACTIONS',
-    ),
+  void _onHover(bool isHovering) {
+    _hoverTimer?.cancel();
+    if (isHovering) {
+      _hoverTimer = Timer(const Duration(milliseconds: 150), () {
+        if (mounted) setState(() => _isExpanded = true);
+      });
+    } else {
+      setState(() => _isExpanded = false);
+    }
+  }
 
-    // Category 2: Utilities
-    NavigationItem(
-      label: 'Stability',
-      icon: Icons.speed_outlined,
-      selectedIcon: Icons.speed,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'Spectrum Dump',
-      icon: Icons.analytics_outlined,
-      selectedIcon: Icons.analytics,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'Monitor',
-      icon: Icons.monitor_heart_outlined,
-      selectedIcon: Icons.monitor_heart,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'TVAC Cable Calibration',
-      icon: Icons.settings_ethernet,
-      selectedIcon: Icons.settings_ethernet,
-      category: 'UTILITIES',
-    ),
-    NavigationItem(
-      label: 'SCPI Commander',
-      icon: Icons.terminal_outlined,
-      selectedIcon: Icons.terminal,
-      category: 'UTILITIES',
-    ),
-
-    // Category 3: T&E
-    NavigationItem(
-      label: 'Cable Loss Measurement',
-      icon: Icons.linear_scale,
-      selectedIcon: Icons.linear_scale,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Path Loss Planner',
-      icon: Icons.map_outlined,
-      selectedIcon: Icons.map,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Attenuation',
-      icon: Icons.import_export,
-      selectedIcon: Icons.import_export,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'TSM Internal Path Loss',
-      icon: Icons.router_outlined,
-      selectedIcon: Icons.router,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'GTx Characterization',
-      icon: Icons.radar,
-      selectedIcon: Icons.radar,
-      category: 'T&E',
-    ),
-    NavigationItem(
-      label: 'Up Down converter',
-      icon: Icons.compare_arrows,
-      selectedIcon: Icons.compare_arrows,
-      category: 'T&E',
-    ),
-
-    // Category 4: Database
-    NavigationItem(
-      label: 'Database Management',
-      icon: Icons.storage_outlined,
-      selectedIcon: Icons.storage,
-      category: 'DATABASE',
-    ),
-
-    // Category 5: Results
-    NavigationItem(
-      label: 'View Reports',
-      icon: Icons.insert_drive_file_outlined,
-      selectedIcon: Icons.insert_drive_file,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'Stability reports',
-      icon: Icons.assessment_outlined,
-      selectedIcon: Icons.assessment,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'Insights',
-      icon: Icons.lightbulb_outline,
-      selectedIcon: Icons.lightbulb,
-      category: 'RESULTS',
-    ),
-    NavigationItem(
-      label: 'PPT Generation',
-      icon: Icons.slideshow_outlined,
-      selectedIcon: Icons.slideshow,
-      category: 'RESULTS',
-    ),
-  ];
+  @override
+  void dispose() {
+    _hoverTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isExpanded = true),
-      onExit: (_) => setState(() => _isExpanded = false),
+      onEnter: (_) => _onHover(true),
+      onExit: (_) => _onHover(false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: _isExpanded ? 240 : 72,
@@ -597,12 +635,12 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: _navItems.length,
+                itemCount: kNavItems.length,
                 itemBuilder: (context, index) {
-                  final item = _navItems[index];
+                  final item = kNavItems[index];
                   final showCategory = _isExpanded &&
                       (index == 0 ||
-                          _navItems[index - 1].category != item.category);
+                          kNavItems[index - 1].category != item.category);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,6 +737,111 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SearchPaletteDialog extends StatefulWidget {
+  final ValueChanged<int> onSelected;
+
+  const SearchPaletteDialog({super.key, required this.onSelected});
+
+  @override
+  State<SearchPaletteDialog> createState() => _SearchPaletteDialogState();
+}
+
+class _SearchPaletteDialogState extends State<SearchPaletteDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  List<int> _filteredIndices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredIndices = List.generate(kNavItems.length, (i) => i);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredIndices = List.generate(kNavItems.length, (i) => i);
+      } else {
+        _filteredIndices = [];
+        for (int i = 0; i < kNavItems.length; i++) {
+          if (kNavItems[i].label.toLowerCase().contains(query)) {
+            _filteredIndices.add(i);
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      child: Container(
+        width: 600,
+        height: 400,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search for a tool or screen...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _filteredIndices.length,
+                itemBuilder: (context, index) {
+                  final originalIndex = _filteredIndices[index];
+                  final item = kNavItems[originalIndex];
+                  return ListTile(
+                    leading: Icon(item.icon, color: Theme.of(context).colorScheme.primary),
+                    title: Text(item.label),
+                    subtitle: Text(item.category, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                    onTap: () => widget.onSelected(originalIndex),
+                    hoverColor: Colors.grey.shade100,
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

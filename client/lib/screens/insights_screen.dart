@@ -54,7 +54,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (mounted) {
       if (response != null && response.ok) {
         setState(() {
-          _allReports = response.reports;
+          _allReports = response.reports.where((r) => r.success).toList();
           _applyFilters();
           _isLoading = false;
         });
