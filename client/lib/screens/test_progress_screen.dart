@@ -7,8 +7,13 @@ import 'package:prism_client/services/server_service.dart';
 
 class TestProgressScreen extends StatefulWidget {
   final List<TestDescription> tests;
+  final bool isMonitor;
 
-  const TestProgressScreen({super.key, required this.tests});
+  const TestProgressScreen({
+    super.key,
+    required this.tests,
+    this.isMonitor = false,
+  });
 
   @override
   State<TestProgressScreen> createState() => _TestProgressScreenState();
@@ -134,19 +139,46 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     final theme = Theme.of(context);
 
     return PopScope(
-      canPop: _isCompleted,
+      canPop: _isCompleted || widget.isMonitor,
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
           elevation: 0,
-          title: Text(
-            'Test Execution Progress',
-            style: GoogleFonts.outfit(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-            ),
+          title: Row(
+            children: [
+              Text(
+                'Test Execution Progress',
+                style: GoogleFonts.outfit(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (widget.isMonitor) ...[
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.amber.shade300),
+                  ),
+                  child: Text(
+                    'MONITOR MODE (READ-ONLY)',
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         body: StreamBuilder<TestProgressResponse>(
@@ -942,7 +974,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
   }
 
   Widget _buildInteractionBar(TestProgressResponse resp, ThemeData theme) {
-    bool hasInteraction = resp.ui.userInput || resp.ui.userConfirmation;
+    bool hasInteraction = (resp.ui.userInput || resp.ui.userConfirmation) && !widget.isMonitor;
     bool hasError = resp.progress.errorMessage.isNotEmpty;
 
     Color barColor = Colors.white;
@@ -1152,7 +1184,24 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                   child: Text(resp.ui.userConfirmation ? 'CONFIRM' : 'SUBMIT'),
                 ),
               ],
-              if (!_isCompleted) ...[
+              if (widget.isMonitor) ...[
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.exit_to_app, size: 18),
+                  label: const Text('DISCONNECT'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ] else if (!_isCompleted) ...[
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _isAborting ? null : _handleAbort,

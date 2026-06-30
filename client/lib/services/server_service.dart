@@ -12,6 +12,7 @@ class ServerStatus {
   final double memoryUsed;
   final double cpuUsed;
   final bool isConnected;
+  final bool isOperationRunning;
   final BootstrapData? bootstrapData;
 
   ServerStatus({
@@ -20,6 +21,7 @@ class ServerStatus {
     this.memoryUsed = 0.0,
     this.cpuUsed = 0.0,
     this.isConnected = false,
+    this.isOperationRunning = false,
     this.bootstrapData,
   });
 
@@ -34,6 +36,7 @@ class ServerStatus {
       memoryUsed: (json['MemoryUsed'] as num?)?.toDouble() ?? 0.0,
       cpuUsed: (json['CPUUsed'] as num?)?.toDouble() ?? 0.0,
       isConnected: connected,
+      isOperationRunning: json['IsOperationRunning'] == true,
       bootstrapData: bootstrap,
     );
   }
@@ -2779,6 +2782,7 @@ class ServerService extends ChangeNotifier {
       memoryUsed: _status.memoryUsed,
       cpuUsed: _status.cpuUsed,
       isConnected: false,
+      isOperationRunning: false,
       bootstrapData: _status.bootstrapData,
     );
     notifyListeners();
@@ -2818,6 +2822,7 @@ class ServerService extends ChangeNotifier {
             memoryUsed: _status.memoryUsed,
             cpuUsed: _status.cpuUsed,
             isConnected: _status.isConnected,
+            isOperationRunning: _status.isOperationRunning,
             bootstrapData: data,
           );
           notifyListeners();
@@ -3722,6 +3727,7 @@ class ServerService extends ChangeNotifier {
             memoryUsed: _status.memoryUsed,
             cpuUsed: _status.cpuUsed,
             isConnected: _status.isConnected,
+            isOperationRunning: _status.isOperationRunning,
             bootstrapData: newBootstrap,
           );
           notifyListeners();

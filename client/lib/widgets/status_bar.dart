@@ -11,6 +11,8 @@ class StatusBar extends StatelessWidget {
   final String testPhase;
   
   final int notificationCount;
+  final bool isOperationRunning;
+  final VoidCallback? onMonitorTap;
 
   const StatusBar({
     super.key,
@@ -23,6 +25,8 @@ class StatusBar extends StatelessWidget {
     this.cpuUsage = '12%',
     this.memoryUsage = '256 MB',
     this.notificationCount = 0,
+    this.isOperationRunning = false,
+    this.onMonitorTap,
   });
 
   @override
@@ -68,6 +72,54 @@ class StatusBar extends StatelessWidget {
                   ),
                 ),
               ),
+              if (isOperationRunning) ...[
+                const SizedBox(width: 12),
+                const VerticalDivider(width: 1, indent: 8, endIndent: 8),
+                const SizedBox(width: 12),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onMonitorTap,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.orange.shade600, Colors.red.shade600],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.3),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.radio_button_checked,
+                            color: Colors.white,
+                            size: 10,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'LIVE REMOTE SESSION ACTIVE',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
 

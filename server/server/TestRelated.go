@@ -9,7 +9,21 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var (
+	monitorMutex sync.Mutex
+	monitors     = make(map[*websocket.Conn]bool)
+)
+
+func broadcastToMonitors(update interface{}) {
+	monitorMutex.Lock()
+	defer monitorMutex.Unlock()
+	for conn := range monitors {
+		_ = conn.WriteJSON(update)
+	}
+}
 
 func testProgress(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -25,6 +39,30 @@ func testProgress(c *gin.Context) {
 		logger.Log.Error("Error reading initial client registration:", "error", err)
 		return
 	}
+
+	if !TryLockOperation() {
+		// Register connection as a passive monitor since system is busy
+		monitorMutex.Lock()
+		monitors[conn] = true
+		monitorMutex.Unlock()
+
+		defer func() {
+			monitorMutex.Lock()
+			delete(monitors, conn)
+			monitorMutex.Unlock()
+		}()
+
+		logger.Log.Info("Local client registered as passive remote session monitor")
+		
+		// Keep the connection open and listen for disconnect
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+		}
+	}
+	defer UnlockOperation()
 
 	var paramMap = make(map[string]interface{})
 	var configs = make([]string, 0)
@@ -87,6 +125,8 @@ func testProgress(c *gin.Context) {
 			logger.Log.Error("Websocket write error:", "error", err)
 			return // Exit if we can't write to the client.
 		}
+
+		broadcastToMonitors(update)
 
 		// 2. If this update requires a response, handle the input logic.
 		if update.UI.UserInput || update.UI.UserConfirmation {

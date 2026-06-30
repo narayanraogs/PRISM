@@ -40,6 +40,7 @@ func serverStatus(c *gin.Context) {
 		if !ok {
 			status.TestPhase = "Unknown"
 		}
+		status.IsOperationRunning = IsOperationRunning
 
 		// Real System Stats
 		if v, err := mem.VirtualMemory(); err == nil {

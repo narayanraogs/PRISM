@@ -8,10 +8,11 @@ import (
 )
 
 type ServerStatus struct {
-	SatelliteName string
-	TestPhase     string
-	MemoryUsed    float64
-	CPUUsed       float64
+	SatelliteName      string
+	TestPhase          string
+	MemoryUsed         float64
+	CPUUsed            float64
+	IsOperationRunning bool
 }
 
 type BootstrapData struct {

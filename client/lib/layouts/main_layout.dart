@@ -6,6 +6,7 @@ import 'package:prism_client/services/notification_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'package:prism_client/screens/test_progress_screen.dart';
 
 class NavigationItem {
   final String label;
@@ -219,6 +220,17 @@ class _MainLayoutState extends State<MainLayout> {
                     memoryUsage:
                         '${server.status.memoryUsed.toStringAsFixed(1)}%',
                     notificationCount: notifications.unreadCount,
+                    isOperationRunning: server.status.isOperationRunning,
+                    onMonitorTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const TestProgressScreen(
+                            tests: [],
+                            isMonitor: true,
+                          ),
+                        ),
+                      );
+                    },
                     onReconnect: () => server.manualReconnect(),
                     onNotificationsTap: () {
                       setState(() {

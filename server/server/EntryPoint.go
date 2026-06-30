@@ -71,5 +71,10 @@ func GetRouter() *gin.Engine {
 	//PlannerState
 	r.POST("/savePlannerData", savePlannerData)
 	r.POST("/loadPlannerData", loadPlannerData)
+	//Remote
+	r.POST("/info", info)
+	r.POST("/getter", remoteGetter)
+	r.POST("/setter", remoteSetter)
+	r.POST("/action", remoteAction)
 	return r
 }
