@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
-import 'package:prism_client/screens/stability_screen.dart';
 import 'package:prism_client/utils/lttb.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -230,7 +229,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
 
     return PopScope(
       canPop: _isCompleted,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop && !_isCompleted) {
           _handleAbort();
         }
@@ -261,7 +260,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -272,7 +271,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.speed_rounded, color: theme.colorScheme.primary),
@@ -452,7 +451,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -519,7 +518,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                           color: Colors.grey.shade400,
                         ),
                         style: IconButton.styleFrom(
-                          hoverColor: theme.colorScheme.primary.withOpacity(
+                          hoverColor: theme.colorScheme.primary.withValues(alpha: 
                             0.05,
                           ),
                         ),
@@ -612,7 +611,7 @@ class _StabilityMonitoringScreenState extends State<StabilityMonitoringScreen> {
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: color.withOpacity(0.05),
+                      color: color.withValues(alpha: 0.05),
                     ),
                   ),
                 ],

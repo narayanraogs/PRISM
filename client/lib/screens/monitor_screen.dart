@@ -189,7 +189,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -227,7 +227,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -246,7 +246,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -454,8 +454,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
   }
 
   Widget _buildImageMonitor(MonitorResponse data) {
-    if (data.image.isEmpty)
+    if (data.image.isEmpty) {
       return const Center(child: Text('Waiting for image...'));
+    }
       
     Uint8List imageBytes;
     try {
@@ -577,7 +578,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.greenAccent.withOpacity(0.1),
+                      color: Colors.greenAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -648,7 +649,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                 color: Colors.greenAccent,
                 shadows: [
                   Shadow(
-                    color: Colors.greenAccent.withOpacity(0.5),
+                    color: Colors.greenAccent.withValues(alpha: 0.5),
                     blurRadius: 10,
                   ),
                 ],
@@ -735,7 +736,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           onChanged: onChanged,
           decoration: InputDecoration(
             filled: true,

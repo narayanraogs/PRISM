@@ -196,7 +196,7 @@ class _MainLayoutState extends State<MainLayout> {
                     ),
                     Expanded(
                       child: Container(
-                        color: Theme.of(context).colorScheme.background,
+                        color: Theme.of(context).colorScheme.surface,
                         child: ClipRRect(
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(24),
@@ -245,7 +245,7 @@ class _MainLayoutState extends State<MainLayout> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
                 child: Container(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   width: double.infinity,
                   height: double.infinity,
                 ),
@@ -274,7 +274,7 @@ class _MainLayoutState extends State<MainLayout> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -413,14 +413,14 @@ class _MainLayoutState extends State<MainLayout> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        color: item.isRead ? Colors.transparent : color.withOpacity(0.03),
+        color: item.isRead ? Colors.transparent : color.withValues(alpha: 0.03),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 18),
@@ -554,7 +554,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(2, 0),
             ),
@@ -703,7 +703,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 12 : 0),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary.withOpacity(0.1)
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -800,7 +800,7 @@ class _SearchPaletteDialogState extends State<SearchPaletteDialog> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),

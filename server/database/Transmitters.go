@@ -49,5 +49,3 @@ func GetTxSubCarriersDetails(name string) ([]SpecTxSubCarrier, bool) {
 	}
 	return subCarriers, true
 }
-
-

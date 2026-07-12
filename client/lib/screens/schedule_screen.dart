@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +30,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   );
 
   final List<TestDescription> _scheduledTests = [];
-  bool _isStarting = false;
+  final bool _isStarting = false;
 
   @override
   void initState() {
@@ -170,6 +169,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final reader = web.FileReader();
       reader.readAsText(file);
       reader.onLoadEnd.listen((e) {
+        if (!mounted) return;
         try {
           final result = reader.result as JSString;
           final dynamic decoded = jsonDecode(result.toDart);
@@ -258,7 +258,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -312,7 +312,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -358,7 +358,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           : Colors.black,
                     ),
                   ),
-                  selectedTileColor: theme.colorScheme.primary.withOpacity(
+                  selectedTileColor: theme.colorScheme.primary.withValues(alpha: 
                     0.08,
                   ),
                   selectedColor: theme.colorScheme.primary,
@@ -417,7 +417,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         vertical: 16,
                       ),
                     ),
-                    value: _selectedConfig,
+                    initialValue: _selectedConfig,
                     items: configs.map((c) {
                       return DropdownMenuItem(value: c, child: Text(c));
                     }).toList(),
@@ -524,7 +524,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.05)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.05)
                   : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
@@ -618,7 +618,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -730,7 +730,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -831,7 +831,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -850,7 +850,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

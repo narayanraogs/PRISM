@@ -314,7 +314,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -359,7 +359,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
               color: online ? Colors.green : Colors.red,
               boxShadow: [
                 BoxShadow(
-                  color: (online ? Colors.green : Colors.red).withOpacity(0.5),
+                  color: (online ? Colors.green : Colors.red).withValues(alpha: 0.5),
                   blurRadius: 4,
                 ),
               ],
@@ -387,7 +387,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -425,12 +425,12 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            ? theme.colorScheme.primary.withValues(alpha: 0.08)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
-                              ? theme.colorScheme.primary.withOpacity(0.2)
+                              ? theme.colorScheme.primary.withValues(alpha: 0.2)
                               : Colors.transparent,
                         ),
                       ),
@@ -482,7 +482,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.03),
+              color: theme.colorScheme.primary.withValues(alpha: 0.03),
               blurRadius: 30,
               offset: const Offset(0, 15),
             ),
@@ -606,7 +606,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                     Text(
                       'RESULTS',
                       style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
@@ -627,7 +627,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                       child: Text(
                         'Awaiting Measurement Data...',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           fontSize: 13,
                         ),
                       ),
@@ -770,13 +770,13 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: status == "COMPLETE"
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: status == "COMPLETE"
-                    ? Colors.green.withOpacity(0.3)
-                    : Colors.orange.withOpacity(0.3),
+                    ? Colors.green.withValues(alpha: 0.3)
+                    : Colors.orange.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
@@ -836,7 +836,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
                   selected: isSelected,
                   onSelected: (val) =>
                       setState(() => _selectedSpectrumTab = index),
-                  selectedColor: theme.colorScheme.primary.withOpacity(0.1),
+                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                   labelStyle: TextStyle(
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -941,7 +941,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
     required Function(String?) onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       items: items
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
@@ -993,7 +993,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -1085,7 +1085,7 @@ class _GTxCharacterizationScreenState extends State<GTxCharacterizationScreen> {
 
   Widget _buildConnectionOverlay(ThemeData theme) {
     return ContentCard(
-      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
       child: Column(

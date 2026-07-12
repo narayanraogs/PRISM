@@ -301,7 +301,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                 Color iconColor = Colors.grey;
 
                 if (isRunning) {
-                  bgColor = theme.colorScheme.primary.withOpacity(0.05);
+                  bgColor = theme.colorScheme.primary.withValues(alpha: 0.05);
                   icon = Icons.play_circle_filled;
                   iconColor = theme.colorScheme.primary;
                 } else if (isSuccess) {
@@ -375,7 +375,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                 color: theme.colorScheme.primary,
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -480,19 +480,19 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -541,11 +541,12 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     List<String> statuses,
     ThemeData theme,
   ) {
-    if (names.isEmpty)
+    if (names.isEmpty) {
       return const Text(
         'No instruments defined',
         style: TextStyle(color: Colors.grey, fontSize: 13),
       );
+    }
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -582,11 +583,12 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     List<String> values,
     ThemeData theme,
   ) {
-    if (mnemonics.isEmpty)
+    if (mnemonics.isEmpty) {
       return const Text(
         'No telemetry mnemonics',
         style: TextStyle(color: Colors.grey, fontSize: 13),
       );
+    }
     return Table(
       border: TableBorder.all(
         color: Colors.grey.shade200,
@@ -651,11 +653,12 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     List<String> statuses,
     ThemeData theme,
   ) {
-    if (steps.isEmpty)
+    if (steps.isEmpty) {
       return const Text(
         'Measurement not started',
         style: TextStyle(color: Colors.grey, fontSize: 13),
       );
+    }
     return Table(
       border: TableBorder.all(
         color: Colors.grey.shade200,
@@ -693,11 +696,13 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
         ...List.generate(steps.length, (i) {
           final status = i < statuses.length ? statuses[i].toLowerCase() : '';
           Color? rowColor;
-          if (status == 'success' || status == 'pass')
+          if (status == 'success' || status == 'pass') {
             rowColor = Colors.green.shade50;
+          }
           if (status == 'inprogress') rowColor = Colors.blue.shade50;
-          if (status == 'failed' || status == 'fail' || status == 'error')
+          if (status == 'failed' || status == 'fail' || status == 'error') {
             rowColor = Colors.red.shade50;
+          }
 
           return TableRow(
             decoration: BoxDecoration(color: rowColor),
@@ -766,7 +771,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
                           blurRadius: 4,
                         ),
                       ],
@@ -809,7 +814,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                           border: Border.all(color: Colors.grey.shade100),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
+                              color: Colors.black.withValues(alpha: 0.02),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -837,8 +842,9 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                             ),
                             const Divider(height: 24, thickness: 1.5),
                             ...List.generate(result.name.length, (i) {
-                              if (i >= result.result.length)
+                              if (i >= result.result.length) {
                                 return const SizedBox();
+                              }
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -940,10 +946,11 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
     bool hasError = resp.progress.errorMessage.isNotEmpty;
 
     Color barColor = Colors.white;
-    if (hasError)
+    if (hasError) {
       barColor = Colors.red.shade50;
-    else if (hasInteraction)
+    } else if (hasInteraction) {
       barColor = Colors.amber.shade50;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
@@ -952,7 +959,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -1189,7 +1196,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
   }
 
   Widget _buildCountdownTimer() {
-    return Container(
+    return SizedBox(
       width: 48,
       height: 48,
       child: Stack(

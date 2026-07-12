@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:prism_client/services/server_service.dart';
 import 'package:web/web.dart' as web;
@@ -45,7 +43,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
   List<StabilityReportModel> _sessions = [];
   StabilityReportModel? _selectedSession;
   final List<String> _selectedParams = [];
-  Map<String, ParameterData> _loadedData = {};
+  final Map<String, ParameterData> _loadedData = {};
   bool _isLoadingMetadata = true;
   bool _isLoadingPoints = false;
 
@@ -151,10 +149,8 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         // We'll normalize X based on the earliest timestamp in the session's first loaded parameter
         int baseTs = response.points.first.tsInt;
         // If we already have some data loaded, try to find the absolute minimum TS
-        for (var data in _loadedData.values) {
-          // This is tricky because we don't store raw TSInt in ParameterData.
-          // Let's just use the current parameter's first point as base if _loadedData is empty
-        }
+        // This is tricky because we don't store raw TSInt in ParameterData.
+        // Let's just use the current parameter's first point as base if _loadedData is empty
 
         final points = response.points.map((p) {
           return DataPoint((p.tsInt - baseTs) / 1000.0, p.value);
@@ -257,6 +253,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           _chartKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (!mounted) return;
       final bytes = byteData!.buffer.asUint8List();
 
       final blob = web.Blob(
@@ -379,7 +376,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -515,12 +512,12 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.05)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.05)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
-                      ? theme.colorScheme.primary.withOpacity(0.3)
+                      ? theme.colorScheme.primary.withValues(alpha: 0.3)
                       : Colors.grey.shade200,
                 ),
               ),
@@ -808,7 +805,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(
           show: true,
-          color: Colors.indigo.withOpacity(0.05),
+          color: Colors.indigo.withValues(alpha: 0.05),
         ),
       ),
     );
@@ -830,7 +827,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(
             show: true,
-            color: Colors.teal.withOpacity(0.05),
+            color: Colors.teal.withValues(alpha: 0.05),
           ),
         ),
       );
@@ -1010,7 +1007,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -1029,7 +1026,7 @@ class _StabilityReportsScreenState extends State<StabilityReportsScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

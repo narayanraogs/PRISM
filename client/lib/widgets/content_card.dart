@@ -45,7 +45,7 @@ class ContentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(br),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(opacity),
+            color: theme.colorScheme.primary.withValues(alpha: opacity),
             blurRadius: blur,
             offset: Offset(0, offsetY),
           ),

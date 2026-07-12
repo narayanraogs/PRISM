@@ -272,6 +272,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
       final reader = web.FileReader();
       reader.readAsText(files.item(0)!);
       reader.onLoadEnd.listen((e) {
+        if (!mounted) return;
         try {
           final result = reader.result as JSString;
           final dynamic decoded = jsonDecode(result.toDart);
@@ -382,7 +383,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -405,7 +406,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -522,7 +523,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -611,7 +612,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           onChanged: enabled ? onChanged : null,
           decoration: InputDecoration(
             prefixIcon: Icon(
@@ -671,7 +672,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.03),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.03),
                   blurRadius: 30,
                   offset: const Offset(0, 15),
                 ),
@@ -708,7 +709,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -813,16 +814,16 @@ class _StabilityScreenState extends State<StabilityScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.02),
+        color: theme.colorScheme.primary.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -853,7 +854,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.08),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -902,7 +903,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
               size: 24,
             ),
             style: IconButton.styleFrom(
-              hoverColor: theme.colorScheme.error.withOpacity(0.05),
+              hoverColor: theme.colorScheme.error.withValues(alpha: 0.05),
             ),
           ),
         ],
@@ -930,7 +931,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
@@ -1399,7 +1400,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -1418,7 +1419,7 @@ class _StabilityScreenState extends State<StabilityScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

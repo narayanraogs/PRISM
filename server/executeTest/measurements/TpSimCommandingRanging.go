@@ -256,7 +256,7 @@ func (test *tpSimCmdRangingMeasurement) measure(runner *StepRunner) error {
 			if specTone != 0 {
 				deviationPctTone = (math.Abs(deviation) / specTone) * 100.0
 			}
-			
+
 			if math.Abs(deviation) > test.tpRangingSpec.AllowedDownlinkMIDeviation {
 				deviationStatus = "Error"
 			}
@@ -287,7 +287,7 @@ func (test *tpSimCmdRangingMeasurement) measure(runner *StepRunner) error {
 					runner.execErr = fmt.Errorf("commands not executed properly")
 				}
 			}
-			
+
 			resultData := tpSimCmdRangingResult{
 				ReceiverIPPower:      actualPower,
 				SpecUplinkTCMI:       test.tpRangingSpec.TCMISimultaneousCmdAndRanging,

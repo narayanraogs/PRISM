@@ -358,7 +358,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                   }
                 });
               },
-              selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+              selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
               checkmarkColor: theme.colorScheme.primary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -526,7 +526,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                 if (_isHelpOpen)
                   GestureDetector(
                     onTap: () => setState(() => _isHelpOpen = false),
-                    child: Container(color: Colors.black.withOpacity(0.1)),
+                    child: Container(color: Colors.black.withValues(alpha: 0.1)),
                   ),
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 300),
@@ -592,8 +592,6 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                 child: Theme(
                   data: Theme.of(context).copyWith(
                     colorScheme: theme.colorScheme,
-                    // Ensure the background is handled correctly
-                    useMaterial3: true,
                   ),
                   child: Dialog(
                     shape: RoundedRectangleBorder(
@@ -615,7 +613,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.1),
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -662,7 +660,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.1),
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -769,7 +767,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
         padding: const EdgeInsets.all(16),
         child: DataTable(
           headingRowHeight: 48,
-          dataRowHeight: 72,
+          dataRowMinHeight: 48.0, dataRowMaxHeight: 72,
           showCheckboxColumn: false,
           columns: const [
             DataColumn(label: Text('DATE & TIME')),
@@ -781,11 +779,11 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
             final res = entry.metadata;
             final isSelected = _selectedEntry == entry;
             return DataRow(
-              color: MaterialStateProperty.resolveWith<Color?>((states) {
+              color: WidgetStateProperty.resolveWith<Color?>((states) {
                 if (isSelected) {
-                  return res.success ? theme.colorScheme.primary.withOpacity(0.1) : Colors.red.withOpacity(0.2);
+                  return res.success ? theme.colorScheme.primary.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.2);
                 }
-                return res.success ? null : Colors.red.withOpacity(0.05);
+                return res.success ? null : Colors.red.withValues(alpha: 0.05);
               }),
               selected: isSelected,
               onSelectChanged: (val) {
@@ -824,7 +822,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -915,7 +913,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -1027,7 +1025,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -1046,7 +1044,7 @@ class _ViewReportsScreenState extends State<ViewReportsScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

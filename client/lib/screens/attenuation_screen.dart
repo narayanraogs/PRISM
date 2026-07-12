@@ -189,6 +189,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
         .streamAttnAction(request)
         .listen(
           (response) {
+            if (!mounted) return;
             if (!response.ok) {
               setState(() => _isMeasuring = false);
               AppNotifications.showError(context, response.message);
@@ -336,7 +337,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -381,7 +382,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -519,10 +520,10 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.05),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Column(
@@ -612,7 +613,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: value,
+            initialValue: value,
             items: items
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -689,7 +690,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -708,7 +709,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -837,7 +838,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
+                            color: Colors.green.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -963,14 +964,14 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
                 .toList(),
             isCurved: true,
             color: _showCorrected
-                ? theme.colorScheme.primary.withOpacity(0.3)
+                ? theme.colorScheme.primary.withValues(alpha: 0.3)
                 : theme.colorScheme.primary,
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: theme.colorScheme.primary.withOpacity(0.05),
+              color: theme.colorScheme.primary.withValues(alpha: 0.05),
             ),
           ),
           // Corrected Line
@@ -1002,8 +1003,8 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: DataTable(
-                headingRowColor: MaterialStateProperty.all(
-                  theme.colorScheme.primary.withOpacity(0.05),
+                headingRowColor: WidgetStateProperty.all(
+                  theme.colorScheme.primary.withValues(alpha: 0.05),
                 ),
                 columnSpacing: 24,
                 columns: [
@@ -1075,7 +1076,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: ContentCard(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1107,7 +1108,7 @@ class _AttenuationScreenState extends State<AttenuationScreen> {
               guideText,
               style: TextStyle(
                 fontSize: 13,
-                color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7),
+                color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
               ),
             ),
           ],

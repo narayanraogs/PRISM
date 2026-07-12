@@ -97,7 +97,7 @@ func (test *tpToneRangingMeasurement) measure(runner *StepRunner) error {
 			// This string is just for the report, setPowerLevel runs the actual steps.
 		})
 		actualPower := test.tpBaseTest.setPowerLevel(runner, powerLevel, true)
-		
+
 		isFirst := i == 0
 
 		if isFirst {
@@ -108,7 +108,7 @@ func (test *tpToneRangingMeasurement) measure(runner *StepRunner) error {
 				runner.Run("Sweeping", true, func() {
 					runner.Exec(setGTxStopSweep(gtx, test.rxBaseTest.component))
 					runner.Exec(setGTxStartSweep(gtx, test.rxBaseTest.component))
-					sleepTime := time.Duration((test.rxBaseTest.rxSpec.SweepRange.Float64 * 4) / test.rxBaseTest.rxSpec.SweepRate.Float64) * time.Second
+					sleepTime := time.Duration((test.rxBaseTest.rxSpec.SweepRange.Float64*4)/test.rxBaseTest.rxSpec.SweepRate.Float64) * time.Second
 					time.Sleep(sleepTime)
 					runner.Exec(setGTxStopSweep(gtx, test.rxBaseTest.component))
 				})

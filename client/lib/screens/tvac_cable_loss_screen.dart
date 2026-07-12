@@ -318,7 +318,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                           ),
                           if (_isMeasuring)
                             Container(
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withValues(alpha: 0.3),
                               child: Center(
                                 child: ContentCard(
                                   width: 400,
@@ -390,7 +390,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -419,7 +419,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -438,7 +438,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -530,7 +530,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
 
   Widget _buildConnectionsOverlay(ThemeData theme) {
     return ContentCard(
-      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,7 +685,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -713,7 +713,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                 ],
               ),
             ),
-            if (action != null) action,
+            ?action,
           ],
         ),
       ),
@@ -821,7 +821,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                   children: [
                     _buildFieldLabel('PM Profile'),
                     DropdownButtonFormField<String>(
-                      value: _selectedDeviceProfile,
+                      initialValue: _selectedDeviceProfile,
                       items: _deviceProfiles
                           .map(
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
@@ -844,7 +844,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                   children: [
                     _buildFieldLabel('PM Channel'),
                     DropdownButtonFormField<String>(
-                      value: _pmChannel,
+                      initialValue: _pmChannel,
                       items: ['A', 'B']
                           .map(
                             (e) => DropdownMenuItem(
@@ -906,10 +906,10 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.05),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Text(
@@ -1054,7 +1054,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -1089,10 +1089,10 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: lastMeas.phase == 'Hot'
-                      ? Colors.orange.withOpacity(0.1)
+                      ? Colors.orange.withValues(alpha: 0.1)
                       : (lastMeas.phase == 'Cold'
-                            ? Colors.blue.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1)),
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.green.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1177,8 +1177,8 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: (delta.abs() > 1.0)
-                              ? Colors.red.withOpacity(0.1)
-                              : Colors.blue.withOpacity(0.1),
+                              ? Colors.red.withValues(alpha: 0.1)
+                              : Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -1246,7 +1246,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
               children: [
                 _buildLegendItem(theme.colorScheme.primary, 'Current'),
                 const SizedBox(width: 16),
-                _buildLegendItem(Colors.blue.withOpacity(0.5), 'Reference'),
+                _buildLegendItem(Colors.blue.withValues(alpha: 0.5), 'Reference'),
               ],
             ),
           ],
@@ -1391,7 +1391,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                 LineChartBarData(
                   spots: refSpots,
                   isCurved: false, // Changed to false for categorical accuracy
-                  color: Colors.blue.withOpacity(0.5),
+                  color: Colors.blue.withValues(alpha: 0.5),
                   barWidth: 2,
                   isStrokeCapRound: true,
                   dotData: const FlDotData(show: true),
@@ -1406,7 +1406,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
                   dotData: const FlDotData(show: true),
                   belowBarData: BarAreaData(
                     show: true,
-                    color: theme.colorScheme.primary.withOpacity(0.05),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.05),
                   ),
                 ),
               ],
@@ -1512,7 +1512,7 @@ class _TVACCableLossScreenState extends State<TVACCableLossScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),

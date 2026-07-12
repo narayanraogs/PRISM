@@ -41,12 +41,12 @@ class AppTheme {
         primary: themeColor,
         secondary: accentColor,
         surface: surfaceColor,
-        background: backgroundColor,
+        /* background: backgroundColor, */
         error: errorColor,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: const Color(0xFF1A1C1E),
-        onBackground: const Color(0xFF1A1C1E),
+        /* onBackground: const Color(0xFF1A1C1E), */
       ),
       scaffoldBackgroundColor: backgroundColor,
       textTheme: GoogleFonts.interTextTheme().copyWith(
@@ -92,7 +92,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: 2,
-        shadowColor: themeColor.withOpacity(0.1),
+        shadowColor: themeColor.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

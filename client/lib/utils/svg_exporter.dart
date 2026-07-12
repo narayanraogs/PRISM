@@ -33,13 +33,17 @@ class SvgExporter {
 
     double topW = 0;
     if (topC.isNotEmpty) {
-      for (var c in topC) topW += calcW(c);
+      for (var c in topC) {
+        topW += calcW(c);
+      }
       topW += (topC.length - 1) * gx;
     }
 
     double botW = 0;
     if (botC.isNotEmpty) {
-      for (var c in botC) botW += calcW(c);
+      for (var c in botC) {
+        botW += calcW(c);
+      }
       botW += (botC.length - 1) * gx;
     }
 
@@ -106,16 +110,17 @@ class SvgExporter {
       final x = bx - nw / 2;
       final y = by - nh / 2;
       String color = "#ffffff";
-      if (n.type == NodeType.hub)
+      if (n.type == NodeType.hub) {
         color = "#f3e8ff";
-      else if (n.type == NodeType.branching)
+      } else if (n.type == NodeType.branching) {
         color = "#ffedd5";
-      else if (n.type == NodeType.source)
+      } else if (n.type == NodeType.source) {
         color = "#e0f2fe";
-      else if (n.type == NodeType.instrument)
+      } else if (n.type == NodeType.instrument) {
         color = "#dcfce7";
-      else if (n.type == NodeType.converter)
+      } else if (n.type == NodeType.converter) {
         color = "#fce7f3";
+      }
 
       String border =
           (n.type == NodeType.hub ||
@@ -134,7 +139,7 @@ class SvgExporter {
       final List<String> lines = [];
       String currentLine = "";
       for (var word in words) {
-        if ((currentLine + " " + word).length < 24) {
+        if (("$currentLine $word").length < 24) {
           currentLine += (currentLine.isEmpty ? "" : " ") + word;
         } else {
           if (currentLine.isNotEmpty) lines.add(currentLine);
@@ -145,7 +150,7 @@ class SvgExporter {
 
       // Cap at 2 lines for label to avoid layout break
       if (lines.length > 2) {
-        lines[1] = lines[1] + "...";
+        lines[1] = "${lines[1]}...";
         lines.removeRange(2, lines.length);
       }
 
@@ -162,14 +167,15 @@ class SvgExporter {
       );
 
       String sub;
-      if (n.type == NodeType.converter)
+      if (n.type == NodeType.converter) {
         sub = "LO: ${n.loOffset} MHz";
-      else if (n.type == NodeType.source)
+      } else if (n.type == NodeType.source) {
         sub = "${n.sourceFrequency} MHz | ${n.lossDb} dBm";
-      else if (n.calibratedCableId != null)
+      } else if (n.calibratedCableId != null) {
         sub = "${n.calibratedCableId}";
-      else
+      } else {
         sub = "${n.lossDb} dB";
+      }
 
       elements.add(
         '<text x="${bx.toStringAsFixed(1)}" y="${(y + 75).toStringAsFixed(1)}" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#3b82f6">$sub</text>',

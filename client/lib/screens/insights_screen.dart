@@ -624,7 +624,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -750,7 +750,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       margin: const EdgeInsets.only(bottom: 4),
                       decoration: BoxDecoration(
                         color: isRef
-                            ? theme.colorScheme.primary.withOpacity(0.05)
+                            ? theme.colorScheme.primary.withValues(alpha: 0.05)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -857,7 +857,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12),
           side: BorderSide(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -888,12 +888,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
         _loadedReports.any((r) => r.testType == _selectedTestName);
 
     double? refValue;
-    if (_referenceSession == "Session_010")
+    if (_referenceSession == "Session_010") {
       refValue = 10.4;
-    else if (_referenceSession == "Session_009")
+    } else if (_referenceSession == "Session_009") {
       refValue = 10.5;
-    else if (_referenceSession == "Session_008")
+    } else if (_referenceSession == "Session_008") {
       refValue = 10.2;
+    }
 
     List<FlSpot> spots = [];
     double? upperLimit;
@@ -1256,7 +1257,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
         final Color sessionColor = isRef
             ? Colors.amber.shade700
-            : palette[i % palette.length].withOpacity(0.6);
+            : palette[i % palette.length].withValues(alpha: 0.6);
 
         legendItems.add(_buildLegendItem(
           isRef ? Colors.amber.shade700 : palette[i % palette.length],
@@ -1284,7 +1285,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 },
               ),
               belowBarData: isRef
-                  ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
+                  ? BarAreaData(show: true, color: Colors.amber.withValues(alpha: 0.05))
                   : null,
             ),
           );
@@ -1297,7 +1298,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
         final Color sessionColor = isRef
             ? Colors.amber.shade700
-            : palette[i % palette.length].withOpacity(0.6);
+            : palette[i % palette.length].withValues(alpha: 0.6);
 
         final date = "2026-02-0${10 - i}";
         final time = "14:30:${10 + i}";
@@ -1332,7 +1333,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               },
             ),
             belowBarData: isRef
-                ? BarAreaData(show: true, color: Colors.amber.withOpacity(0.05))
+                ? BarAreaData(show: true, color: Colors.amber.withValues(alpha: 0.05))
                 : null,
           ),
         );
@@ -1360,10 +1361,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
             LineChartData(
               lineTouchData: LineTouchData(
                 touchTooltipData: LineTouchTooltipData(
-                  getTooltipColor: (spot) => theme.colorScheme.surface.withOpacity(0.9),
+                  getTooltipColor: (spot) => theme.colorScheme.surface.withValues(alpha: 0.9),
                   tooltipRoundedRadius: 8,
                   tooltipBorder: BorderSide(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                   getTooltipItems: (List<LineBarSpot> touchedSpots) {
                     return touchedSpots.map((LineBarSpot touchedSpot) {
@@ -1457,7 +1458,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
         final Color sessionColor = isRef
             ? Colors.amber.shade700
-            : palette[i % palette.length].withOpacity(0.6);
+            : palette[i % palette.length].withValues(alpha: 0.6);
 
         legendItems.add(_buildLegendItem(
           isRef ? Colors.amber.shade700 : palette[i % palette.length],
@@ -1517,7 +1518,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 bool isAlert = spot.y > -60;
                 Color dotColor = isRef
                     ? Colors.amber.shade700
-                    : (isAlert ? Colors.red : Colors.indigo.withOpacity(0.4));
+                    : (isAlert ? Colors.red : Colors.indigo.withValues(alpha: 0.4));
 
                 return FlDotCirclePainter(
                   radius: isRef ? 8 : (isAlert ? 7 : 4),
@@ -1551,10 +1552,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
             LineChartData(
               lineTouchData: LineTouchData(
                 touchTooltipData: LineTouchTooltipData(
-                  getTooltipColor: (spot) => theme.colorScheme.surface.withOpacity(0.9),
+                  getTooltipColor: (spot) => theme.colorScheme.surface.withValues(alpha: 0.9),
                   tooltipRoundedRadius: 8,
                   tooltipBorder: BorderSide(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                   getTooltipItems: (List<LineBarSpot> touchedSpots) {
                     return touchedSpots.map((LineBarSpot touchedSpot) {
@@ -1729,7 +1730,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     Color color = Colors.green;
     IconData icon = Icons.check_circle_outline;
 
-    final UI_SESSION_COUNT = _selectedSessions.length;
+    final uiSessionCount = _selectedSessions.length;
     final testLabel = _selectedTestName ?? "Parameters";
 
     if (useRealData) {
@@ -1758,17 +1759,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
       }
 
       if (hasFailure) {
-        message = "Analysis: $testLabel shows $outOfSpecCount out-of-spec measurement(s) across $UI_SESSION_COUNT sessions.";
+        message = "Analysis: $testLabel shows $outOfSpecCount out-of-spec measurement(s) across $uiSessionCount sessions.";
         color = Colors.red;
         icon = Icons.error_outline;
       } else {
-        message = "Analysis: $testLabel shows nominal metrics across $UI_SESSION_COUNT sessions.";
+        message = "Analysis: $testLabel shows nominal metrics across $uiSessionCount sessions.";
         color = Colors.green;
         icon = Icons.check_circle_outline;
       }
     } else {
       if (_selectedCategory == InsightDataCategory.singleValue) {
-        message = "Analysis: $testLabel shows consistent metrics across ${UI_SESSION_COUNT} sessions.";
+        message = "Analysis: $testLabel shows consistent metrics across $uiSessionCount sessions.";
         color = Colors.green;
         icon = Icons.check_circle_outline;
       } else if (_selectedCategory == InsightDataCategory.variableResults) {
@@ -1902,7 +1903,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final maxDrift = values.isEmpty ? 0.0 : values.map((v) => (v - refVal).abs()).reduce(math.max);
     
     double sumSq = 0;
-    for (var v in values) sumSq += math.pow(v - mean, 2);
+    for (var v in values) {
+      sumSq += math.pow(v - mean, 2);
+    }
     final stdDev = values.isEmpty ? 0.0 : math.sqrt(sumSq / values.length);
 
     return ContentCard(
@@ -2033,7 +2036,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -2052,7 +2055,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -2244,7 +2247,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),

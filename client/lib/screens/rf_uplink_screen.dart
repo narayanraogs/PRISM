@@ -148,13 +148,13 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                                       decoration: BoxDecoration(
                                         color: isSelected
                                             ? theme.colorScheme.primary
-                                                  .withOpacity(0.08)
+                                                  .withValues(alpha: 0.08)
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: isSelected
                                               ? theme.colorScheme.primary
-                                                    .withOpacity(0.2)
+                                                    .withValues(alpha: 0.2)
                                               : Colors.transparent,
                                         ),
                                       ),
@@ -236,7 +236,7 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -265,12 +265,12 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
           boxShadow: [
             if (_isHelpOpen)
               BoxShadow(
-                color: theme.colorScheme.primary.withOpacity(0.3),
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -292,7 +292,7 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -433,7 +433,7 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -449,7 +449,7 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
               Text(
                 'LIVE ROUTE STATUS',
                 style: GoogleFonts.inter(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
@@ -555,7 +555,7 @@ class _RFUplinkScreenState extends State<RFUplinkScreen> {
                 color: leds[j] ? Colors.green : Colors.red,
                 boxShadow: [
                   BoxShadow(
-                    color: (leds[j] ? Colors.green : Colors.red).withOpacity(
+                    color: (leds[j] ? Colors.green : Colors.red).withValues(alpha: 
                       0.5,
                     ),
                     blurRadius: 4,
@@ -714,7 +714,7 @@ class _RFUplinkFormState extends State<RFUplinkForm> {
             prefixIcon: const Icon(Icons.settings_outlined),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          value: _selectedConfig,
+          initialValue: _selectedConfig,
           items: (widget.metaData?.uplinkConfigs ?? []).map((c) {
             return DropdownMenuItem(value: c, child: Text(c));
           }).toList(),
@@ -925,7 +925,7 @@ class _RemoveLinkFormState extends State<RemoveLinkForm> {
             ),
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -943,7 +943,7 @@ class _RemoveLinkFormState extends State<RemoveLinkForm> {
             prefixIcon: const Icon(Icons.link_off),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          value: _selectedConfig,
+          initialValue: _selectedConfig,
           items: (widget.linkStatus?.removeConfigs ?? []).map((c) {
             return DropdownMenuItem(value: c, child: Text(c));
           }).toList(),
@@ -1159,7 +1159,7 @@ class _RoutePathFormState extends State<RoutePathForm> {
             ),
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -1182,7 +1182,7 @@ class _RoutePathFormState extends State<RoutePathForm> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                value: widget.selectedTSM,
+                initialValue: widget.selectedTSM,
                 items: (widget.metaData?.tsms ?? []).map((t) {
                   return DropdownMenuItem(value: t, child: Text(t));
                 }).toList(),
@@ -1201,7 +1201,7 @@ class _RoutePathFormState extends State<RoutePathForm> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                value: _selectedConfig,
+                initialValue: _selectedConfig,
                 items: (widget.metaData?.allConfigs ?? []).map((c) {
                   return DropdownMenuItem(value: c, child: Text(c));
                 }).toList(),
@@ -1223,7 +1223,7 @@ class _RoutePathFormState extends State<RoutePathForm> {
             prefixIcon: const Icon(Icons.shortcut),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          value: _selectedPath,
+          initialValue: _selectedPath,
           items: [
             if (_selectedConfig != null && widget.metaData != null)
               ...(widget.metaData!.configPathInformation[_selectedConfig] ?? [])
@@ -1352,21 +1352,20 @@ class _RoutePathFormState extends State<RoutePathForm> {
                       mnemonic,
                     );
 
-                    if (mounted) {
-                      if (ack != null && ack.ok) {
-                        AppNotifications.show(
-                          context,
-                          'Route successfully established: ${ack.message}',
-                          type: NotificationType.success,
-                        );
-                        widget.onRefresh();
-                      } else {
-                        AppNotifications.show(
-                          context,
-                          'Routing error: ${ack?.message ?? 'Unknown error'}',
-                          type: NotificationType.error,
-                        );
-                      }
+                    if (!context.mounted) return;
+                    if (ack != null && ack.ok) {
+                      AppNotifications.show(
+                        context,
+                        'Route successfully established: ${ack.message}',
+                        type: NotificationType.success,
+                      );
+                      widget.onRefresh();
+                    } else {
+                      AppNotifications.show(
+                        context,
+                        'Routing error: ${ack?.message ?? 'Unknown error'}',
+                        type: NotificationType.error,
+                      );
                     }
                   },
             icon: const Icon(Icons.alt_route),

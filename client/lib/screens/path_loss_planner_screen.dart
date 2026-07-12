@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,8 +10,8 @@ import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/utils/notifications.dart';
 import 'package:prism_client/utils/svg_exporter.dart';
 import 'package:prism_client/widgets/csv_export_dialog.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+
+import 'package:web/web.dart' as web;
 
 enum NodeType { source, component, branching, instrument, hub, converter }
 
@@ -172,6 +173,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
   Future<void> _loadPlanner(String name) async {
     final server = context.read<ServerService>();
     final data = await server.loadPlannerData(name);
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         if (data.isEmpty) {
@@ -648,11 +650,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                 final svgString = SvgExporter.generate(_hubNode!);
                 final rawData = utf8.encode(svgString);
                 final content = base64Encode(rawData);
-                html.AnchorElement(href: 'data:image/svg+xml;base64,$content')
-                  ..setAttribute(
-                    'download',
-                    'PathLossDiagram_${DateTime.now().millisecondsSinceEpoch}.svg',
-                  )
+                web.HTMLAnchorElement()
+                  ..href = 'data:image/svg+xml;base64,$content'
+                  ..download = 'PathLossDiagram_${DateTime.now().millisecondsSinceEpoch}.svg'
                   ..click();
                 AppNotifications.showSuccess(
                   context,
@@ -787,8 +787,9 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       // Download
       final bytes = utf8.encode(buffer.toString());
       final base64 = base64Encode(bytes);
-      html.AnchorElement(href: 'data:text/csv;base64,$base64')
-        ..setAttribute('download', '$filename.csv')
+      web.HTMLAnchorElement()
+        ..href = 'data:text/csv;base64,$base64'
+        ..download = '$filename.csv'
         ..click();
 
       AppNotifications.showSuccess(context, 'CSV Exported Successfully');
@@ -1420,7 +1421,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                               _hubNode!.children.contains(node)) ...[
                             _label('SIDE (SPACECRAFT / INSTRUMENT)'),
                             DropdownButtonFormField<NodeDirection>(
-                              value: nDir,
+                              initialValue: nDir,
                               decoration: _dec(''),
                               items: const [
                                 DropdownMenuItem(
@@ -1443,7 +1444,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                           if (node.type == NodeType.source) ...[
                             _label('SOURCE FREQUENCY (MHz)'),
                             DropdownButtonFormField<double>(
-                              value: _availableFrequencies.contains(sFreq)
+                              initialValue: _availableFrequencies.contains(sFreq)
                                   ? sFreq
                                   : _availableFrequencies.first,
                               decoration: _dec('Select Frequency'),
@@ -1469,7 +1470,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: sCable,
+                                    initialValue: sCable,
                                     decoration: _dec(''),
                                     items: [
                                       const DropdownMenuItem(
@@ -1843,7 +1844,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         const SizedBox(height: 24),
         _label('START TERMINAL (SOURCE)'),
         DropdownButtonFormField<String>(
-          value: _startNodeId,
+          initialValue: _startNodeId,
           decoration: _dec(''),
           items: sources
               .map((s) => DropdownMenuItem(value: s.id, child: Text(s.label)))
@@ -1853,7 +1854,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         const SizedBox(height: 16),
         _label('END TERMINAL (SINK)'),
         DropdownButtonFormField<String>(
-          value: _endNodeId,
+          initialValue: _endNodeId,
           decoration: _dec(''),
           items: sinks
               .map((s) => DropdownMenuItem(value: s.id, child: Text(s.label)))

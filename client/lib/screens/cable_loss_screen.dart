@@ -433,7 +433,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
       header.add('${f.name} (${f.value} MHz)');
     }
 
-    String csv = header.join(',') + '\n';
+    String csv = '${header.join(',')}\n';
 
     for (var rec in historyToExport) {
       List<String> row = [
@@ -451,7 +451,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
         );
         row.add(m.loss != 0 ? m.loss.toStringAsFixed(4) : '-');
       }
-      csv += row.join(',') + '\n';
+      csv += '${row.join(',')}\n';
     }
 
     final bytes = utf8.encode(csv);
@@ -558,7 +558,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -587,7 +587,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -606,7 +606,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -702,7 +702,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
       margin: const EdgeInsets.only(bottom: 24),
       child: ContentCard(
         isSidebar: true, // Use simpler style
-        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
         borderRadius: 24,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -853,7 +853,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -881,7 +881,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                 ],
               ),
             ),
-            if (action != null) action,
+            ?action,
           ],
         ),
       ),
@@ -958,7 +958,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   children: [
                     _buildFieldLabel('Device Profile'),
                     DropdownButtonFormField<String>(
-                      value: _selectedDeviceProfile,
+                      initialValue: _selectedDeviceProfile,
                       items: _deviceProfiles
                           .map(
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
@@ -1023,7 +1023,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                     }
                   });
                 },
-                selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                 checkmarkColor: theme.colorScheme.primary,
                 labelStyle: TextStyle(
                   color: isSelected
@@ -1202,11 +1202,11 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   drawHorizontalLine: true,
                   drawVerticalLine: true,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     strokeWidth: 1,
                   ),
                   getDrawingVerticalLine: (value) => FlLine(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     strokeWidth: 1,
                   ),
                 ),
@@ -1281,7 +1281,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                     dotData: const FlDotData(show: true),
                     belowBarData: BarAreaData(
                       show: !isMulti,
-                      color: color.withOpacity(0.05),
+                      color: color.withValues(alpha: 0.05),
                     ),
                   );
                 }).toList(),
@@ -1413,7 +1413,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
           data: theme.copyWith(
             dataTableTheme: DataTableThemeData(
               headingRowColor: WidgetStateProperty.all(
-                theme.colorScheme.primary.withOpacity(0.02),
+                theme.colorScheme.primary.withValues(alpha: 0.02),
               ),
               horizontalMargin: 24,
               columnSpacing: 24,
@@ -1421,7 +1421,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
           ),
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withOpacity(0.1)),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
               borderRadius: BorderRadius.circular(12),
             ),
             clipBehavior: Clip.antiAlias,
@@ -1569,7 +1569,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
 
   Widget _buildMeasuringOverlay(ThemeData theme) {
     return Container(
-      color: Colors.black.withOpacity(0.5),
+      color: Colors.black.withValues(alpha: 0.5),
       child: Center(
         child: ContentCard(
           width: 500,
@@ -1583,7 +1583,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -1653,7 +1653,7 @@ class _CableLossScreenState extends State<CableLossScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                     ),
                   ],

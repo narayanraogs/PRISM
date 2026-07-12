@@ -30,7 +30,7 @@ class _TestScreenState extends State<TestScreen> {
   String? _selectedConfig;
   final Set<TestDescription> _selectedTests = {};
   final TextEditingController _remarkController = TextEditingController();
-  bool _isStarting = false;
+  final bool _isStarting = false;
 
   void _onCategorySelected(int index) {
     setState(() {
@@ -151,7 +151,7 @@ class _TestScreenState extends State<TestScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -210,7 +210,7 @@ class _TestScreenState extends State<TestScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -245,12 +245,12 @@ class _TestScreenState extends State<TestScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? theme.colorScheme.primary.withOpacity(0.08)
+                          ? theme.colorScheme.primary.withValues(alpha: 0.08)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected
-                            ? theme.colorScheme.primary.withOpacity(0.2)
+                            ? theme.colorScheme.primary.withValues(alpha: 0.2)
                             : Colors.transparent,
                       ),
                     ),
@@ -365,7 +365,7 @@ class _TestScreenState extends State<TestScreen> {
                                   vertical: 16,
                                 ),
                               ),
-                              value: _selectedConfig,
+                              initialValue: _selectedConfig,
                               items: configs.map((c) {
                                 return DropdownMenuItem(
                                   value: c,
@@ -532,7 +532,7 @@ class _TestScreenState extends State<TestScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -585,12 +585,12 @@ class _TestScreenState extends State<TestScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.05)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.05)
                   : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
-                    ? theme.colorScheme.primary.withOpacity(0.3)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.3)
                     : Colors.grey.shade200,
                 width: isSelected ? 2 : 1,
               ),
@@ -671,7 +671,7 @@ class _TestScreenState extends State<TestScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -690,7 +690,7 @@ class _TestScreenState extends State<TestScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

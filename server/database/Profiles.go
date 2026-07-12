@@ -14,7 +14,7 @@ func GetDownlinkPowerProfile(profileName sql.NullString) (DownlinkPowerProfile, 
 	return profile, true
 }
 
-func GetPulsePowerProfile(configName string,testType string, testCategory string) (string, bool) {
+func GetPulsePowerProfile(configName string, testType string, testCategory string) (string, bool) {
 	ctx := context.Background()
 	var arg getTestWithCategoryParams
 	arg.ConfigName = configName
@@ -24,7 +24,7 @@ func GetPulsePowerProfile(configName string,testType string, testCategory string
 	if err != nil {
 		return "Unable to get Pulse Power Profile", false
 	}
-	return profile.PowerProfileName.String , true
+	return profile.PowerProfileName.String, true
 }
 
 func GetTRMParameters(profileName sql.NullString) (TRMProfile, bool) {

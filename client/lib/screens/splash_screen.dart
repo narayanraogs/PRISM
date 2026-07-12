@@ -104,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -116,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen>
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -150,7 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
                               color: Colors.white,
                               shadows: [
                                 Shadow(
-                                  color: Colors.black.withOpacity(0.3),
+                                  color: Colors.black.withValues(alpha: 0.3),
                                   offset: const Offset(0, 4),
                                   blurRadius: 10,
                                 ),
@@ -164,7 +164,7 @@ class _SplashScreenState extends State<SplashScreen>
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 2,
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               height: 1.5,
                             ),
                           ),
@@ -178,7 +178,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       children: [
                         LinearProgressIndicator(
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Colors.white,
                           ),
@@ -190,7 +190,7 @@ class _SplashScreenState extends State<SplashScreen>
                           _statusMessage,
                           style: GoogleFonts.inter(
                             fontSize: 13,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontStyle: FontStyle.italic,
                           ),
                         ),

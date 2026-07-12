@@ -166,7 +166,7 @@ func (c *Client) pollForStatus(ctx context.Context, name string, resultChan chan
 				resultChan <- ProcedureResult{Success: false, Err: fmt.Errorf("polling failed: %w", err)}
 				return
 			}
-			
+
 			logger.Log.Debug("Polling Procedure Status", "procedure", name, "status", ack.ExeStatus)
 
 			if !ack.Ack {

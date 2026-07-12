@@ -42,7 +42,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -59,7 +59,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -204,7 +204,7 @@ class _CsvExportDialogState extends State<CsvExportDialog> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           hint: Text(hint, style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade400)),
           items: items.map((node) {
             return DropdownMenuItem<String>(

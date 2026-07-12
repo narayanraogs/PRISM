@@ -36,7 +36,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   final List<String> _logs = [];
   int _selectedSpectrumTab = 0;
   bool _isPortConnected = false;
-  bool _abortRequested = false;
+
   bool _isHelpOpen = false;
   bool _showConnectionDiagram = false;
   bool _isReportMode = false;
@@ -392,7 +392,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   void _abortBatch() {
-    setState(() => _abortRequested = true);
+
     final serverService = Provider.of<ServerService>(context, listen: false);
     serverService.abortUCDC();
     _addLog("Abort request sent to server.");
@@ -406,12 +406,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
     setState(() {
       _isMeasuring = true;
-      _abortRequested = false;
+
       _progress = 0.0;
       _logs.clear();
       _currentlyRunningTests = selectedTests;
       _currentBatchTestIndex = 0;
-      for (var t in selectedTests) t.status = "PENDING";
+      for (var t in selectedTests) { t.status = "PENDING"; }
     });
 
     _addLog("Starting batch measurement for ${activePort.name}...");
@@ -470,18 +470,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         );
   }
 
-  List<Map<String, String>> _generateMockGainData() {
-    return List.generate(10, (index) {
-      double input = -30.0 + (index * 5.0);
-      double output = -10.0 + (index * 4.8);
-      double gain = output - input;
-      return {
-        "input": "${input.toStringAsFixed(1)}",
-        "output": "${output.toStringAsFixed(2)}",
-        "gain": "${gain.toStringAsFixed(2)}",
-      };
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -561,7 +549,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 if (_isHelpOpen)
                   GestureDetector(
                     onTap: () => setState(() => _isHelpOpen = false),
-                    child: Container(color: Colors.black.withOpacity(0.1)),
+                    child: Container(color: Colors.black.withValues(alpha: 0.1)),
                   ),
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 300),
@@ -683,7 +671,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            ? theme.colorScheme.primary.withValues(alpha: 0.08)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -878,7 +866,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -961,12 +949,12 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isViewing
-                ? theme.colorScheme.primary.withOpacity(0.05)
+                ? theme.colorScheme.primary.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isViewing
-                  ? theme.colorScheme.primary.withOpacity(0.2)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.2)
                   : Colors.transparent,
             ),
           ),
@@ -1151,10 +1139,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -1270,7 +1258,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             : const Color(0xFFFFF9C4),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: (_isPortConnected ? Colors.green : Colors.orange).withOpacity(
+          color: (_isPortConnected ? Colors.green : Colors.orange).withValues(alpha: 
             0.3,
           ),
         ),
@@ -1561,7 +1549,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   selected: isSelected,
                   onSelected: (val) =>
                       setState(() => _selectedSpectrumTab = index),
-                  selectedColor: theme.colorScheme.primary.withOpacity(0.1),
+                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                   labelStyle: TextStyle(
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -1857,7 +1845,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1879,7 +1867,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 Text(
                   test.name.toUpperCase(),
                   style: GoogleFonts.inter(
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.2,
@@ -2115,39 +2103,6 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _buildTextResult(dynamic result, String status) {
-    if (status == "MEASURING") {
-      return Text(
-        "Measuring...",
-        style: GoogleFonts.robotoMono(
-          fontSize: 18,
-          color: Colors.blue.shade300,
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          result?.toString() ?? "Awaiting Data...",
-          style: GoogleFonts.robotoMono(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade300,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          "VERDICT: PASSED",
-          style: TextStyle(
-            color: Colors.green,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildGainResultTable(GainResults res) {
     return Table(
@@ -2236,7 +2191,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     Function(String?) onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       items: items
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
@@ -2272,7 +2227,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.blue.shade700.withOpacity(0.6)),
+        Icon(icon, size: 16, color: Colors.blue.shade700.withValues(alpha: 0.6)),
         const SizedBox(width: 12),
         Text(
           label,
@@ -2309,7 +2264,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -2328,7 +2283,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -2427,7 +2382,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
 
     return ContentCard(
-      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -2455,7 +2410,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             activePort.instruction,
             style: TextStyle(
               fontSize: 13,
-              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 16),

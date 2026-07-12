@@ -172,25 +172,27 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                     );
 
                     if (confirm != true) return;
+                    if (!context.mounted) return;
 
                     setState(() => _isLoading = true);
                     final server = context.read<ServerService>();
                     final ack = await server.createNewTSMTable();
+                    if (!context.mounted) return;
+                    
                     if (ack != null && ack.ok) {
                       await server.fetchBootstrapData();
+                      if (!context.mounted) return;
                       _fetchMetadata();
                     } else {
                       setState(() => _isLoading = false);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              ack?.message ?? "Failed to regenerate table",
-                            ),
-                            backgroundColor: Colors.red,
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ack?.message ?? "Failed to regenerate table",
                           ),
-                        );
-                      }
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
                   },
                   icon: const Icon(Icons.refresh),
@@ -239,7 +241,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                 if (_isHelpOpen)
                   GestureDetector(
                     onTap: () => setState(() => _isHelpOpen = false),
-                    child: Container(color: Colors.black.withOpacity(0.1)),
+                    child: Container(color: Colors.black.withValues(alpha: 0.1)),
                   ),
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 300),
@@ -339,7 +341,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -372,7 +374,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                 ],
               ),
             ),
-            if (action != null) action,
+            ?action,
           ],
         ),
       ),
@@ -428,7 +430,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
 
           _buildFieldLabel('Device Profile'),
           DropdownButtonFormField<String>(
-            value: _selectedProfile.isNotEmpty ? _selectedProfile : null,
+            initialValue: _selectedProfile.isNotEmpty ? _selectedProfile : null,
             items: _profiles
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -507,7 +509,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                   color: isSelected
                       ? theme.colorScheme.primary
                       : (isCompleted
-                            ? Colors.green.withOpacity(0.5)
+                            ? Colors.green.withValues(alpha: 0.5)
                             : Colors.grey.shade300),
                   width: isSelected ? 2 : 1,
                 ),
@@ -538,7 +540,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                       style: TextStyle(
                         fontSize: 9,
                         color: isSelected
-                            ? theme.colorScheme.onPrimaryContainer.withOpacity(
+                            ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 
                                 0.7,
                               )
                             : Colors.grey.shade600,
@@ -574,7 +576,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                   color: isSelected
                       ? theme.colorScheme.primary
                       : (isMeasured
-                            ? Colors.green.withOpacity(0.5)
+                            ? Colors.green.withValues(alpha: 0.5)
                             : Colors.grey.shade300),
                   width: isSelected ? 2 : 1,
                 ),
@@ -655,7 +657,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
@@ -702,7 +704,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
                     headingRowHeight: 40,
                     columnSpacing: 20,
                     horizontalMargin: 20,
-                    headingRowColor: MaterialStateProperty.all(
+                    headingRowColor: WidgetStateProperty.all(
                       Colors.grey.shade50,
                     ),
                     columns: const [
@@ -839,7 +841,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           SizedBox(
             width: double.infinity,
             child: DataTable(
-              headingRowColor: MaterialStateProperty.all(Colors.grey.shade50),
+              headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
               horizontalMargin: 24,
               columns: const [
                 DataColumn(label: Text('Input Port')),
@@ -932,7 +934,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -951,7 +953,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -1087,7 +1089,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
       icon: Icon(icon, size: 16),
       label: Text(label),
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.05),
+        backgroundColor: color.withValues(alpha: 0.05),
         foregroundColor: color,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1104,7 +1106,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
       'Loss (dB)'
     ];
 
-    String csv = header.join(',') + '\n';
+    String csv = '${header.join(',')}\n';
 
     for (final path in _allPaths) {
       if (path.frequencies.isEmpty) {
@@ -1115,7 +1117,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
           'N/A',
           'N/A'
         ];
-        csv += row.join(',') + '\n';
+        csv += '${row.join(',')}\n';
       } else {
         for (int i = 0; i < path.frequencies.length; i++) {
           final freq = path.frequencies[i] / 1000.0;
@@ -1127,7 +1129,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
             freq.toStringAsFixed(2),
             loss.toStringAsFixed(2)
           ];
-          csv += row.join(',') + '\n';
+          csv += '${row.join(',')}\n';
         }
       }
     }
@@ -1175,7 +1177,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
     }
 
     return ContentCard(
-      color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1237,7 +1239,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
             guideText,
             style: TextStyle(
               fontSize: 13,
-              color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 16),
@@ -1257,7 +1259,7 @@ class _TSMInternalPathLossScreenState extends State<TSMInternalPathLossScreen> {
 
   Widget _buildMeasuringOverlay(ThemeData theme) {
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: Center(
         child: ContentCard(
           padding: const EdgeInsets.all(32),

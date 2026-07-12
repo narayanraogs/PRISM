@@ -157,7 +157,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -179,7 +179,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
@@ -230,7 +230,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -249,7 +249,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -349,7 +349,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -414,7 +414,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.05),
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -714,7 +714,7 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           onChanged: enabled ? onChanged : null,
           decoration: InputDecoration(
             prefixIcon: Icon(
@@ -813,8 +813,9 @@ class _SpectrumDumpScreenState extends State<SpectrumDumpScreen> {
   }
 
   Future<void> _executeCaptureScreenshot() async {
-    if (_selectedInstrument == null || _selectedScreenshotProfile == null)
+    if (_selectedInstrument == null || _selectedScreenshotProfile == null) {
       return;
+    }
 
     final service = Provider.of<ServerService>(context, listen: false);
     final notificationService = Provider.of<NotificationService>(

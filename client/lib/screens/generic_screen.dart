@@ -34,7 +34,7 @@ class GenericScreen extends StatelessWidget {
                       size: 64,
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withOpacity(0.2),
+                      ).colorScheme.primary.withValues(alpha: 0.2),
                     ),
                     const SizedBox(height: 16),
                     Text(

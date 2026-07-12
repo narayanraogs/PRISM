@@ -204,6 +204,8 @@ class _LinkLossScreenState extends State<LinkLossScreen>
       isUplink,
     );
 
+    if (!mounted) return;
+
     if (ack != null && ack.ok) {
       AppNotifications.show(
         context,
@@ -246,6 +248,8 @@ class _LinkLossScreenState extends State<LinkLossScreen>
       allowedExtensions: ['csv'],
       withData: true,
     );
+
+    if (!mounted) return;
 
     if (result == null || result.files.single.bytes == null) return;
 
@@ -315,7 +319,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
     final url = web.URL.createObjectURL(blob);
     final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
     anchor.href = url;
-    anchor.download = "${_selectedConfig}-loss.csv";
+    anchor.download = "$_selectedConfig-loss.csv";
     anchor.click();
     web.URL.revokeObjectURL(url);
 
@@ -394,7 +398,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -444,6 +448,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
               final ack = await service.selectTestPhase(_selectedTestPhase);
               if (ack != null && ack.ok) {
                 await service.fetchBootstrapData();
+                if (!mounted) return;
                 AppNotifications.show(
                   context,
                   "System Test Phase Updated",
@@ -474,7 +479,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
               SizedBox(
                 width: 300,
                 child: DropdownButtonFormField<String>(
-                  value: _selectedConfig.isEmpty ? null : _selectedConfig,
+                  initialValue: _selectedConfig.isEmpty ? null : _selectedConfig,
                   decoration: const InputDecoration(
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     border: OutlineInputBorder(),
@@ -651,7 +656,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: copyFrom.isEmpty ? null : copyFrom,
+                initialValue: copyFrom.isEmpty ? null : copyFrom,
                 decoration: const InputDecoration(
                   labelText: 'Copy losses from (Optional)',
                 ),
@@ -680,8 +685,10 @@ class _LinkLossScreenState extends State<LinkLossScreen>
 
                 final service = context.read<ServerService>();
                 final ack = await service.addNewTestPhase(name, copyFrom);
+                if (!context.mounted) return;
                 if (ack != null && ack.ok) {
                   await service.fetchBootstrapData();
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadMetadata();
                   AppNotifications.show(
@@ -719,7 +726,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -738,7 +745,7 @@ class _LinkLossScreenState extends State<LinkLossScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),

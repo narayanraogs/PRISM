@@ -63,9 +63,9 @@ class _InstrumentConnectionDiagramState
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.03),
+        color: primaryColor.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryColor.withOpacity(0.1)),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -239,7 +239,7 @@ class _InstrumentConnectionDiagramState
                       border: Border.all(color: primaryColor, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: primaryColor.withOpacity(0.2),
+                          color: primaryColor.withValues(alpha: 0.2),
                           blurRadius: 4,
                         ),
                       ],
@@ -389,7 +389,7 @@ class _InstrumentConnectionDiagramState
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withOpacity(0.3),
+              color: primaryColor.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -416,10 +416,10 @@ class _InstrumentConnectionDiagramState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -460,7 +460,7 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final paint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -473,13 +473,13 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final cablePaint = Paint()
-        ..color = Colors.green.withOpacity(0.2)
+        ..color = Colors.green.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
 
       final sensorPaint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -495,7 +495,7 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final paint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -512,7 +512,7 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final paint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -529,7 +529,7 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final paint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -542,7 +542,7 @@ class _ConnectionPainter extends CustomPainter {
       final end = Offset(size.width - nodeWidth, nodeCenterY);
 
       final paint = Paint()
-        ..color = primaryColor.withOpacity(0.2)
+        ..color = primaryColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
         ..strokeCap = StrokeCap.round;
@@ -554,7 +554,7 @@ class _ConnectionPainter extends CustomPainter {
 
   void _drawMovingDashes(Canvas canvas, Offset start, Offset end, Color color) {
     final dashPaint = Paint()
-      ..color = color.withOpacity(0.6)
+      ..color = color.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;

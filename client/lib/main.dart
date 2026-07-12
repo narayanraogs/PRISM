@@ -123,27 +123,36 @@ class _RootPageState extends State<RootPage> {
                 if (index == 1) return TestScreen(isActive: _selectedIndex == 1);
                 if (index == 2) return const ScheduleScreen();
                 if (index == 3) return StabilityScreen(isActive: _selectedIndex == 3);
-                if (index == 4)
+                if (index == 4) {
                   return SpectrumDumpScreen(isActive: _selectedIndex == 4);
+                }
                 if (index == 5) return MonitorScreen(isActive: _selectedIndex == 5);
-                if (index == 6)
+                if (index == 6) {
                   return TVACCableLossScreen(isActive: _selectedIndex == 6);
-                if (index == 7)
+                }
+                if (index == 7) {
                   return ScpiCommanderScreen(isActive: _selectedIndex == 7);
+                }
                 if (index == 8) return CableLossScreen(isActive: _selectedIndex == 8);
-                if (index == 9)
+                if (index == 9) {
                   return PathLossPlannerScreen(isActive: _selectedIndex == 9);
-                if (index == 10)
+                }
+                if (index == 10) {
                   return AttenuationScreen(isActive: _selectedIndex == 10);
-                if (index == 11)
+                }
+                if (index == 11) {
                   return TSMInternalPathLossScreen(isActive: _selectedIndex == 11);
-                if (index == 12)
+                }
+                if (index == 12) {
                   return GTxCharacterizationScreen(isActive: _selectedIndex == 12);
-                if (index == 13)
+                }
+                if (index == 13) {
                   return UpDownConverterScreen(isActive: _selectedIndex == 13);
+                }
                 if (index == 14) return const LinkLossScreen();
-                if (index == 15)
+                if (index == 15) {
                   return ViewReportsScreen(isActive: _selectedIndex == 15);
+                }
                 if (index == 16) return const StabilityReportsScreen();
                 if (index == 17) return const InsightsScreen();
 

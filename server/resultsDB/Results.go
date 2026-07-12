@@ -127,7 +127,6 @@ func GetReportJSON(date string, time string) (reports.Report, error) {
 	return reportData, nil
 }
 
-
 func RegenerateReport(date string, time string) (string, error) {
 	ctx := context.Background()
 	var args getSingleResultParams

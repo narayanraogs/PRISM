@@ -486,7 +486,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           if (_isHelpOpen)
             GestureDetector(
               onTap: () => setState(() => _isHelpOpen = false),
-              child: Container(color: Colors.black.withOpacity(0.1)),
+              child: Container(color: Colors.black.withValues(alpha: 0.1)),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
@@ -524,7 +524,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
           border: Border.all(
             color: _isHelpOpen
                 ? theme.colorScheme.primary
-                : theme.colorScheme.primary.withOpacity(0.2),
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
@@ -543,7 +543,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(-10, 0),
           ),
@@ -852,7 +852,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50.withOpacity(0.5),
+        color: Colors.blue.shade50.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.blue.shade100),
       ),
@@ -970,7 +970,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A237E).withOpacity(0.1),
+                      color: const Color(0xFF1A237E).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(
@@ -1020,7 +1020,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(
+                      headingRowColor: WidgetStateProperty.all(
                         Colors.grey.shade50,
                       ),
                       columns: [
@@ -1162,7 +1162,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1182,7 +1182,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -1330,7 +1330,7 @@ class _ScpiCommanderScreenState extends State<ScpiCommanderScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           onChanged: onChanged,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: theme.colorScheme.primary, size: 20),
