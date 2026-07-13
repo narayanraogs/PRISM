@@ -31,3 +31,22 @@ func TestGenerateProcedures(t *testing.T) {
 		t.Logf("Successfully wrote procedure with %d commands to %s", tc.commands, outputPath)
 	}
 }
+
+func TestUniqueNameLength(t *testing.T) {
+	tests := []struct {
+		name      string
+		procedure string
+	}{
+		{"Rx-Test-300cmds.tst", "some simple procedure script content"},
+		{"VeryLongReceiverNameIndeed-300cmds.tst", "other script content"},
+		{"ShortName.tst", "short script"},
+	}
+
+	for _, tc := range tests {
+		unique := getUniqueName(tc.name, tc.procedure)
+		if len(unique) >= 30 {
+			t.Errorf("Unique name %q length is %d, which is >= 30", unique, len(unique))
+		}
+		t.Logf("Original: %s -> Unique: %s (length: %d)", tc.name, unique, len(unique))
+	}
+}

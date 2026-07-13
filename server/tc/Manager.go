@@ -33,17 +33,29 @@ func RunProcedure(ctx context.Context, name, procedure, subsystem string) (<-cha
 	return RunProcedureFromProvider(ctx, name, func() string { return procedure }, subsystem)
 }
 
-func RunProcedureFromProvider(ctx context.Context, name string, procedureProvider func() string, subsystem string) (<-chan ProcedureResult, error) {
-	procedure := procedureProvider()
-
+func getUniqueName(name string, procedure string) string {
 	// Compute SHA-256 hash of the procedure content
 	hash := sha256.Sum256([]byte(procedure))
-	// Convert the first 8 bytes to a 16-character hex string
-	hashStr := hex.EncodeToString(hash[:8])
+	// Convert the first 4 bytes to an 8-character hex string (saves characters to stay within name limits)
+	hashStr := hex.EncodeToString(hash[:4])
 
-	// Create a unique name by appending the hash suffix (e.g., test-a1b2c3d4e5f6g7h8.tst)
+	// Create a unique name by appending the hash suffix (removing .tst if present)
 	baseName := strings.TrimSuffix(name, ".tst")
-	uniqueName := fmt.Sprintf("%s-%s.tst", baseName, hashStr)
+
+	// The remote server expects procedure names to be less than 30 characters.
+	// "-<hashStr>" takes 9 characters (1 + 8).
+	// To ensure uniqueName is strictly less than 30 characters (i.e., <= 29),
+	// baseName can be at most 29 - 9 = 20 characters.
+	const maxBaseNameLen = 20
+	if len(baseName) > maxBaseNameLen {
+		baseName = baseName[:maxBaseNameLen]
+	}
+	return fmt.Sprintf("%s-%s", baseName, hashStr)
+}
+
+func RunProcedureFromProvider(ctx context.Context, name string, procedureProvider func() string, subsystem string) (<-chan ProcedureResult, error) {
+	procedure := procedureProvider()
+	uniqueName := getUniqueName(name, procedure)
 
 	manager.mu.Lock()
 	_, found := manager.validatedProcedures[uniqueName]

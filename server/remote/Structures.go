@@ -1,42 +1,42 @@
 package remote
 
 type Acknowledgement struct {
-	Status bool   `json:"status"`
-	Msg    string `json:"msg"`
+	Status bool
+	Msg    string
 }
 
 type SoftwareResponse struct {
-	Ack     Acknowledgement `json:"ack"`
-	Setters []Setter        `json:"setters"`
-	Getters []string        `json:"getters"`
-	Actions []Action        `json:"actions"`
+	Ack     Acknowledgement
+	Setters []Setter
+	Getters []string
+	Actions []Action
 }
 
 type Setter struct {
-	ParamName string   `json:"paramName"`
-	Values    []string `json:"values"`
+	ParamName string
+	Values    []string
 }
 
 type Action struct {
-	Type       string   `json:"type"`
-	ParamNames []string `json:"paramNames"`
+	Type       string
+	ParamNames []string
 }
 
 type GetRequest struct {
-	Params []string `json:"params"`
+	Params []string
 }
 
 type GetResponse struct {
-	Ack    Acknowledgement `json:"ack"`
-	Params []string        `json:"params"`
-	Values []string        `json:"values"`
+	Ack    Acknowledgement
+	Params []string
+	Values []string
 }
 
 type SetRequest struct {
-	Params []string `json:"params"`
-	Values []string `json:"values"`
+	Params []string
+	Values []string
 }
 
 type ActionRequest struct {
-	Type string `json:"type"`
+	Type string
 }
