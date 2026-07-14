@@ -628,6 +628,10 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	if !resp.Success {
 		return resp
 	}
+	resp = sa.SingleSweep()
+	if !resp.Success {
+		return resp
+	}
 	peaks := make([]float64, 0)
 	frequencies := make([]float64, 0)
 	resp = sa.PeakSearch(false, markerNo)
@@ -657,7 +661,10 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 		peaks = append(peaks, resp.Result["MarkerY"].Value)
 		frequencies = append(frequencies, resp.Result["MarkerX"].Value)
 	}
-
+	resp = sa.ContinuousSweep()
+	if !resp.Success {
+		return resp
+	}
 	ret := getSuccessResponse()
 	ret.Result["Frequencies"] = utils.CommandResult{
 		ResultType: "Values",

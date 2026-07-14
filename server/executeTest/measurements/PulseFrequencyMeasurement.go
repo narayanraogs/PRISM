@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	executeTest.Register("PulseFrequency", "", newPulseFrequencyMeasurement)
+	executeTest.Register("PulseFrequency", "SA", newPulseFrequencyMeasurement)
 	results.Register("PulseFrequency", results.NewDefaultProcessor([]string{"Results"}))
 }
 
