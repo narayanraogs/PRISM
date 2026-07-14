@@ -409,7 +409,7 @@ class StabilityMetadata {
           (json['Instruments'] as Map?)?.map(
             (key, value) => MapEntry(
               key.toString(),
-              (value as List).map((e) => e.toString()).toList(),
+              (value as List?)?.map((e) => e.toString()).toList() ?? [],
             ),
           ) ??
           {},
@@ -417,7 +417,7 @@ class StabilityMetadata {
           (json['Parameters'] as Map?)?.map(
             (key, value) => MapEntry(
               key.toString(),
-              (value as List).map((e) => e.toString()).toList(),
+              (value as List?)?.map((e) => e.toString()).toList() ?? [],
             ),
           ) ??
           {},
@@ -646,7 +646,7 @@ class SpectrumDumpMetadata {
       spectrumDumpMode: List<String>.from(json['SpectrumDumpMode'] ?? []),
       instruments:
           (json['Instruments'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, List<String>.from(value)),
+            (key, value) => MapEntry(key, List<String>.from(value ?? [])),
           ) ??
           {},
       spectrumProfiles:
@@ -679,7 +679,7 @@ class MonitorMetadata {
       instrumentTypes: List<String>.from(json['InstrumentTypes'] ?? []),
       instruments:
           (json['Instruments'] as Map<String, dynamic>?)?.map(
-            (key, value) => MapEntry(key, List<String>.from(value)),
+            (key, value) => MapEntry(key, List<String>.from(value ?? [])),
           ) ??
           {},
       ok: json['OK'] ?? false,
