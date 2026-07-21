@@ -179,7 +179,12 @@ func RegenerateReport(date string, time string) (string, error) {
 		return "", err
 	}
 
-	return newPDFPath, nil
+	file, err := os.ReadFile(newPDFPath)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(file), nil
 }
 
 func GetOfflineTestPhases() ([]string, error) {

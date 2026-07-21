@@ -121,10 +121,13 @@ func (p *vsaProcessor) generateReport(filename string) (reports.Result, reports.
 		row = append(row, cellMin)
 		measured, _, _ = pulse.GetMeanSDValue(columnMap[param])
 		measured, measuredStr = calculator(measured)
+		if parsed, err := strconv.ParseFloat(measuredStr, 64); err == nil {
+			measured = parsed
+		}
 
 		cell := reports.GetDataCell(measuredStr)
 		deviation := measured - expected
-		if math.Abs(deviation) < allowed {
+		if math.Abs(deviation) <= allowed+1e-9 {
 			cell.SetSuccess()
 		} else {
 			cell.SetError()

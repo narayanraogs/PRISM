@@ -180,7 +180,7 @@ Select * from "PulseProfile"
 where "Name" = ?;
 
 -- name: getFullPulseSpecs :one
-Select * from "SpecPL" where "ConfigName" = ? and "ResolutionMode" not in ("HR","LR") or "ResolutionMode" is null;
+Select * from "SpecPL" where "ConfigName" = ? and ("ResolutionMode" not in ("HR","LR") or "ResolutionMode" is null);
 
 -- name: getTestWithoutCategory :one
 Select * from "Tests"

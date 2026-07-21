@@ -6,6 +6,7 @@ import (
 	"prismServer/database"
 	"prismServer/reports"
 	"prismServer/utils"
+	"strconv"
 	"strings"
 )
 
@@ -106,10 +107,13 @@ func (p *ppmProcessor) generateReport(filename string) (reports.Result, reports.
 
 		measured, _ = pulse.GetFirstValue(columnMap[param])
 		measured, measuredStr = calculator(measured)
+		if parsed, err := strconv.ParseFloat(measuredStr, 64); err == nil {
+			measured = parsed
+		}
 
 		cell := reports.GetDataCell(measuredStr)
 		deviation := measured - expected
-		if math.Abs(deviation) < allowed {
+		if math.Abs(deviation) <= allowed+1e-9 {
 			cell.SetSuccess()
 		} else {
 			cell.SetError()
