@@ -164,6 +164,7 @@ func saveSpectrum(c *gin.Context) {
 	}
 
 	report := reports.Report{}
+	report.OK = true
 	report.SetHeader("", "Spectrum Dump", "", utils.GetTestPhase())
 	var image reports.Images
 	image.FileData = req.Spectrum
