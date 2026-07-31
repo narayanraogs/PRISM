@@ -58,18 +58,24 @@ type UpDownConverterMeasurement struct {
 // Internal Helpers
 
 func (udc *UpDownConverterMeasurement) notify(msg string) {
-	udc.statusMonitor <- RTStatus{Message: msg, Success: true}
+	if udc.statusMonitor != nil {
+		udc.statusMonitor <- RTStatus{Message: msg, Success: true}
+	}
 }
 
 func (udc *UpDownConverterMeasurement) finish(msg string, success bool) {
-	udc.statusMonitor <- RTStatus{
-		Message:   msg,
-		Success:   success,
-		Error:     !success,
-		Completed: true,
+	if udc.statusMonitor != nil {
+		udc.statusMonitor <- RTStatus{
+			Message:   msg,
+			Success:   success,
+			Error:     !success,
+			Completed: true,
+		}
+		close(udc.statusMonitor)
 	}
-	close(udc.statusMonitor)
-	close(udc.measurementMonitor)
+	if udc.measurementMonitor != nil {
+		close(udc.measurementMonitor)
+	}
 }
 
 func (udc *UpDownConverterMeasurement) setError(msg string) {
@@ -280,7 +286,7 @@ func (udc *UpDownConverterMeasurement) GetStatusMonitor() (chan RTStatus, chan C
 	return udc.statusMonitor, udc.measurementMonitor
 }
 
-func (udc *UpDownConverterMeasurement) Init(deviceProfile, externalSGName, converterName string) {
+func (udc *UpDownConverterMeasurement) Init(deviceProfile, externalSGName, converterName string) bool {
 	udc.deviceProfile = deviceProfile
 	udc.externalSGName = externalSGName
 	udc.converterName = converterName
@@ -288,7 +294,7 @@ func (udc *UpDownConverterMeasurement) Init(deviceProfile, externalSGName, conve
 	ucdc, err := database.GetConverterDetails(converterName)
 	if err != nil {
 		udc.setError("Unable to read converter from database")
-		return
+		return false
 	}
 	udc.converter = ucdc
 
@@ -296,19 +302,20 @@ func (udc *UpDownConverterMeasurement) Init(deviceProfile, externalSGName, conve
 	sgName, okSg := database.GetSGFromDeviceProfile(deviceProfile)
 	if !okSa || !okSg {
 		udc.setError("Unable to resolve devices from profile")
-		return
+		return false
 	}
 
 	if strings.EqualFold(sgName, externalSGName) {
 		udc.setError("External LO SG and Internal LO SG cannot be the same")
-		return
+		return false
 	}
 
 	if !udc.sa.LoadDevice(saName) || !udc.sg.LoadDevice(sgName) || !udc.sgExt.LoadDevice(externalSGName) {
 		udc.setError("Failed to load device drivers")
-		return
+		return false
 	}
 	udc.stop = false
+	return true
 }
 
 func (udc *UpDownConverterMeasurement) SetInputCableLoss(loss, power float64) {

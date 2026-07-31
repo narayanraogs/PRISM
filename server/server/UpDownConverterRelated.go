@@ -76,7 +76,13 @@ func upDownConverterMeasurement(c *gin.Context) {
 	}
 
 	var uc tne.UpDownConverterMeasurement
-	uc.Init(req.DeviceProfile, req.ExternalSGName, req.ConverterName)
+	sts, _ := uc.GetStatusMonitor()
+	if !uc.Init(req.DeviceProfile, req.ExternalSGName, req.ConverterName) {
+		for stsMsg := range sts {
+			conn.WriteJSON(stsMsg)
+		}
+		return
+	}
 	uc.SetInputCableLoss(req.InputCableLoss, req.InputPower)
 	uc.SetOutputCableLoss(req.OutputCableLoss)
 	uc.SetLOCableLoss(req.LOCableLoss)

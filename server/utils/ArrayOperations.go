@@ -11,7 +11,7 @@ func GetFloatArray(values []string) []float64 {
 	for _, value := range values {
 		value = strings.TrimSpace(value)
 		fVal, err := strconv.ParseFloat(value, 64)
-		if err == nil {
+		if err != nil {
 			logger.Log.Error("Unable to convert to float")
 		}
 		tbr = append(tbr, fVal)

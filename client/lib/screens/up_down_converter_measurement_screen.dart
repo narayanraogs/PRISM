@@ -1764,16 +1764,21 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                       Expanded(
                         child: ListView.builder(
                           itemCount: _logs.length,
-                          itemBuilder: (context, index) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              _logs[index],
-                              style: GoogleFonts.robotoMono(
-                                fontSize: 10,
-                                color: Colors.grey.shade600,
+                          itemBuilder: (context, index) {
+                            final log = _logs[index];
+                            final isError = log.contains("ERROR");
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                log,
+                                style: GoogleFonts.robotoMono(
+                                  fontSize: 10,
+                                  color: isError ? Colors.redAccent : Colors.grey.shade600,
+                                  fontWeight: isError ? FontWeight.bold : FontWeight.normal,
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ),
                     ],
