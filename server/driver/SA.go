@@ -631,20 +631,19 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 		return resp
 	}
 
-	for i := 0; i < 5; i++ {
-		resp = sa.RestartSweep()
-		if !resp.Success {
-			return resp
-		}
-		resp = sa.WaitForSweeps(1)
-		if !resp.Success {
-			return resp
-		}
+	resp = sa.RestartSweep()
+	if !resp.Success {
+		return resp
 	}
+	resp = sa.WaitForSweeps(5)
+	if !resp.Success {
+		return resp
+	}
+
 
 	peaks := make([]float64, 0)
 	frequencies := make([]float64, 0)
-	resp = sa.PeakSearch(false, markerNo)
+	resp = sa.PeakSearch(true, markerNo)
 	if !resp.Success {
 		return resp
 	}

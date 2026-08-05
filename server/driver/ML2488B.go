@@ -167,7 +167,7 @@ func (device *ml2488b) setChAAverageOff() utils.CommandResponse {
 	var arguments = make([]string, 0)
 
 	mnemonics = append(mnemonics, "setAverageStateChA")
-	arguments = append(arguments, "Off")
+	arguments = append(arguments, "OFF,")
 	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control", true)
@@ -182,7 +182,7 @@ func (device *ml2488b) setChAAverageOn() utils.CommandResponse {
 	var arguments = make([]string, 0)
 
 	mnemonics = append(mnemonics, "setAverageStateChA")
-	arguments = append(arguments, "On")
+	arguments = append(arguments, "AUTO,")
 	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control", true)
@@ -197,7 +197,7 @@ func (device *ml2488b) setChBAverageOff() utils.CommandResponse {
 	var arguments = make([]string, 0)
 
 	mnemonics = append(mnemonics, "setAverageStateChB")
-	arguments = append(arguments, "Off")
+	arguments = append(arguments, "OFF,")
 	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control", true)
@@ -212,7 +212,7 @@ func (device *ml2488b) setChBAverageOn() utils.CommandResponse {
 	var arguments = make([]string, 0)
 
 	mnemonics = append(mnemonics, "setAverageStateChB")
-	arguments = append(arguments, "On")
+	arguments = append(arguments, "AUTO,")
 	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control", true)
