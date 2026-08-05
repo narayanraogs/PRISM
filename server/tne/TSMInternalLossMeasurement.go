@@ -336,7 +336,7 @@ func (tsm *TSMInternalLoss) measureCableLoss(pmOffset cableLossMeasured) {
 	}
 }
 
-func (tsm *TSMInternalLoss) measurePathLoss(inputPort, outputPort string) {
+func (tsm *TSMInternalLoss) measurePathLoss(pmOffset cableLossMeasured, inputPort, outputPort string) {
 	pathStr, measuredJson, ok := resultsDB.GetTSMInternalMeasuredLoss(inputPort, outputPort)
 	if !ok {
 		tsm.setError("Failed to retrieve path mnemonic")
@@ -391,7 +391,11 @@ func (tsm *TSMInternalLoss) measurePathLoss(inputPort, outputPort string) {
 		if idx := slices.Index(cbl.Frequency, f); idx != -1 {
 			loss, _ = strconv.ParseFloat(cbl.Measured[idx], 64)
 		}
-		m.Measured = append(m.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[f]-loss))
+		pmLoss := 0.0
+		if idx := slices.Index(pmOffset.Frequency, f); idx != -1 {
+			pmLoss, _ = strconv.ParseFloat(pmOffset.Measured[idx], 64)
+		}
+		m.Measured = append(m.Measured, fmt.Sprintf("%.2f", tsm.currentMeasurement[f]-loss-pmLoss))
 	}
 
 	data, _ := json.MarshalIndent(m, "", " ")
@@ -420,7 +424,7 @@ func (tsm *TSMInternalLoss) MeasureForConfig(mode, inputPort, outputPort string)
 	} else if strings.EqualFold(mode, "Cable Loss") {
 		tsm.measureCableLoss(pmMeasured)
 	} else {
-		tsm.measurePathLoss(inputPort, outputPort)
+		tsm.measurePathLoss(pmMeasured, inputPort, outputPort)
 	}
 }
 
