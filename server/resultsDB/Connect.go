@@ -84,6 +84,7 @@ CREATE TABLE StabilityValues (
 	Description TEXT (255) NOT NULL, 
 	Value REAL NOT NULL
 );
+CREATE INDEX idx_stability_id ON "StabilityValues"("StabilityID");
 CREATE TABLE "TSMInternalLoss" (
 	"LossID"	INTEGER NOT NULL,
 	"InputPort"	TEXT NOT NULL,
