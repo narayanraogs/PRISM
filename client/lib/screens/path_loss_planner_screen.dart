@@ -712,6 +712,8 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         if (scRes != null) 'SC',
       ];
 
+      final bool isUplink = scId != null && scId.isNotEmpty;
+
       // Step ID to Metadata (label, loss, etc)
       final Map<String, Map<String, dynamic>> stepData = {};
       // List to maintain unique node ordering
@@ -723,6 +725,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
             stepData[step.nodeId] = {
               'label': step.label,
               'loss': step.loss,
+              'inputPower': step.inputPower,
               'types': <String>{},
             };
             orderedNodeIds.add(step.nodeId);
@@ -748,7 +751,15 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
       for (var nodeId in orderedNodeIds) {
         final data = stepData[nodeId]!;
         final double lossVal = data['loss'] as double;
-        if (lossVal == 0) continue;
+        final bool isSource = nodeId == srcId;
+
+        if (isSource) {
+          if (!isUplink) continue;
+        } else {
+          if (lossVal == 0) continue;
+        }
+
+        final double displayVal = isSource ? -(data['inputPower'] as double) : lossVal;
 
         final Set<String> types = data['types'];
         
@@ -763,7 +774,7 @@ class _PathLossPlannerScreenState extends State<PathLossPlannerScreen> {
         }
 
         final label = data['label'].toString().replaceAll('"', '""');
-        final loss = data['loss'].toStringAsFixed(2);
+        final loss = displayVal.toStringAsFixed(2);
 
         buffer.writeln('$slNo, "$label", $loss, $typeLabel');
         slNo++;

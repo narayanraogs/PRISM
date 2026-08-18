@@ -157,10 +157,6 @@ func (tsm *TSMInternalLoss) addToMeasurementTable(tsmConfig string, frequencies 
 	if !strings.EqualFold(strings.TrimSpace(tsmDetails.UplinkToSC.String), "") {
 		outPorts = append(outPorts, tsmDetails.OutputPortName.String)
 		paths = append(paths, tsmDetails.UplinkToSC.String)
-		if tsmDetails.IncludePad.Valid {
-			outPorts = append(outPorts, tsmDetails.OutputPortName.String+"-WithPad")
-			paths = append(paths, tsmDetails.UplinkToSC.String+"!"+tsmDetails.IncludePad.String+";"+tsmDetails.ExcludePad.String)
-		}
 		if tsmDetails.UplinkToSA.Valid {
 			outPorts = append(outPorts, tsmDetails.SAPortName.String)
 			paths = append(paths, tsmDetails.UplinkToSA.String)
@@ -237,18 +233,10 @@ func (tsm *TSMInternalLoss) createNewDBEntry() bool {
 }
 
 func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset map[string]float64) bool {
-	if !tsm.check(tsm.pm.SetChAAverageOff(), "PM: ChA average off") {
-		return false
-	}
-	if !tsm.check(tsm.pm.SetChBAverageOff(), "PM: ChB average off") {
-		return false
-	}
 	if !tsm.check(tsm.sg.SetModOff(), "SG: mod off") {
 		return false
 	}
 
-	defer tsm.pm.SetChAAverageOn()
-	defer tsm.pm.SetChBAverageOn()
 	defer tsm.sg.SetRFOff()
 
 	for _, freq := range frequencies {
@@ -269,9 +257,17 @@ func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset m
 		if strings.EqualFold(tsm.pmChannel, "A") {
 			tsm.pm.SetChannelA(f)
 			pResp = tsm.pm.GetPowerChannelA(true)
+			if pResp.Success && pResp.Result["Power"].Value < -30 {
+				time.Sleep(10 * time.Second)
+				pResp = tsm.pm.GetPowerChannelA(true)
+			}
 		} else {
 			tsm.pm.SetChannelB(f)
 			pResp = tsm.pm.GetPowerChannelB(true)
+			if pResp.Success && pResp.Result["Power"].Value < -30 {
+				time.Sleep(10 * time.Second)
+				pResp = tsm.pm.GetPowerChannelB(true)
+			}
 		}
 
 		if !tsm.check(pResp, "PM: read power") {
@@ -283,6 +279,7 @@ func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset m
 			tsm.setError("Power too low (<-60dBm). Check connection.")
 			return false
 		}
+
 		logger.Log.Info("TSM Internal Loss Measurement Point", "frequency", freq, "measuredPower", val)
 		tsm.currentMeasurement[freq] = val
 		tsm.sg.SetRFOff()
@@ -293,7 +290,7 @@ func (tsm *TSMInternalLoss) measureForFrequencies(frequencies []string, offset m
 func (tsm *TSMInternalLoss) measurePMReference(frequencies []string) {
 	offset := make(map[string]float64)
 	for _, f := range frequencies {
-		offset[f] = 0
+		offset[f] = -10
 	}
 
 	if !tsm.measureForFrequencies(frequencies, offset) {
@@ -373,7 +370,7 @@ func (tsm *TSMInternalLoss) measurePathLoss(pmOffset cableLossMeasured, inputPor
 
 	offsets := make(map[string]float64)
 	for _, f := range ref.Frequency {
-		offsets[f] = 0
+		offsets[f] = -10
 	}
 
 	if !tsm.measureForFrequencies(ref.Frequency, offsets) {
