@@ -312,8 +312,8 @@ func (tsm *TSMInternalLoss) measurePMReference(frequencies []string) {
 
 func (tsm *TSMInternalLoss) measureCableLoss(pmOffset cableLossMeasured) {
 	offset := make(map[string]float64)
-	for i, f := range pmOffset.Frequency {
-		offset[f], _ = strconv.ParseFloat(pmOffset.Measured[i], 64)
+	for _, f := range pmOffset.Frequency {
+		offset[f] = 0.0
 	}
 
 	if !tsm.measureForFrequencies(pmOffset.Frequency, offset) {
