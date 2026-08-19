@@ -334,9 +334,8 @@ func (test *rxBaseTest) uplinkWithoutModulationWithoutRun(runner *StepRunner, ra
 	tsm := test.ctx.Selected.TSM
 	var lock bool
 	var agc float64
-
-	runner.Exec(setGTxModulationOff(gtx, test.component))
 	runner.Exec(setGTxIdleOff(gtx))
+	runner.Exec(setGTxModulationOff(gtx, test.component))
 	runner.Exec(setGTxCarrierOn(gtx, test.component))
 	runner.Exec(setTSMPath(tsm, test.tsm.UplinkToSC.String))
 	test.sweep(runner)

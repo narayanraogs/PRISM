@@ -10,6 +10,7 @@ import (
 	"prismServer/utils"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //go:embed instructions/TTCPCommands.csv
@@ -686,11 +687,18 @@ func (device *ttcp) setIdlePatternOn() utils.CommandResponse {
 }
 
 func (device *ttcp) setIdlePatternOff() utils.CommandResponse {
-	resp := device.setModulationOn("IFM-1")
+	resp := device.setModulationOff("IFM-1")
 	if !resp.Success {
 		return resp
 	}
-	return device.setModulationOn("IFM-1")
+	time.Sleep(1 * time.Second)
+	resp = device.setModulationOn("IFM-1")
+	if !resp.Success {
+		return resp
+	}
+	time.Sleep(1 * time.Second)
+	return resp
+
 }
 
 /*
