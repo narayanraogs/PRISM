@@ -247,9 +247,12 @@ func (device *n9030) getMarkerValue(markerNo int) utils.CommandResponse {
 
 func (device *n9030) singleSweep() utils.CommandResponse {
 	var mnemonics = make([]string, 0)
+	var arguments = make([]string, 0)
 
-	mnemonics = append(mnemonics, "setSingleSweep")
-	var cmds = device.getCommands(mnemonics, make([]string, len(mnemonics)), make([]string, len(mnemonics)))
+	mnemonics = append(mnemonics, "setAverageCount", "setSingleSweep")
+	arguments = append(arguments, "1", "")
+
+	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control")
 	if retVal == nil {
@@ -273,9 +276,11 @@ func (device *n9030) sweepOff() utils.CommandResponse {
 
 func (device *n9030) continuousSweep() utils.CommandResponse {
 	var mnemonics = make([]string, 0)
+	var arguments = make([]string, 0)
 
-	mnemonics = append(mnemonics, "setContinuousSweep")
-	var cmds = device.getCommands(mnemonics, make([]string, len(mnemonics)), make([]string, len(mnemonics)))
+	mnemonics = append(mnemonics, "setAverageCount", "setContinuousSweep")
+	arguments = append(arguments, "100", "")
+	var cmds = device.getCommands(mnemonics, arguments, make([]string, len(mnemonics)))
 
 	retVal := device.communicate(cmds, "Control")
 	if retVal == nil {

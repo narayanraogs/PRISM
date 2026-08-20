@@ -74,14 +74,23 @@ func (test *txPowerMeasurement) measure(runner *StepRunner) error {
 	channel := test.downlinkPowerProfile.PMChannel
 	var power float64
 
+	frequency := float64(test.txSpec.Frequency)
 	runner.Run("Reading power from PM", false, func() {
 		if strings.EqualFold(channel, "A") {
+			runner.Exec(setFrequencyChA(pm, frequency))
+			if runner.execErr != nil {
+				return
+			}
 			resp := runner.Exec(readPowerChannelA(pm))
 			if runner.execErr != nil {
 				return
 			}
 			power = resp.Result["Power"].Value
 		} else {
+			runner.Exec(setFrequencyChB(pm, frequency))
+			if runner.execErr != nil {
+				return
+			}
 			resp := runner.Exec(readPowerChannelB(pm))
 			if runner.execErr != nil {
 				return

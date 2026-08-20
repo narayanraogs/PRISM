@@ -115,3 +115,4 @@ SlNo,Mnemonic,Command,Delay,Argument,Read,ReadBinary,Port
 114,getScreenDumpVSA,:MMEM:DATA?,2,TRUE,TRUE,TRUE,Alternate
 115,getSweepTimeOBW,:SENS:OBW:SWE:TIME?,0.1,FALSE,TRUE,FALSE,Control
 116,setAutoRange,:Inp:Anal:Rang:Auto,0.1,FALSE,False,FALSE,Alternate
+117,setAverageCount,:SENS:AVER:COUN,0,TRUE,FALSE,FALSE,Control

@@ -609,12 +609,19 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 	if !resp.Success {
 		return resp
 	}
-	resp = sa.CheckIfCarrierIsPresent()
+	resp = sa.device.setMarkerMinPeak(1)
 	if !resp.Success {
 		return resp
 	}
-	//maxPeak := resp.Result["MaxValue"].Value
-	minPeak := resp.Result["MinValue"].Value
+	resp = sa.device.getMarkerValue(1)
+	if !resp.Success {
+		return resp
+	}
+	minPeak := resp.Result["MarkerY"].Value
+	resp = sa.device.setAllMarkerOff()
+	if !resp.Success {
+		return resp
+	}
 
 	resp = sa.device.setPeakThresholdAndExcursion(minPeak, excursion, markerNo)
 	if !resp.Success {
@@ -631,15 +638,13 @@ func (sa *SA) GetAllPeaksAbove(excursion float64, markerNo int) utils.CommandRes
 		return resp
 	}
 
-	resp = sa.RestartSweep()
-	if !resp.Success {
-		return resp
+	for range 5 {
+		resp = sa.RestartSweep()
+		if !resp.Success {
+			return resp
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	resp = sa.WaitForSweeps(5)
-	if !resp.Success {
-		return resp
-	}
-
 
 	peaks := make([]float64, 0)
 	frequencies := make([]float64, 0)
