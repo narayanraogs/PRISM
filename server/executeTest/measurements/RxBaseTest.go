@@ -162,9 +162,6 @@ func (test *rxBaseTest) removeRFLinkWithoutRun(runner *StepRunner) {
 	tsm := test.ctx.Selected.TSM
 	gtx := test.ctx.Selected.GTx
 	runner.Exec(setTSMPath(tsm, test.tsm.TerminateUplink.String))
-	runner.Exec(gtx.SetIdlePatternOff)
-	runner.Exec(setGTxModulationOff(gtx, test.component))
-	runner.Exec(setGTxCarrierOff(gtx, test.component))
 	response := runner.Exec(getGTxDopplerCompensation(gtx, test.component))
 	if !response.Success {
 		return
@@ -175,6 +172,9 @@ func (test *rxBaseTest) removeRFLinkWithoutRun(runner *StepRunner) {
 		runner.Exec(setGTxStopSweep(gtx, test.component))
 	}
 	test.setIntermediateFrequency(runner, 0)
+	runner.Exec(gtx.SetIdlePatternOff)
+	runner.Exec(setGTxModulationOff(gtx, test.component))
+	runner.Exec(setGTxCarrierOff(gtx, test.component))
 }
 
 func (test *rxBaseTest) enableDopplerCompensation(runner *StepRunner) {
