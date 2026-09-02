@@ -6,6 +6,7 @@ import (
 	"prismServer/resultsDB"
 	"prismServer/utilities"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -108,6 +109,21 @@ func measureTVACCableLoss(c *gin.Context) {
 		return
 	}
 
+	if !TryLockOperation() {
+		conn.WriteJSON(utilities.MeasurementStatus{
+			Message: "System Busy",
+			Error:   true,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	var tvac utilities.TVACCableLossMeasurement
 	testPhase := req.Phase + ";" + req.CycleName
 	tvac.Initialize(req.Channel, req.DeviceProfile, testPhase)
@@ -129,19 +145,22 @@ func measureTVACCableLoss(c *gin.Context) {
 	}
 
 	go func() {
+		defer tvac.Stop()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == "abort" {
-				tvac.Stop()
+				return
 			}
 		}
 	}()
 
 	for s := range sts {
 		if err := conn.WriteJSON(s); err != nil {
+			tvac.Stop()
 			return
 		}
 	}

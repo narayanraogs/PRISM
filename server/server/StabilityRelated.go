@@ -84,12 +84,31 @@ func stability(c *gin.Context) {
 		}
 	}
 
+	if !TryLockOperation() {
+		logger.Log.Warn("Cannot start stability test: operation lock busy")
+		resp.OK = false
+		resp.Message = "System Busy"
+		conn.WriteJSON(resp)
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	go func() {
+		defer stab.StopStability()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			var action StabilityAction
 			err := conn.ReadJSON(&action)
 			if err != nil || action.Action == "abort" {
-				stab.StopStability()
+				if err != nil {
+					logger.Log.Warn("Stability connection error or timeout", "error", err)
+				}
 				return
 			}
 		}

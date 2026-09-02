@@ -1000,5 +1000,6 @@ func (device *ttcp) communicate(cmds []utils.Command, port string) []string {
 		logger.Log.Error(err.Error())
 		return nil
 	}
+	time.Sleep(500 * time.Millisecond)
 	return values
 }

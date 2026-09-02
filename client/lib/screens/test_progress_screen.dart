@@ -209,6 +209,13 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
 
             // Handle auto-fill and countdown for UI interactions
             if (response.ui.userInput || response.ui.userConfirmation) {
+              if (response.ui.userConfirmation) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_confirmationFocusNode.hasFocus) {
+                    _confirmationFocusNode.requestFocus();
+                  }
+                });
+              }
               if (_countdownTimer == null || !_countdownTimer!.isActive) {
                 if (response.ui.userInput &&
                     response.ui.defaultValue.isNotEmpty &&
@@ -1060,6 +1067,7 @@ class _TestProgressScreenState extends State<TestProgressScreen> {
                     SizedBox(
                       width: 500,
                       child: TextFormField(
+                        key: ValueKey(resp.ui.prompt),
                         controller: _inputController,
                         autofocus: true,
                         decoration: InputDecoration(

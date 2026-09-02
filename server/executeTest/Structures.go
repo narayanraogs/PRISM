@@ -6,6 +6,7 @@ import (
 	"prismServer/driver"
 	"prismServer/reports"
 	"prismServer/utils"
+	"time"
 )
 
 type devices struct {
@@ -135,6 +136,7 @@ func (ctx *ExecutionContext) AskForInput(prompt string, defaultValue string, tim
 	ctx.Ui.TimeoutSecs = 0
 	ctx.Ui.UserInput = false
 	ctx.UpdateChannel <- *ctx.Ui
+	time.Sleep(500 * time.Millisecond)
 
 	return response
 }
@@ -157,6 +159,7 @@ func (ctx *ExecutionContext) AskForConfirmation(prompt string, timeout int) bool
 	ctx.Ui.TimeoutSecs = 0
 	ctx.Ui.UserConfirmation = false
 	ctx.UpdateChannel <- *ctx.Ui
+	time.Sleep(500 * time.Millisecond)
 
 	return response != "TIMEOUT"
 }

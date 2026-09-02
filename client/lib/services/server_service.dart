@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -2933,7 +2934,19 @@ class ServerService extends ChangeNotifier {
     );
   }
 
+  Timer? _startHeartbeatTimer(WebSocketChannel channel, {dynamic payload}) {
+    return Timer.periodic(const Duration(seconds: 10), (timer) {
+      try {
+        final data = payload ?? jsonEncode({'Parameters': ['ping']});
+        channel.sink.add(data);
+      } catch (_) {
+        timer.cancel();
+      }
+    });
+  }
+
   WebSocketChannel? _progressChannel;
+  Timer? _progressHeartbeatTimer;
 
   Stream<TestProgressResponse> connectTestProgress(
     List<TestDescription> tests,
@@ -2947,6 +2960,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/testProgress';
 
+    _progressHeartbeatTimer?.cancel();
     _progressChannel?.sink.close();
     _progressChannel = WebSocketChannel.connect(Uri.parse(url));
 
@@ -2954,6 +2968,8 @@ class ServerService extends ChangeNotifier {
     _progressChannel!.sink.add(
       jsonEncode({'Tests': tests.map((t) => t.toJson()).toList()}),
     );
+
+    _progressHeartbeatTimer = _startHeartbeatTimer(_progressChannel!);
 
     return _progressChannel!.stream.map((data) {
       return TestProgressResponse.fromJson(jsonDecode(data));
@@ -2973,6 +2989,8 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeTestProgress() {
+    _progressHeartbeatTimer?.cancel();
+    _progressHeartbeatTimer = null;
     _progressChannel?.sink.close();
     _progressChannel = null;
   }
@@ -3130,6 +3148,8 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Timer? _cableLossHeartbeatTimer;
+
   Stream<MeasurementStatus> streamCableLossAction(
     Map<String, dynamic> request,
   ) {
@@ -3137,9 +3157,15 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureCableLoss';
 
+    _cableLossHeartbeatTimer?.cancel();
     _cableLossChannel?.sink.close();
     _cableLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _cableLossChannel!.sink.add(jsonEncode(request));
+
+    _cableLossHeartbeatTimer = _startHeartbeatTimer(
+      _cableLossChannel!,
+      payload: 'ping',
+    );
 
     return _cableLossChannel!.stream
         .map((event) {
@@ -3158,11 +3184,14 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeCableLoss() {
+    _cableLossHeartbeatTimer?.cancel();
+    _cableLossHeartbeatTimer = null;
     _cableLossChannel?.sink.close();
     _cableLossChannel = null;
   }
 
   WebSocketChannel? _stabilityChannel;
+  Timer? _stabilityHeartbeatTimer;
 
   Stream<StabilityResponse> connectStability(
     List<StabilityParameterSelection> parameters,
@@ -3177,6 +3206,7 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/stability';
 
+    _stabilityHeartbeatTimer?.cancel();
     _stabilityChannel?.sink.close();
     _stabilityChannel = WebSocketChannel.connect(Uri.parse(url));
 
@@ -3188,12 +3218,19 @@ class ServerService extends ChangeNotifier {
       }),
     );
 
+    _stabilityHeartbeatTimer = _startHeartbeatTimer(
+      _stabilityChannel!,
+      payload: jsonEncode({'Action': 'ping'}),
+    );
+
     return _stabilityChannel!.stream.map((data) {
       return StabilityResponse.fromJson(jsonDecode(data));
     });
   }
 
   void closeStability() {
+    _stabilityHeartbeatTimer?.cancel();
+    _stabilityHeartbeatTimer = null;
     _stabilityChannel?.sink.close();
     _stabilityChannel = null;
   }
@@ -3266,14 +3303,22 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Timer? _attnHeartbeatTimer;
+
   Stream<AttnProgressResponse> streamAttnAction(Map<String, dynamic> request) {
     final host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureAttn';
 
+    _attnHeartbeatTimer?.cancel();
     _attnChannel?.sink.close();
     _attnChannel = WebSocketChannel.connect(Uri.parse(url));
     _attnChannel!.sink.add(jsonEncode(request));
+
+    _attnHeartbeatTimer = _startHeartbeatTimer(
+      _attnChannel!,
+      payload: 'ping',
+    );
 
     return _attnChannel!.stream
         .map((event) {
@@ -3292,6 +3337,8 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeAttn() {
+    _attnHeartbeatTimer?.cancel();
+    _attnHeartbeatTimer = null;
     _attnChannel?.sink.close();
     _attnChannel = null;
   }
@@ -3420,6 +3467,7 @@ class ServerService extends ChangeNotifier {
   }
 
   WebSocketChannel? _tsmInternalLossChannel;
+  Timer? _tsmInternalLossHeartbeatTimer;
 
   Stream<dynamic> streamTSMInternalLossAction(
     InternalLossMeasurementRequest request,
@@ -3428,9 +3476,15 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTSMInternalLoss';
 
+    _tsmInternalLossHeartbeatTimer?.cancel();
     _tsmInternalLossChannel?.sink.close();
     _tsmInternalLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _tsmInternalLossChannel!.sink.add(jsonEncode(request.toJson()));
+
+    _tsmInternalLossHeartbeatTimer = _startHeartbeatTimer(
+      _tsmInternalLossChannel!,
+      payload: 'ping',
+    );
 
     return _tsmInternalLossChannel!.stream
         .map((event) {
@@ -3459,6 +3513,8 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeTSMInternalLoss() {
+    _tsmInternalLossHeartbeatTimer?.cancel();
+    _tsmInternalLossHeartbeatTimer = null;
     _tsmInternalLossChannel?.sink.close();
     _tsmInternalLossChannel = null;
   }
@@ -3485,6 +3541,8 @@ class ServerService extends ChangeNotifier {
     return null;
   }
 
+  Timer? _tvacCableLossHeartbeatTimer;
+
   Stream<MeasurementStatus> streamTVACCableLossAction(
     Map<String, dynamic> request,
   ) {
@@ -3492,9 +3550,15 @@ class ServerService extends ChangeNotifier {
     final protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     final url = '$protocol://$host/measureTVACCableLoss';
 
+    _tvacCableLossHeartbeatTimer?.cancel();
     _tvacCableLossChannel?.sink.close();
     _tvacCableLossChannel = WebSocketChannel.connect(Uri.parse(url));
     _tvacCableLossChannel!.sink.add(jsonEncode(request));
+
+    _tvacCableLossHeartbeatTimer = _startHeartbeatTimer(
+      _tvacCableLossChannel!,
+      payload: 'ping',
+    );
 
     return _tvacCableLossChannel!.stream
         .map((event) {
@@ -3513,6 +3577,8 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeTVACCableLoss() {
+    _tvacCableLossHeartbeatTimer?.cancel();
+    _tvacCableLossHeartbeatTimer = null;
     _tvacCableLossChannel?.sink.close();
     _tvacCableLossChannel = null;
   }
@@ -3739,15 +3805,22 @@ class ServerService extends ChangeNotifier {
   }
 
   WebSocketChannel? _ucdcChannel;
+  Timer? _ucdcHeartbeatTimer;
 
   Stream<dynamic> connectUCDC(UCDCRequest request) {
     String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     String url = '$protocol://$host/upDownConverterMeasurement';
 
+    _ucdcHeartbeatTimer?.cancel();
     _ucdcChannel?.sink.close();
     _ucdcChannel = WebSocketChannel.connect(Uri.parse(url));
     _ucdcChannel!.sink.add(jsonEncode(request.toJson()));
+
+    _ucdcHeartbeatTimer = _startHeartbeatTimer(
+      _ucdcChannel!,
+      payload: 'ping',
+    );
 
     return _ucdcChannel!.stream.map((data) {
       final decoded = jsonDecode(data);
@@ -3764,20 +3837,29 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeUCDC() {
+    _ucdcHeartbeatTimer?.cancel();
+    _ucdcHeartbeatTimer = null;
     _ucdcChannel?.sink.close();
     _ucdcChannel = null;
   }
 
   WebSocketChannel? _gtxTneChannel;
+  Timer? _gtxTneHeartbeatTimer;
 
   Stream<dynamic> connectGTxTne(GTxTneRequest request) {
     String host = kDebugMode ? 'localhost:8080' : web.window.location.host;
     String protocol = web.window.location.protocol == 'https:' ? 'wss' : 'ws';
     String url = '$protocol://$host/conductGTxTne';
 
+    _gtxTneHeartbeatTimer?.cancel();
     _gtxTneChannel?.sink.close();
     _gtxTneChannel = WebSocketChannel.connect(Uri.parse(url));
     _gtxTneChannel!.sink.add(jsonEncode(request.toJson()));
+
+    _gtxTneHeartbeatTimer = _startHeartbeatTimer(
+      _gtxTneChannel!,
+      payload: 'ping',
+    );
 
     return _gtxTneChannel!.stream.map((data) {
       final decoded = jsonDecode(data);
@@ -3794,6 +3876,8 @@ class ServerService extends ChangeNotifier {
   }
 
   void closeGTxTne() {
+    _gtxTneHeartbeatTimer?.cancel();
+    _gtxTneHeartbeatTimer = null;
     _gtxTneChannel?.sink.close();
     _gtxTneChannel = null;
   }

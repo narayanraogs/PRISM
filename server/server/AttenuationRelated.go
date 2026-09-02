@@ -4,6 +4,7 @@ import (
 	"prismServer/database"
 	"prismServer/tne"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,6 +70,22 @@ func measureAttn(c *gin.Context) {
 		return
 	}
 
+	if !TryLockOperation() {
+		conn.WriteJSON(tne.AttnMeasurementStatus{
+			Message:   "System Busy",
+			Error:     true,
+			Completed: true,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	switch strings.ToLower(req.Type) {
 	case "tsm":
 		tsmAttn := tne.TSMAttnMeasurement{}
@@ -77,13 +94,15 @@ func measureAttn(c *gin.Context) {
 		monitor := tsmAttn.GetStatusMonitor()
 		go tsmAttn.StartMeasurement()
 		go func() {
+			defer tsmAttn.Stop()
 			for {
+				conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					return
 				}
 				if string(msg) == "abort" {
-					tsmAttn.Stop()
+					return
 				}
 			}
 		}()
@@ -97,6 +116,7 @@ func measureAttn(c *gin.Context) {
 				Message:           "Successfully retrieved TSM Measurement",
 			}
 			if err := conn.WriteJSON(resp); err != nil {
+				tsmAttn.Stop()
 				return
 			}
 		}
@@ -123,13 +143,15 @@ func measureAttn(c *gin.Context) {
 		monitor := gtxAttn.GetStatusMonitor()
 		go gtxAttn.StartMeasurement()
 		go func() {
+			defer gtxAttn.Stop()
 			for {
+				conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					return
 				}
 				if string(msg) == "abort" {
-					gtxAttn.Stop()
+					return
 				}
 			}
 		}()
@@ -143,6 +165,7 @@ func measureAttn(c *gin.Context) {
 				Message:           "Successfully retrieved GTx Measurement",
 			}
 			if err := conn.WriteJSON(resp); err != nil {
+				gtxAttn.Stop()
 				return
 			}
 		}
@@ -169,13 +192,15 @@ func measureAttn(c *gin.Context) {
 		monitor := sgPower.GetStatusMonitor()
 		go sgPower.StartMeasurement()
 		go func() {
+			defer sgPower.Stop()
 			for {
+				conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					return
 				}
 				if string(msg) == "abort" {
-					sgPower.Stop()
+					return
 				}
 			}
 		}()
@@ -189,6 +214,7 @@ func measureAttn(c *gin.Context) {
 				Message:           "Successfully retrieved SG Measurement",
 			}
 			if err := conn.WriteJSON(resp); err != nil {
+				sgPower.Stop()
 				return
 			}
 		}

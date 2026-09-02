@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"prismServer/resultsDB"
 	"prismServer/tne"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -75,6 +76,23 @@ func upDownConverterMeasurement(c *gin.Context) {
 		return
 	}
 
+	if !TryLockOperation() {
+		conn.WriteJSON(tne.RTStatus{
+			Message:   "System Busy",
+			Completed: true,
+			Error:     true,
+			Success:   false,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	var uc tne.UpDownConverterMeasurement
 	sts, _ := uc.GetStatusMonitor()
 	if !uc.Init(req.DeviceProfile, req.ExternalSGName, req.ConverterName) {
@@ -93,13 +111,15 @@ func upDownConverterMeasurement(c *gin.Context) {
 	uc.SetOutBandSpectrum(req.OutBandSpectrum.Span, req.OutBandSpectrum.RBW, req.OutBandSpectrum.VBW)
 
 	go func() {
+		defer uc.Stop()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == "abort" {
-				uc.Stop()
+				return
 			}
 		}
 	}()
@@ -148,6 +168,7 @@ func upDownConverterMeasurement(c *gin.Context) {
 					break
 				}
 				if err := conn.WriteJSON(stsMsg); err != nil {
+					uc.Stop()
 					return
 				}
 				if stsMsg.Completed {
@@ -158,6 +179,7 @@ func upDownConverterMeasurement(c *gin.Context) {
 					continue
 				}
 				if err := conn.WriteJSON(result); err != nil {
+					uc.Stop()
 					return
 				}
 			}

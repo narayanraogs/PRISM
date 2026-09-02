@@ -8,6 +8,7 @@ import (
 	"prismServer/tne"
 	"prismServer/utilities"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -92,6 +93,22 @@ func measureCableLoss(c *gin.Context) {
 		return
 	}
 
+	if !TryLockOperation() {
+		conn.WriteJSON(tne.RTStatus{
+			Message:   "System Busy",
+			Completed: true,
+			Success:   false,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	var cableLoss tne.CableLossMeasurement
 	cableLoss.Initialize(req.Channel, req.DeviceProfile, req.SelectedFrequencies)
 	sts := cableLoss.GetStatusMonitor()
@@ -110,18 +127,21 @@ func measureCableLoss(c *gin.Context) {
 	}
 
 	go func() {
+		defer cableLoss.Stop()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == "abort" {
-				cableLoss.Stop()
+				return
 			}
 		}
 	}()
 	for s := range sts {
 		if err := conn.WriteJSON(s); err != nil {
+			cableLoss.Stop()
 			return
 		}
 	}

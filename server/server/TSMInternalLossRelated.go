@@ -8,6 +8,7 @@ import (
 	"prismServer/tne"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -132,6 +133,23 @@ func measureTSMInternalLoss(c *gin.Context) {
 		return
 	}
 
+	if !TryLockOperation() {
+		conn.WriteJSON(tne.RTStatus{
+			Message:   "System Busy",
+			Error:     true,
+			Completed: true,
+			Success:   false,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	var tsm tne.TSMInternalLoss
 	ok := tsm.Initialize(req.DeviceProfile, req.PMChannel)
 	if !ok {
@@ -148,13 +166,15 @@ func measureTSMInternalLoss(c *gin.Context) {
 	go tsm.MeasureForConfig(req.Mode, req.InputPort, req.OutputPort)
 
 	go func() {
+		defer tsm.Stop()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == "abort" {
-				tsm.Stop()
+				return
 			}
 		}
 	}()
@@ -162,6 +182,7 @@ func measureTSMInternalLoss(c *gin.Context) {
 	for s := range sts {
 		errorFlag = s.Error
 		if err := conn.WriteJSON(s); err != nil {
+			tsm.Stop()
 			return
 		}
 	}

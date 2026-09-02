@@ -92,20 +92,32 @@ func testProgress(c *gin.Context) {
 	orchestrator := executeTest.NewOrchestrator(configs, testNames, testCategories, remarks, paramMap, commChannel, inputChannel)
 	var writeMutex sync.Mutex
 
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	// Channel to receive messages from the websocket connection
 	clientInputChan := make(chan ClientInput)
 
 	// Goroutine to read from the websocket and put messages on our channel
 	go func() {
 		defer close(clientInputChan)
+		defer orchestrator.Abort()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			var inp ClientInput
 			err := conn.ReadJSON(&inp)
 			if err != nil {
+				logger.Log.Warn("Client connection closed or read timeout during test execution", "error", err)
 				return
 			}
 			if len(inp.Parameters) > 0 && inp.Parameters[0] == "abort" {
 				orchestrator.Abort()
+				continue
+			}
+			if len(inp.Parameters) > 0 && inp.Parameters[0] == "ping" {
 				continue
 			}
 			clientInputChan <- inp
@@ -123,6 +135,7 @@ func testProgress(c *gin.Context) {
 		writeMutex.Unlock()
 		if err != nil {
 			logger.Log.Error("Websocket write error:", "error", err)
+			orchestrator.Abort()
 			return // Exit if we can't write to the client.
 		}
 
@@ -133,6 +146,7 @@ func testProgress(c *gin.Context) {
 			if update.UI.TimeoutSecs <= 0 {
 				clientResponse, ok := <-clientInputChan
 				if !ok {
+					orchestrator.Abort()
 					return // Client disconnected
 				}
 				orchestrator.InputChannel <- clientResponse.Parameters[0]
@@ -141,6 +155,7 @@ func testProgress(c *gin.Context) {
 				select {
 				case clientResponse, ok := <-clientInputChan:
 					if !ok {
+						orchestrator.Abort()
 						return // Client disconnected
 					}
 					orchestrator.InputChannel <- clientResponse.Parameters[0]

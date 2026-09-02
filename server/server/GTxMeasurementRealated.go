@@ -2,6 +2,7 @@ package server
 
 import (
 	"prismServer/tne"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +23,23 @@ func conductGTxTne(c *gin.Context) {
 		})
 		return
 	}
+	if !TryLockOperation() {
+		conn.WriteJSON(tne.RTStatus{
+			Message:   "System Busy",
+			Error:     true,
+			Completed: true,
+			Success:   false,
+		})
+		return
+	}
+	defer UnlockOperation()
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	var gtx = tne.NewGTxGroundTransmitterMeasurement()
 	gtx.SetDevices(req.DeviceProfile, req.Component, req.IntermediateFrequency, req.CableLoss)
 	gtx.SetModulationParameters(req.ModulationScheme, req.SubCarrierFrequency, req.FrequencyDeviation, req.ModIndex)
@@ -33,13 +51,15 @@ func conductGTxTne(c *gin.Context) {
 	status, results := gtx.GetStatusMonitor()
 	go gtx.StartMeasurement()
 	go func() {
+		defer gtx.Stop()
 		for {
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
 			if string(msg) == "abort" {
-				gtx.Stop()
+				return
 			}
 		}
 	}()
@@ -48,12 +68,20 @@ outerFor:
 	for {
 		select {
 		case status := <-status:
-			conn.WriteJSON(status)
+			err := conn.WriteJSON(status)
+			if err != nil {
+				gtx.Stop()
+				break outerFor
+			}
 			if status.Completed {
 				break outerFor
 			}
 		case result := <-results:
-			conn.WriteJSON(result)
+			err := conn.WriteJSON(result)
+			if err != nil {
+				gtx.Stop()
+				break outerFor
+			}
 		}
 	}
 
