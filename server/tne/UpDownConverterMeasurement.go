@@ -12,6 +12,7 @@ import (
 	"prismServer/reports"
 	"prismServer/resultsDB"
 	"prismServer/utils"
+	"slices"
 	"strings"
 	"time"
 )
@@ -606,18 +607,10 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 
 	noiseFloor := resp.Result["MinValue"].Value
 	carrierPower := resp.Result["MaxValue"].Value
+	_ = noiseFloor
 
-	if !udc.check(udc.sa.SetPeakThresholdAndExcursion(noiseFloor+15, 1), "SA: excursion") {
-		return
-	}
-	if !udc.check(udc.sa.SetMaxHold(), "SA: max hold") {
-		return
-	}
-	if !udc.check(udc.sa.WaitForSweeps(10), "SA: Waiting for sweeps") {
-		return
-	}
-
-	if !udc.check(udc.sa.GetTraceDump(1001), "SA: Taking trace dump") {
+	resp = udc.sa.GetAllPeaksAbove(10, 1)
+	if !udc.check(resp, "SA: get all peaks") {
 		return
 	}
 	respScreendump := udc.sa.GetSpectrumDump()
@@ -625,29 +618,53 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 		return
 	}
 
-	resp = udc.sa.GetAllPeaksAbove(noiseFloor+10, 1)
-	if !udc.check(resp, "SA: get all peaks") {
-		return
-	}
-
 	frequencies := resp.Result["Frequencies"].Values
 	peaks := resp.Result["Peaks"].Values
 
-	if len(frequencies) == 1 {
+	expectedCarrier := udc.converter.OutputFrequency
+	allowedDeviation := math.Max(spec.rbw, spec.span/500)
+
+	// Identify carrier peak(s) within allowed frequency tolerance
+	carrierIdx := -1
+	removeAtIndex := make([]int, 0)
+	for i := 0; i < len(frequencies); i++ {
+		if math.Abs(frequencies[i]-expectedCarrier) <= allowedDeviation {
+			removeAtIndex = append(removeAtIndex, i)
+			if carrierIdx == -1 || peaks[i] > peaks[carrierIdx] {
+				carrierIdx = i
+			}
+		}
+	}
+
+	if carrierIdx != -1 {
+		carrierPower = peaks[carrierIdx]
+	}
+
+	// Filter out expected carrier peak(s) to isolate spurious components
+	var spurIndices []int
+	for i := 0; i < len(frequencies); i++ {
+		if !slices.Contains(removeAtIndex, i) {
+			spurIndices = append(spurIndices, i)
+		}
+	}
+
+	if len(spurIndices) == 0 {
 		result.SpuriousResultValue.Frequency = []string{"NIL"}
 		result.SpuriousResultValue.MeasuredPowerdBm = []string{"NIL"}
 		result.SpuriousResultValue.SpuriousLeveldBC = []string{"NIL"}
 	} else {
-		result.SpuriousResultValue.Frequency = make([]string, len(frequencies)-1)
-		result.SpuriousResultValue.MeasuredPowerdBm = make([]string, len(frequencies)-1)
-		result.SpuriousResultValue.SpuriousLeveldBC = make([]string, len(frequencies)-1)
-		for i := 1; i < len(frequencies); i++ {
-			logger.Log.Info("UDC Spurious Measurement Point", "freq", frequencies[i], "power", peaks[i])
-			result.SpuriousResultValue.Frequency[i-1] = fmt.Sprintf("%.6f", frequencies[i])
-			result.SpuriousResultValue.MeasuredPowerdBm[i-1] = fmt.Sprintf("%.2f", peaks[i])
-			result.SpuriousResultValue.SpuriousLeveldBC[i-1] = fmt.Sprintf("%.2f", carrierPower-peaks[i])
+		result.SpuriousResultValue.Frequency = make([]string, len(spurIndices))
+		result.SpuriousResultValue.MeasuredPowerdBm = make([]string, len(spurIndices))
+		result.SpuriousResultValue.SpuriousLeveldBC = make([]string, len(spurIndices))
+		for j, i := range spurIndices {
+			levelDbc := peaks[i] - carrierPower
+			logger.Log.Info("UDC Spurious Measurement Point", "freq", frequencies[i], "power", peaks[i], "levelDbc", levelDbc)
+			result.SpuriousResultValue.Frequency[j] = fmt.Sprintf("%.6f", frequencies[i])
+			result.SpuriousResultValue.MeasuredPowerdBm[j] = fmt.Sprintf("%.2f", peaks[i])
+			result.SpuriousResultValue.SpuriousLeveldBC[j] = fmt.Sprintf("%.2f", levelDbc)
 		}
 	}
+
 	result.SpectrumDump = []string{respScreendump.Result["SpectrumDump"].String}
 	udc.measurementMonitor <- result
 

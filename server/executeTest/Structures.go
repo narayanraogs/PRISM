@@ -123,6 +123,7 @@ func (ctx *ExecutionContext) AskForInput(prompt string, defaultValue string, tim
 	ctx.Ui.UserInput = true
 	ctx.Ui.UserConfirmation = false
 	ctx.UpdateChannel <- *ctx.Ui
+	time.Sleep(500 * time.Millisecond)
 
 	var response string
 	select {
@@ -147,6 +148,7 @@ func (ctx *ExecutionContext) AskForConfirmation(prompt string, timeout int) bool
 	ctx.Ui.UserInput = false
 	ctx.Ui.UserConfirmation = true
 	ctx.UpdateChannel <- *ctx.Ui
+	time.Sleep(500 * time.Millisecond)
 
 	var response string
 	select {
