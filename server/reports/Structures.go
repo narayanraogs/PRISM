@@ -421,12 +421,28 @@ func getStringOfBytes(array []byte) string {
 	return strings.TrimRight(str, ", ")
 }
 
+// wrapText inserts zero-width spaces (U+200B) after common delimiter
+// characters so that Typst can wrap long, space-free identifiers (e.g.
+// TM mnemonics) within a fixed-width table column without altering the
+// visible text.
+func wrapText(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		b.WriteRune(r)
+		switch r {
+		case ':', '_', '/', '-':
+			b.WriteRune('\u200B') // zero-width space — invisible break opportunity
+		}
+	}
+	return b.String()
+}
+
 func getTableFromTM(tm []ReportTM) string {
 	var content strings.Builder
 	for i := 0; i < len(tm); i = i + 2 {
-		content.WriteString("[" + tm[i].Mnemonic + "],\n")
+		content.WriteString("[" + wrapText(tm[i].Mnemonic) + "],\n")
 		content.WriteString("[" + tm[i].Value + "],\n")
-		content.WriteString("[" + tm[i+1].Mnemonic + "],\n")
+		content.WriteString("[" + wrapText(tm[i+1].Mnemonic) + "],\n")
 		content.WriteString("[" + tm[i+1].Value + "],\n")
 	}
 
@@ -437,9 +453,9 @@ func getTableFromTM(tm []ReportTM) string {
 func getTableFromTestInformation(tm []ReportInfo) string {
 	var content strings.Builder
 	for i := 0; i < len(tm); i = i + 2 {
-		content.WriteString("[" + tm[i].Parameter + "],\n")
+		content.WriteString("[" + wrapText(tm[i].Parameter) + "],\n")
 		content.WriteString("[" + tm[i].Value + "],\n")
-		content.WriteString("[" + tm[i+1].Parameter + "],\n")
+		content.WriteString("[" + wrapText(tm[i+1].Parameter) + "],\n")
 		content.WriteString("[" + tm[i+1].Value + "],\n")
 	}
 

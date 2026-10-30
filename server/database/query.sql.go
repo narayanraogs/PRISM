@@ -953,7 +953,7 @@ func (q *Queries) getConfigurationNamesForTSMConfig(ctx context.Context, tsmconf
 }
 
 const getConverterDetails = `-- name: getConverterDetails :one
-Select ID, Name, InputFrequency, OutputFrequency, MaxPowerCable, MinPowerCable, MaxPowerRadiated, MinPowerRadiated from "UpDownConverter"
+Select ID, Name, FrequencyMap, StageFactor, MaxPowerCable, MinPowerCable, MaxPowerRadiated, MinPowerRadiated from "UpDownConverter"
 where "Name" like ?
 `
 
@@ -963,8 +963,8 @@ func (q *Queries) getConverterDetails(ctx context.Context, name string) (UpDownC
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.InputFrequency,
-		&i.OutputFrequency,
+		&i.FrequencyMap,
+		&i.StageFactor,
 		&i.MaxPowerCable,
 		&i.MinPowerCable,
 		&i.MaxPowerRadiated,

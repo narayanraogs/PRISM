@@ -46,6 +46,9 @@ type cableLossMeasured struct {
 type ConvertorResults struct {
 	TestName                  string
 	TestCode                  string
+	InputFrequency            float64
+	OutputFrequency           float64
+	LOFrequency               float64
 	GainResults               bool
 	FrequencyResults          bool
 	HarmonicsResults          bool

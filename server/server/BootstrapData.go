@@ -544,9 +544,18 @@ func getUCDCMetadata() UCDCMetadata {
 			resp.Message = "Failed to get converter details"
 			return resp
 		}
-		converterDetails.InputFrequency = details.InputFrequency
-		converterDetails.OutputFrequency = details.OutputFrequency
-		converterDetails.LOFrequency = math.Abs(details.InputFrequency - details.OutputFrequency)
+		pairs, _ := details.ParseFrequencyMap()
+		converterDetails.FrequencyMap = pairs
+		converterDetails.StageFactor = details.StageFactor
+		sf := float64(details.StageFactor)
+		if sf <= 0 {
+			sf = 1
+		}
+		if len(pairs) > 0 {
+			converterDetails.InputFrequency = float64(pairs[0].Input)
+			converterDetails.OutputFrequency = float64(pairs[0].Output)
+			converterDetails.LOFrequency = math.Abs(float64(pairs[0].Input - pairs[0].Output)) / sf
+		}
 		resp.ConverterDetails[converter] = converterDetails
 	}
 	sg, ok := database.GetSGList()

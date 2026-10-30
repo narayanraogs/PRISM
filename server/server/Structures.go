@@ -1,6 +1,7 @@
 package server
 
 import (
+	"prismServer/database"
 	"prismServer/reports"
 	"prismServer/resultsDB"
 	"prismServer/tne"
@@ -521,6 +522,8 @@ type UCDCDetails struct {
 	InputFrequency  float64
 	OutputFrequency float64
 	LOFrequency     float64
+	StageFactor     int64                    `json:"stageFactor"`
+	FrequencyMap    []database.FrequencyPair `json:"frequencyMap"`
 }
 
 type InstrumentDetails struct {

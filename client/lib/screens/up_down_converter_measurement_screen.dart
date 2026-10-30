@@ -285,12 +285,24 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       // 1. Update Frequencies from Converter Details
       final converterDetails = _metadata!.converterDetails[_selectedConverter];
       if (converterDetails != null) {
-        _dbInputFreq =
-            "${(converterDetails.inputFrequency / 1e6).toStringAsFixed(2)} MHz";
-        _dbOutputFreq =
-            "${(converterDetails.outputFrequency / 1e6).toStringAsFixed(2)} MHz";
-        _dbLOFreq =
-            "${(converterDetails.loFrequency / 1e6).toStringAsFixed(2)} MHz";
+        final sf = converterDetails.stageFactor <= 0 ? 1 : converterDetails.stageFactor;
+        final pairs = converterDetails.frequencyMap;
+        if (pairs.length > 1) {
+          final inList = pairs.map((p) => (p.input / 1e6).toStringAsFixed(1)).join(", ");
+          final outList = pairs.map((p) => (p.output / 1e6).toStringAsFixed(1)).join(", ");
+          final loList = pairs.map((p) => (((p.input - p.output).abs() / sf) / 1e6).toStringAsFixed(1)).join(", ");
+          _dbInputFreq = "$inList MHz (${pairs.length} pairs)";
+          _dbOutputFreq = "$outList MHz";
+          _dbLOFreq = "$loList MHz (SF=$sf)";
+        } else {
+          _dbInputFreq =
+              "${(converterDetails.inputFrequency / 1e6).toStringAsFixed(2)} MHz";
+          _dbOutputFreq =
+              "${(converterDetails.outputFrequency / 1e6).toStringAsFixed(2)} MHz";
+          final loVal = ((converterDetails.inputFrequency - converterDetails.outputFrequency).abs()) / sf;
+          _dbLOFreq =
+              "${(loVal / 1e6).toStringAsFixed(2)} MHz";
+        }
       }
 
       // 2. Update Instruments from Device Mapping
@@ -404,14 +416,36 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
     if (selectedTests.isEmpty) return;
 
+    final converterDetails = _metadata?.converterDetails[_selectedConverter];
+    final pairs = converterDetails?.frequencyMap ?? [];
+
+    final runningList = <TestDefinition>[];
+    if (pairs.length > 1) {
+      for (var t in selectedTests) {
+        for (var p in pairs) {
+          final inM = (p.input / 1e6).toStringAsFixed(1);
+          final outM = (p.output / 1e6).toStringAsFixed(1);
+          runningList.add(TestDefinition(
+            "${t.name} ($inM → $outM MHz)",
+            code: t.code,
+            isSelected: true,
+            status: "PENDING",
+          ));
+        }
+      }
+    } else {
+      for (var t in selectedTests) {
+        t.status = "PENDING";
+        runningList.add(t);
+      }
+    }
+
     setState(() {
       _isMeasuring = true;
-
       _progress = 0.0;
       _logs.clear();
-      _currentlyRunningTests = selectedTests;
+      _currentlyRunningTests = runningList;
       _currentBatchTestIndex = 0;
-      for (var t in selectedTests) { t.status = "PENDING"; }
     });
 
     _addLog("Starting batch measurement for ${activePort.name}...");

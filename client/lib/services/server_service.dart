@@ -473,22 +473,49 @@ class DeviceProfileDetails {
   }
 }
 
+class FrequencyPair {
+  final int input;
+  final int output;
+
+  FrequencyPair({required this.input, required this.output});
+
+  factory FrequencyPair.fromJson(Map<String, dynamic> json) => FrequencyPair(
+        input: (json['Input'] as num?)?.toInt() ?? 0,
+        output: (json['Output'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class UCDCDetails {
   final double inputFrequency;
   final double outputFrequency;
   final double loFrequency;
+  final int stageFactor;
+  final List<FrequencyPair> frequencyMap;
 
   UCDCDetails({
     required this.inputFrequency,
     required this.outputFrequency,
     required this.loFrequency,
+    this.stageFactor = 1,
+    this.frequencyMap = const [],
   });
 
   factory UCDCDetails.fromJson(Map<String, dynamic> json) {
+    var rawMap = json['frequencyMap'] ?? json['FrequencyMap'];
+    var mapList = <FrequencyPair>[];
+    if (rawMap is List) {
+      mapList = rawMap
+          .map((e) => FrequencyPair.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
     return UCDCDetails(
       inputFrequency: (json['InputFrequency'] as num?)?.toDouble() ?? 0.0,
       outputFrequency: (json['OutputFrequency'] as num?)?.toDouble() ?? 0.0,
       loFrequency: (json['LOFrequency'] as num?)?.toDouble() ?? 0.0,
+      stageFactor: (json['stageFactor'] as num?)?.toInt() ??
+          (json['StageFactor'] as num?)?.toInt() ??
+          1,
+      frequencyMap: mapList,
     );
   }
 }

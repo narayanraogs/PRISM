@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"encoding/json"
 	"net/http"
 	"prismServer/resultsDB"
@@ -124,64 +125,80 @@ func upDownConverterMeasurement(c *gin.Context) {
 		}
 	}()
 
-	for _, test := range req.TestsSelected {
-		sts, results := uc.GetStatusMonitor()
-		switch test {
-		case tne.UCDCGainInternalCable:
-			go uc.OutputGainMeasurement(req.StepSize, true)
-		case tne.UCDCGainInternalRadiated:
-			go uc.OutputGainMeasurement(req.StepSize, false)
-		case tne.UCDCFreqMeas:
-			go uc.OutputFrequencyMeasurement()
-		case tne.UCDCHarmonicMeas:
-			go uc.OutputHarmonicsMeasurement()
-		case tne.UCDCSpuriousInBand:
-			go uc.OutputSpuriousMeasurement(true)
-		case tne.UCDCSpuriousOutBand:
-			go uc.OutputSpuriousMeasurement(false)
-		case tne.UCDCLOLeakage:
-			go uc.LOLeakageMeasurement()
-		case tne.UCDCInputLeakage:
-			go uc.OutputInputLeakageMeasurement()
-		case tne.UCDCGainExternalCable:
-			go uc.OutputExtLOGainMeasurement(req.StepSize, true)
-		case tne.UCDCGainExternalRadiated:
-			go uc.OutputExtLOGainMeasurement(req.StepSize, false)
-		case tne.UCDCOutputMonPower:
-			go uc.MonitorPowerMeasurement(true)
-		case tne.UCDCInputMonPower:
-			go uc.MonitorPowerMeasurement(false)
-		case tne.UCDCLOMonPower:
-			go uc.LOMonFreqPowerMeasurement()
-		case tne.UCDCLOMonPhaseNoise:
-			go uc.LOMonPhaseNoiseMeasurement()
-		case tne.UCDCExtLOPowerMatch:
-			go uc.ExtLOPowerMatch()
-		}
+	pairs := uc.GetFrequencyPairs()
 
-		done := false
-		for !done {
-			select {
-			case stsMsg, ok := <-sts:
-				if !ok {
-					done = true
-					break
+	for _, test := range req.TestsSelected {
+		for pairIdx, pair := range pairs {
+			if uc.IsStopped() {
+				return
+			}
+			uc.SetFrequencyPair(float64(pair.Input), float64(pair.Output))
+
+			sts, results := uc.GetStatusMonitor()
+			switch test {
+			case tne.UCDCGainInternalCable:
+				go uc.OutputGainMeasurement(req.StepSize, true)
+			case tne.UCDCGainInternalRadiated:
+				go uc.OutputGainMeasurement(req.StepSize, false)
+			case tne.UCDCFreqMeas:
+				go uc.OutputFrequencyMeasurement()
+			case tne.UCDCHarmonicMeas:
+				go uc.OutputHarmonicsMeasurement()
+			case tne.UCDCSpuriousInBand:
+				go uc.OutputSpuriousMeasurement(true)
+			case tne.UCDCSpuriousOutBand:
+				go uc.OutputSpuriousMeasurement(false)
+			case tne.UCDCLOLeakage:
+				go uc.LOLeakageMeasurement()
+			case tne.UCDCInputLeakage:
+				go uc.OutputInputLeakageMeasurement()
+			case tne.UCDCGainExternalCable:
+				go uc.OutputExtLOGainMeasurement(req.StepSize, true)
+			case tne.UCDCGainExternalRadiated:
+				go uc.OutputExtLOGainMeasurement(req.StepSize, false)
+			case tne.UCDCOutputMonPower:
+				go uc.MonitorPowerMeasurement(true)
+			case tne.UCDCInputMonPower:
+				go uc.MonitorPowerMeasurement(false)
+			case tne.UCDCLOMonPower:
+				go uc.LOMonFreqPowerMeasurement()
+			case tne.UCDCLOMonPhaseNoise:
+				go uc.LOMonPhaseNoiseMeasurement()
+			case tne.UCDCExtLOPowerMatch:
+				go uc.ExtLOPowerMatch()
+			}
+
+			done := false
+			for !done {
+				select {
+				case stsMsg, ok := <-sts:
+					if !ok {
+						done = true
+						break
+					}
+					if len(pairs) > 1 && stsMsg.Message != "" {
+						stsMsg.Message = fmt.Sprintf("[Pair %d/%d (%.1f→%.1f MHz)] %s", pairIdx+1, len(pairs), float64(pair.Input)/1e6, float64(pair.Output)/1e6, stsMsg.Message)
+					}
+					if err := conn.WriteJSON(stsMsg); err != nil {
+						uc.Stop()
+						return
+					}
+					if stsMsg.Completed {
+						done = true
+					}
+				case result, ok := <-results:
+					if !ok {
+						continue
+					}
+					if err := conn.WriteJSON(result); err != nil {
+						uc.Stop()
+						return
+					}
 				}
-				if err := conn.WriteJSON(stsMsg); err != nil {
-					uc.Stop()
-					return
-				}
-				if stsMsg.Completed {
-					done = true
-				}
-			case result, ok := <-results:
-				if !ok {
-					continue
-				}
-				if err := conn.WriteJSON(result); err != nil {
-					uc.Stop()
-					return
-				}
+			}
+
+			if uc.IsStopped() {
+				return
 			}
 		}
 	}

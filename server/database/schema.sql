@@ -305,8 +305,8 @@ CREATE TABLE "TSMConfigurations" (
 CREATE TABLE "UpDownConverter" (
     "ID"               INTEGER PRIMARY KEY AUTOINCREMENT,
     "Name"             TEXT    UNIQUE NOT NULL,
-    "InputFrequency"   REAL    NOT NULL,
-    "OutputFrequency"  REAL    NOT NULL,
+    "FrequencyMap"     TEXT    NOT NULL,
+    "StageFactor"      INTEGER NOT NULL DEFAULT 1,
     "MaxPowerCable"    REAL    NOT NULL,
     "MinPowerCable"    REAL    NOT NULL,
     "MaxPowerRadiated" REAL,

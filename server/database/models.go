@@ -305,8 +305,8 @@ type TestPhase struct {
 type UpDownConverter struct {
 	ID               int64
 	Name             string
-	InputFrequency   float64
-	OutputFrequency  float64
+	FrequencyMap     string
+	StageFactor      int64
 	MaxPowerCable    float64
 	MinPowerCable    float64
 	MaxPowerRadiated sql.NullFloat64
