@@ -206,9 +206,11 @@ func upDownConverterMeasurement(c *gin.Context) {
 
 func upDownConverterResult(c *gin.Context) {
 	type resultRequest struct {
-		Name  string
-		Dates []string
-		Times []string
+		Name            string   `json:"Name"`
+		Dates           []string `json:"Dates"`
+		Times           []string `json:"Times"`
+		InputFrequency  float64  `json:"InputFrequency"`
+		OutputFrequency float64  `json:"OutputFrequency"`
 	}
 
 	var req resultRequest
@@ -221,7 +223,7 @@ func upDownConverterResult(c *gin.Context) {
 	}
 
 	uc := tne.UpDownConverterMeasurement{}
-	pdf, ok := uc.GeneratePDF(req.Name, req.Dates, req.Times)
+	pdf, ok := uc.GeneratePDF(req.Name, req.Dates, req.Times, req.InputFrequency, req.OutputFrequency)
 	var ack Ack
 	ack.OK = ok
 	ack.Message = pdf

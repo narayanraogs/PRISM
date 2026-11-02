@@ -14,18 +14,18 @@ func GenerateResult(report Report, resultApplicable bool, remarkApplicable bool,
 	informationApplicable bool, screenshotApplicable bool) (string, error) {
 	var builder strings.Builder
 	builder.WriteString(report.GetHeader())
-	if resultApplicable {
-		builder.WriteString(report.GetResults())
-	}
-	if remarkApplicable {
-		builder.WriteString(report.GetRemarks())
+	if informationApplicable {
+		builder.WriteString(report.GetTestInformationTable())
 	}
 	if tmApplicable {
 		builder.WriteString(report.GetPreReqTMTable())
 		builder.WriteString(report.GetLogTMTable())
 	}
-	if informationApplicable {
-		builder.WriteString(report.GetTestInformationTable())
+	if resultApplicable {
+		builder.WriteString(report.GetResults())
+	}
+	if remarkApplicable {
+		builder.WriteString(report.GetRemarks())
 	}
 	if screenshotApplicable {
 		builder.WriteString(report.GetScreenshots())

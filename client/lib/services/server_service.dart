@@ -479,9 +479,13 @@ class FrequencyPair {
 
   FrequencyPair({required this.input, required this.output});
 
-  factory FrequencyPair.fromJson(Map<String, dynamic> json) => FrequencyPair(
-        input: (json['Input'] as num?)?.toInt() ?? 0,
-        output: (json['Output'] as num?)?.toInt() ?? 0,
+  factory FrequencyPair.fromJson(Map<dynamic, dynamic> json) => FrequencyPair(
+        input: (json['Input'] is num
+                ? (json['Input'] as num).toInt()
+                : int.tryParse(json['Input']?.toString() ?? '')) ?? 0,
+        output: (json['Output'] is num
+                ? (json['Output'] as num).toInt()
+                : int.tryParse(json['Output']?.toString() ?? '')) ?? 0,
       );
 }
 
@@ -500,20 +504,32 @@ class UCDCDetails {
     this.frequencyMap = const [],
   });
 
-  factory UCDCDetails.fromJson(Map<String, dynamic> json) {
+  factory UCDCDetails.fromJson(Map<dynamic, dynamic> json) {
     var rawMap = json['frequencyMap'] ?? json['FrequencyMap'];
     var mapList = <FrequencyPair>[];
     if (rawMap is List) {
-      mapList = rawMap
-          .map((e) => FrequencyPair.fromJson(e as Map<String, dynamic>))
-          .toList();
+      for (var item in rawMap) {
+        if (item is Map) {
+          mapList.add(FrequencyPair.fromJson(item));
+        }
+      }
     }
     return UCDCDetails(
-      inputFrequency: (json['InputFrequency'] as num?)?.toDouble() ?? 0.0,
-      outputFrequency: (json['OutputFrequency'] as num?)?.toDouble() ?? 0.0,
-      loFrequency: (json['LOFrequency'] as num?)?.toDouble() ?? 0.0,
-      stageFactor: (json['stageFactor'] as num?)?.toInt() ??
-          (json['StageFactor'] as num?)?.toInt() ??
+      inputFrequency: (json['InputFrequency'] is num
+              ? (json['InputFrequency'] as num).toDouble()
+              : double.tryParse(json['InputFrequency']?.toString() ?? '')) ?? 0.0,
+      outputFrequency: (json['OutputFrequency'] is num
+              ? (json['OutputFrequency'] as num).toDouble()
+              : double.tryParse(json['OutputFrequency']?.toString() ?? '')) ?? 0.0,
+      loFrequency: (json['LOFrequency'] is num
+              ? (json['LOFrequency'] as num).toDouble()
+              : double.tryParse(json['LOFrequency']?.toString() ?? '')) ?? 0.0,
+      stageFactor: (json['stageFactor'] is num
+              ? (json['stageFactor'] as num).toInt()
+              : int.tryParse(json['stageFactor']?.toString() ?? '')) ??
+          (json['StageFactor'] is num
+              ? (json['StageFactor'] as num).toInt()
+              : int.tryParse(json['StageFactor']?.toString() ?? '')) ??
           1,
       frequencyMap: mapList,
     );
@@ -565,16 +581,22 @@ class UCDCMetadata {
 
   factory UCDCMetadata.fromJson(Map<String, dynamic> json) {
     var converterDetailsMap = <String, UCDCDetails>{};
-    if (json['ConverterDetails'] != null) {
-      (json['ConverterDetails'] as Map<String, dynamic>).forEach((key, value) {
-        converterDetailsMap[key] = UCDCDetails.fromJson(value);
+    if (json['ConverterDetails'] is Map) {
+      (json['ConverterDetails'] as Map).forEach((key, value) {
+        if (value is Map) {
+          converterDetailsMap[key.toString()] =
+              UCDCDetails.fromJson(Map<dynamic, dynamic>.from(value));
+        }
       });
     }
 
     var deviceMappingMap = <String, DeviceProfileDetails>{};
-    if (json['DeviceMapping'] != null) {
-      (json['DeviceMapping'] as Map<String, dynamic>).forEach((key, value) {
-        deviceMappingMap[key] = DeviceProfileDetails.fromJson(value);
+    if (json['DeviceMapping'] is Map) {
+      (json['DeviceMapping'] as Map).forEach((key, value) {
+        if (value is Map) {
+          deviceMappingMap[key.toString()] =
+              DeviceProfileDetails.fromJson(Map<String, dynamic>.from(value));
+        }
       });
     }
 
@@ -1906,6 +1928,11 @@ class ConvertorResults {
   final PowerOrLeakageResults? powerOrLeakageResultValue;
   final PhaseNoiseResults? phaseNoiseResultValue;
   final PowerMatchingResults? powerMatchingResultValue;
+  final double? inputFrequency;
+  final double? outputFrequency;
+  final double? loFrequency;
+  final int? stageFactor;
+  final String? frequencyMap;
 
   ConvertorResults({
     required this.testName,
@@ -1924,19 +1951,24 @@ class ConvertorResults {
     this.powerOrLeakageResultValue,
     this.phaseNoiseResultValue,
     this.powerMatchingResultValue,
+    this.inputFrequency,
+    this.outputFrequency,
+    this.loFrequency,
+    this.stageFactor,
+    this.frequencyMap,
   });
 
-  factory ConvertorResults.fromJson(Map<String, dynamic> json) {
+  factory ConvertorResults.fromJson(Map<dynamic, dynamic> json) {
     return ConvertorResults(
-      testName: json['TestName'] ?? '',
-      testCode: json['TestCode'] ?? '',
-      gainResults: json['GainResults'] ?? false,
-      frequencyResults: json['FrequencyResults'] ?? false,
-      harmonicsResults: json['HarmonicsResults'] ?? false,
-      spuriousResults: json['SpuriousResults'] ?? false,
-      powerOrLeakageResults: json['PowerOrLeakageResults'] ?? false,
-      phaseNoiseResults: json['PhaseNoiseResults'] ?? false,
-      powerMatchingResults: json['PowerMatchingResults'] ?? false,
+      testName: json['TestName']?.toString() ?? '',
+      testCode: json['TestCode']?.toString() ?? '',
+      gainResults: json['GainResults'] == true,
+      frequencyResults: json['FrequencyResults'] == true,
+      harmonicsResults: json['HarmonicsResults'] == true,
+      spuriousResults: json['SpuriousResults'] == true,
+      powerOrLeakageResults: json['PowerOrLeakageResults'] == true,
+      phaseNoiseResults: json['PhaseNoiseResults'] == true,
+      powerMatchingResults: json['PowerMatchingResults'] == true,
       gainResultValue: json['GainResultValue'] != null
           ? GainResults.fromJson(json['GainResultValue'])
           : null,
@@ -1958,6 +1990,11 @@ class ConvertorResults {
       powerMatchingResultValue: json['PowerMatchingResultValue'] != null
           ? PowerMatchingResults.fromJson(json['PowerMatchingResultValue'])
           : null,
+      inputFrequency: (json['InputFrequency'] as num?)?.toDouble(),
+      outputFrequency: (json['OutputFrequency'] as num?)?.toDouble(),
+      loFrequency: (json['LOFrequency'] as num?)?.toDouble(),
+      stageFactor: (json['StageFactor'] as num?)?.toInt(),
+      frequencyMap: json['FrequencyMap']?.toString(),
     );
   }
 }
@@ -1966,11 +2003,15 @@ class UCDCResultRequest {
   final String name;
   final List<String> dates;
   final List<String> times;
+  final double? inputFrequency;
+  final double? outputFrequency;
 
   UCDCResultRequest({
     required this.name,
     required this.dates,
     required this.times,
+    this.inputFrequency,
+    this.outputFrequency,
   });
 
   Map<String, dynamic> toJson() {
@@ -1978,6 +2019,8 @@ class UCDCResultRequest {
       'Name': name,
       'Dates': dates,
       'Times': times,
+      if (inputFrequency != null) 'InputFrequency': inputFrequency,
+      if (outputFrequency != null) 'OutputFrequency': outputFrequency,
     };
   }
 }

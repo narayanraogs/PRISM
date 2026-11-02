@@ -44,6 +44,33 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   final Set<int> _selectedReportIds = {};
   List<UCDCResultEntry> _history = [];
   bool _isLoadingHistory = false;
+  int _selectedFrequencyIndex = 0;
+
+  bool _matchesSelectedFrequency(UCDCResultEntry session, FrequencyPair? pair) {
+    if (pair == null) return true;
+
+    final inFreq = session.results.inputFrequency;
+    final outFreq = session.results.outputFrequency;
+    if (inFreq != null && inFreq > 0 && outFreq != null && outFreq > 0) {
+      return (inFreq - pair.input).abs() < 1e3 && (outFreq - pair.output).abs() < 1e3;
+    }
+
+    final inMHz = (pair.input / 1e6).toStringAsFixed(2);
+    final inMHz1 = (pair.input / 1e6).toStringAsFixed(1);
+    final outMHz = (pair.output / 1e6).toStringAsFixed(2);
+    final outMHz1 = (pair.output / 1e6).toStringAsFixed(1);
+    if (session.testType.contains(inMHz) || session.testType.contains(inMHz1)) {
+      if (session.testType.contains(outMHz) || session.testType.contains(outMHz1)) {
+        return true;
+      }
+    }
+
+    if (!session.testType.contains("In:") && (inFreq == null || inFreq <= 0)) {
+      return true;
+    }
+
+    return false;
+  }
 
   // --- Real Data from Server ---
   UCDCMetadata? _metadata;
@@ -530,7 +557,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                   _isReportMode ? "SESSION" : "PORT",
                   _isReportMode
                       ? "Latest Completion"
-                      : _ports[_selectedPortIndex].name,
+                      : (_ports.isNotEmpty && _selectedPortIndex < _ports.length
+                          ? _ports[_selectedPortIndex].name
+                          : "N/A"),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
@@ -785,6 +814,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                       if (val != null) {
                         setState(() {
                           _selectedResultConverter = val;
+                          _selectedFrequencyIndex = 0;
                           _selectedReportId = null;
                           _selectedReportIds.clear();
                         });
@@ -794,55 +824,147 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                     icon: Icons.swap_vert,
                     theme: theme,
                   ),
+                  () {
+                    final details = _metadata?.converterDetails[_selectedResultConverter];
+                    final pairs = details?.frequencyMap ?? [];
+                    if (pairs.length > 1) {
+                      final safeIndex = (_selectedFrequencyIndex < pairs.length) ? _selectedFrequencyIndex : 0;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          Text(
+                            "FREQUENCY MAPPING",
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade500,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: safeIndex,
+                                isExpanded: true,
+                                icon: const Icon(Icons.tune, size: 18),
+                                items: List.generate(pairs.length, (idx) {
+                                  final p = pairs[idx];
+                                  final inMHz = (p.input / 1e6).toStringAsFixed(1);
+                                  final outMHz = (p.output / 1e6).toStringAsFixed(1);
+                                  return DropdownMenuItem<int>(
+                                    value: idx,
+                                    child: Text(
+                                      "Set ${idx + 1}: In $inMHz MHz → Out $outMHz MHz",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }),
+                                onChanged: (newIdx) {
+                                  if (newIdx != null) {
+                                    setState(() {
+                                      _selectedFrequencyIndex = newIdx;
+                                      _selectedReportId = null;
+                                      _selectedReportIds.clear();
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }(),
                 ],
               ),
             ),
             const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "SESSIONS",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade500,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  if (_selectedReportIds.isNotEmpty)
-                    TextButton(
-                      onPressed: () =>
-                          setState(() => _selectedReportIds.clear()),
-                      child: const Text(
-                        "Clear Selection",
-                        style: TextStyle(fontSize: 11),
+            () {
+              final details = _metadata?.converterDetails[_selectedResultConverter];
+              final pairs = details?.frequencyMap ?? [];
+              final FrequencyPair? activePair = (pairs.length > 1 && _selectedFrequencyIndex < pairs.length)
+                  ? pairs[_selectedFrequencyIndex]
+                  : null;
+              final filteredHistory = _history.where((s) => _matchesSelectedFrequency(s, activePair)).toList();
+
+              return Expanded(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "SESSIONS (${filteredHistory.length})",
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade500,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          if (_selectedReportIds.isNotEmpty)
+                            TextButton(
+                              onPressed: () =>
+                                  setState(() => _selectedReportIds.clear()),
+                              child: const Text(
+                                "Clear Selection",
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            )
+                          else if (filteredHistory.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedReportIds.addAll(filteredHistory.map((s) => s.id));
+                                });
+                              },
+                              child: const Text(
+                                "Select All",
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _isLoadingHistory
-                  ? const Center(child: CircularProgressIndicator())
-                  : _history.isEmpty
-                  ? Center(
-                      child: Text(
-                        "No history found",
-                        style: TextStyle(color: Colors.grey.shade400),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _history.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemBuilder: (context, index) {
-                        final session = _history[index];
-                        return _buildSidebarSessionCard(session, theme);
-                      },
+                    Expanded(
+                      child: _isLoadingHistory
+                          ? const Center(child: CircularProgressIndicator())
+                          : filteredHistory.isEmpty
+                          ? Center(
+                              child: Text(
+                                "No history found for this frequency set",
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredHistory.length,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              itemBuilder: (context, index) {
+                                final session = filteredHistory[index];
+                                return _buildSidebarSessionCard(session, theme);
+                              },
+                            ),
                     ),
-            ),
+                  ],
+                ),
+              );
+            }(),
             if (_selectedReportIds.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(20),
@@ -1073,11 +1195,20 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
 
     try {
+      final details = _metadata?.converterDetails[_selectedResultConverter];
+      final pairs = details?.frequencyMap ?? [];
+      final hasMultipleFreqs = pairs.length > 1;
+      final FrequencyPair? activePair = (hasMultipleFreqs && _selectedFrequencyIndex < pairs.length)
+          ? pairs[_selectedFrequencyIndex]
+          : null;
+
       final serverService = Provider.of<ServerService>(context, listen: false);
       final request = UCDCResultRequest(
         name: _selectedResultConverter,
         dates: selectedSessions.map((s) => s.date).toList(),
         times: selectedSessions.map((s) => s.time).toList(),
+        inputFrequency: activePair?.input.toDouble(),
+        outputFrequency: activePair?.output.toDouble(),
       );
 
       final response = await serverService.generateUCDCPDF(request);
@@ -1090,8 +1221,11 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         final url = web.URL.createObjectURL(blob);
         final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
         anchor.href = url;
+        final stageTag = activePair != null
+            ? '_Set${_selectedFrequencyIndex + 1}_${(activePair.input / 1e6).toStringAsFixed(0)}In_${(activePair.output / 1e6).toStringAsFixed(0)}Out'
+            : '';
         anchor.download =
-            'UCDC_Report_${_selectedResultConverter}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+            'UCDC_Report_$_selectedResultConverter${stageTag}_${DateTime.now().millisecondsSinceEpoch}.pdf';
         
         // Append to DOM, click, and remove to guarantee download filename behavior
         web.document.body?.appendChild(anchor);
@@ -1147,13 +1281,42 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "SESSION DETAILS",
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1E293B),
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      "SESSION DETAILS",
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    () {
+                      final details = _metadata?.converterDetails[_selectedResultConverter];
+                      final pairs = details?.frequencyMap ?? [];
+                      if (pairs.length > 1 && _selectedFrequencyIndex < pairs.length) {
+                        final p = pairs[_selectedFrequencyIndex];
+                        return Container(
+                          margin: const EdgeInsets.only(left: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            "Set ${_selectedFrequencyIndex + 1}: ${(p.input / 1e6).toStringAsFixed(1)} MHz → ${(p.output / 1e6).toStringAsFixed(1)} MHz",
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }(),
+                  ],
                 ),
                 Text(
                   _selectedReportId != null
@@ -1284,6 +1447,9 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Widget _buildInstructionBanner(ThemeData theme) {
+    if (_ports.isEmpty || _selectedPortIndex >= _ports.length) {
+      return const SizedBox.shrink();
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
@@ -1691,7 +1857,13 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   }
 
   Widget _buildMeasurementView(ThemeData theme) {
-    final activePort = _ports[_selectedPortIndex];
+    if (_ports.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(32.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
+    final activePort = _ports[_selectedPortIndex < _ports.length ? _selectedPortIndex : 0];
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

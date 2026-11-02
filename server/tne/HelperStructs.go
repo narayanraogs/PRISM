@@ -49,6 +49,8 @@ type ConvertorResults struct {
 	InputFrequency            float64
 	OutputFrequency           float64
 	LOFrequency               float64
+	StageFactor               int64
+	FrequencyMap              string
 	GainResults               bool
 	FrequencyResults          bool
 	HarmonicsResults          bool

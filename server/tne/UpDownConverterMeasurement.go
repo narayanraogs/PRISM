@@ -99,11 +99,32 @@ func (udc *UpDownConverterMeasurement) check(resp utils.CommandResponse, errMsg 
 	return true
 }
 
+func parseFrequenciesFromString(text string) (float64, float64, bool) {
+	idx := strings.Index(text, "(In:")
+	if idx == -1 {
+		return 0, 0, false
+	}
+	sub := text[idx:]
+	var inMHz, outMHz float64
+	n, _ := fmt.Sscanf(sub, "(In: %f MHz, Out: %f MHz)", &inMHz, &outMHz)
+	if n == 2 && inMHz > 0 && outMHz > 0 {
+		return inMHz * 1e6, outMHz * 1e6, true
+	}
+	return 0, 0, false
+}
+
 func (udc *UpDownConverterMeasurement) save(result ConvertorResults, testType string) bool {
+	result.InputFrequency = udc.inputFrequency
+	result.OutputFrequency = udc.outputFrequency
+	result.LOFrequency = udc.loFrequency()
+	result.StageFactor = udc.stageFactor
+	result.FrequencyMap = udc.converter.FrequencyMap
+
 	saveTestType := testType
-	if len(udc.GetFrequencyPairs()) > 1 {
+	if udc.inputFrequency > 0 && udc.outputFrequency > 0 {
 		saveTestType = fmt.Sprintf("%s (In: %.2f MHz, Out: %.2f MHz)", testType, udc.inputFrequency/1e6, udc.outputFrequency/1e6)
 	}
+	result.TestName = saveTestType
 	data, err := json.MarshalIndent(result, "", " ")
 	if err != nil {
 		udc.setError("Failed to process results")
@@ -116,155 +137,299 @@ func (udc *UpDownConverterMeasurement) save(result ConvertorResults, testType st
 	return true
 }
 
-func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []string) (string, bool) {
+func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []string, targetFreqs ...float64) (string, bool) {
 	var report reports.Report
 	testPhase, _ := database.GetSelectedTestPhase()
 	report.SetHeader(name, "Up/Down Converter Results", "", testPhase)
-	var avail = make(map[int]string)
 	udc.converterName = name
+
+	var targetIn, targetOut float64
+	if len(targetFreqs) >= 2 && targetFreqs[0] > 0 && targetFreqs[1] > 0 {
+		targetIn = targetFreqs[0]
+		targetOut = targetFreqs[1]
+	}
+
+	// 1. Fetch raw sessions from results database
+	type sessionItem struct {
+		result ConvertorResults
+		date   string
+		time   string
+	}
+	var rawSessions []sessionItem
 	for i := 0; i < len(dates); i++ {
-		result, err := udc.getResult(dates[i], times[i])
+		res, err := udc.getResult(dates[i], times[i])
 		if err != nil {
 			return "", false
 		}
+		rawSessions = append(rawSessions, sessionItem{result: res, date: dates[i], time: times[i]})
+	}
+
+	// Fallback converter spec from database
+	details, err := database.GetConverterDetails(strings.TrimSpace(name))
+	var dbPairs []database.FrequencyPair
+	var sf int64 = 1
+	if err == nil {
+		dbPairs, _ = details.ParseFrequencyMap()
+		sf = details.StageFactor
+		if sf <= 0 {
+			sf = 1
+		}
+	}
+
+	// Prefer StageFactor from measurement result if tagged
+	for _, s := range rawSessions {
+		if s.result.StageFactor > 0 {
+			sf = s.result.StageFactor
+			break
+		}
+	}
+
+	// 2. Normalize and backfill frequencies from TestName if needed
+	var measuredSessions []sessionItem
+	for _, s := range rawSessions {
+		res := s.result
+		if res.InputFrequency <= 0 {
+			if inFreq, outFreq, ok := parseFrequenciesFromString(res.TestName); ok {
+				res.InputFrequency = inFreq
+				res.OutputFrequency = outFreq
+			}
+		}
+		measuredSessions = append(measuredSessions, sessionItem{result: res, date: s.date, time: s.time})
+	}
+
+	// Filter sessions by target frequency set if explicitly selected
+	var filteredSessions []sessionItem
+	if targetIn > 0 && targetOut > 0 {
+		for _, s := range measuredSessions {
+			res := s.result
+			if res.InputFrequency > 0 && (math.Abs(res.InputFrequency-targetIn) > 1e3 || math.Abs(res.OutputFrequency-targetOut) > 1e3) {
+				continue
+			}
+			res.InputFrequency = targetIn
+			res.OutputFrequency = targetOut
+			res.LOFrequency = math.Abs(targetIn-targetOut) / float64(sf)
+			filteredSessions = append(filteredSessions, sessionItem{result: res, date: s.date, time: s.time})
+		}
+	} else {
+		filteredSessions = measuredSessions
+	}
+
+	// 3. Determine the actual frequency sets that were measured in these sessions
+	type freqPair struct {
+		Input  float64
+		Output float64
+		LO     float64
+	}
+	var activePairs []freqPair
+	seenPair := make(map[string]bool)
+	for _, s := range filteredSessions {
+		res := s.result
+		if res.InputFrequency > 0 && res.OutputFrequency > 0 {
+			key := fmt.Sprintf("%.2f_%.2f", res.InputFrequency/1e6, res.OutputFrequency/1e6)
+			if !seenPair[key] {
+				seenPair[key] = true
+				lo := res.LOFrequency
+				if lo <= 0 {
+					lo = math.Abs(res.InputFrequency-res.OutputFrequency) / float64(sf)
+				}
+				activePairs = append(activePairs, freqPair{
+					Input:  res.InputFrequency,
+					Output: res.OutputFrequency,
+					LO:     lo,
+				})
+			}
+		}
+	}
+
+	// If no frequencies were tagged in the results (legacy data without frequency tags):
+	if len(activePairs) == 0 {
+		if targetIn > 0 && targetOut > 0 {
+			activePairs = append(activePairs, freqPair{
+				Input:  targetIn,
+				Output: targetOut,
+				LO:     math.Abs(targetIn-targetOut) / float64(sf),
+			})
+		} else if len(dbPairs) > 0 {
+			// Even if db table was later edited to have multiple pairs, this measurement was only for 1 pair!
+			p0 := dbPairs[0]
+			lo := math.Abs(float64(p0.Input-p0.Output)) / float64(sf)
+			activePairs = append(activePairs, freqPair{
+				Input:  float64(p0.Input),
+				Output: float64(p0.Output),
+				LO:     lo,
+			})
+		}
+	}
+
+	// Ensure all filtered sessions have frequency attributes populated
+	if len(activePairs) == 1 {
+		p0 := activePairs[0]
+		for i := range filteredSessions {
+			if filteredSessions[i].result.InputFrequency <= 0 {
+				filteredSessions[i].result.InputFrequency = p0.Input
+				filteredSessions[i].result.OutputFrequency = p0.Output
+				filteredSessions[i].result.LOFrequency = p0.LO
+			}
+		}
+	}
+
+	// 4. Build Test Information block ONLY for activePairs (the frequencies of these measurements!)
+	report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+		Parameter: "Converter Name",
+		Value:     name,
+	})
+	report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+		Parameter: "Stage Factor",
+		Value:     fmt.Sprintf("%d", sf),
+	})
+
+	if len(activePairs) == 1 {
+		p := activePairs[0]
+		report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+			Parameter: "Input Frequency",
+			Value:     fmt.Sprintf("%.2f MHz", p.Input/1e6),
+		})
+		report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+			Parameter: "Output Frequency",
+			Value:     fmt.Sprintf("%.2f MHz", p.Output/1e6),
+		})
+		report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+			Parameter: "LO Frequency",
+			Value:     fmt.Sprintf("%.2f MHz", p.LO/1e6),
+		})
+		report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+			Parameter: "",
+			Value:     "",
+		})
+	} else if len(activePairs) > 1 {
+		for idx, p := range activePairs {
+			report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+				Parameter: fmt.Sprintf("Stage %d Frequencies", idx+1),
+				Value:     fmt.Sprintf("In: %.1f MHz, Out: %.1f MHz", p.Input/1e6, p.Output/1e6),
+			})
+			report.TestInformation = append(report.TestInformation, reports.ReportInfo{
+				Parameter: fmt.Sprintf("Stage %d LO", idx+1),
+				Value:     fmt.Sprintf("%.1f MHz", p.LO/1e6),
+			})
+		}
+	}
+
+	order := make([]string, 0)
+	seen := make(map[string]bool)
+
+	for i := 0; i < len(filteredSessions); i++ {
+		result := filteredSessions[i].result
+
+		var baseReportName string
 		switch result.TestCode {
 		case UCDCGainInternalCable:
-			table := result.GainResultValue.getResultTable()
-			reportName := "Output Port - Gain Measurement - Internal LO - Cable Mode"
-			avail[0] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
+			baseReportName = "Output Port - Gain Measurement - Internal LO - Cable Mode"
 		case UCDCGainInternalRadiated:
+			baseReportName = "Output Port - Gain Measurement - Internal LO - Radiated Mode"
+		case UCDCFreqMeas:
+			baseReportName = "Output Port - Frequency Measurement"
+		case UCDCHarmonicMeas:
+			baseReportName = "Output Port - Harmonics Measurement"
+		case UCDCSpuriousInBand:
+			baseReportName = "Output Port - Spurious - In Band"
+		case UCDCSpuriousOutBand:
+			baseReportName = "Output Port - Spurious - Out of Band"
+		case UCDCLOLeakage:
+			baseReportName = "Output Port - LO Leakage"
+		case UCDCInputLeakage:
+			baseReportName = "Output Port - Input Leakage"
+		case UCDCGainExternalCable:
+			baseReportName = "Output Port - Gain Measurement - External LO - Cable Mode"
+		case UCDCGainExternalRadiated:
+			baseReportName = "Output Port - Gain Measurement - External LO - Radiated Mode"
+		case UCDCOutputMonPower:
+			baseReportName = "Output Monitor Port - Power Measurement"
+		case UCDCInputMonPower:
+			baseReportName = "Input Monitor Port - Power Measurement"
+		case UCDCLOMonPower:
+			baseReportName = "LO Monitor Port - Power Measurement"
+		case UCDCLOMonPhaseNoise:
+			baseReportName = "LO Monitor Port - Phase Noise Measurement"
+		case UCDCExtLOPowerMatch:
+			baseReportName = "LO Monitor Port - External LO Power Match"
+		}
+
+		reportName := baseReportName
+		if result.InputFrequency > 0 && result.OutputFrequency > 0 {
+			reportName = fmt.Sprintf("%s (In: %.2f MHz, Out: %.2f MHz)", baseReportName, result.InputFrequency/1e6, result.OutputFrequency/1e6)
+		}
+
+		if !seen[reportName] {
+			seen[reportName] = true
+			order = append(order, reportName)
+		}
+
+		switch result.TestCode {
+		case UCDCGainInternalCable, UCDCGainInternalRadiated, UCDCGainExternalCable, UCDCGainExternalRadiated:
 			table := result.GainResultValue.getResultTable()
-			reportName := "Output Port - Gain Measurement - Internal LO - Radiated Mode"
-			avail[1] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCFreqMeas:
 			table := result.FrequencyResultValue.getResultTable()
-			reportName := "Output Port - Frequency Measurement"
-			avail[2] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCHarmonicMeas:
 			table := result.HarmonicResultValue.getResultTable()
-			reportName := "Output Port - Harmonics Measurement"
-			avail[3] = reportName
-			for i := 0; i < len(result.HarmonicResultValue.HarmonicNo); i++ {
-				if len(result.SpectrumDump) > i {
-					report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[i], Caption: fmt.Sprintf("%s - %d Harmonic", reportName, result.HarmonicResultValue.HarmonicNo[i])})
+			for hIdx := 0; hIdx < len(result.HarmonicResultValue.HarmonicNo); hIdx++ {
+				if len(result.SpectrumDump) > hIdx {
+					report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[hIdx], Caption: fmt.Sprintf("%s - %d Harmonic", reportName, result.HarmonicResultValue.HarmonicNo[hIdx])})
 				}
 			}
 			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCSpuriousInBand:
+		case UCDCSpuriousInBand, UCDCSpuriousOutBand:
 			table := result.SpuriousResultValue.getResultTable()
-			reportName := "Output Port - Spurious - In Band"
-			avail[4] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCSpuriousOutBand:
-			table := result.SpuriousResultValue.getResultTable()
-			reportName := "Output Port - Spurious - Out of Band"
-			avail[5] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCLOLeakage:
+		case UCDCLOLeakage, UCDCInputLeakage, UCDCOutputMonPower, UCDCInputMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
-			reportName := "Output Port - LO Leakage"
-			avail[6] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCInputLeakage:
-			table := result.PowerOrLeakageResultValue.getResultTable()
-			reportName := "Output Port - Input Leakage"
-			avail[7] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCGainExternalCable:
-			table := result.GainResultValue.getResultTable()
-			reportName := "Output Port - Gain Measurement - External LO - Cable Mode"
-			avail[8] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCGainExternalRadiated:
-			table := result.GainResultValue.getResultTable()
-			reportName := "Output Port - Gain Measurement - External LO - Radiated Mode"
-			avail[9] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCOutputMonPower:
-			table := result.PowerOrLeakageResultValue.getResultTable()
-			reportName := "Output Monitor Port - Power Measurement"
-			avail[10] = reportName
-			if len(result.SpectrumDump) > 0 {
-				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
-			}
-			report.SetResults(reportName, table.Header, table.Data)
-		case UCDCInputMonPower:
-			table := result.PowerOrLeakageResultValue.getResultTable()
-			reportName := "Input Monitor Port - Power Measurement"
-			avail[11] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCLOMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
-			reportName := "LO Monitor Port - Power Measurement"
-			avail[12] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
-			table2 := result.FrequencyResultValue.getResultTable()
+
 			reportName2 := "LO Monitor Port - Frequency Measurement"
-			avail[13] = reportName2
+			if result.InputFrequency > 0 && result.OutputFrequency > 0 {
+				reportName2 = fmt.Sprintf("%s (In: %.2f MHz, Out: %.2f MHz)", reportName2, result.InputFrequency/1e6, result.OutputFrequency/1e6)
+			}
+			if !seen[reportName2] {
+				seen[reportName2] = true
+				order = append(order, reportName2)
+			}
+			table2 := result.FrequencyResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName2})
 			}
 			report.SetResults(reportName2, table2.Header, table2.Data)
 		case UCDCLOMonPhaseNoise:
 			table := result.PhaseNoiseResultValue.getResultTable()
-			reportName := "LO Monitor Port - Phase Noise Measurement"
-			avail[14] = reportName
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
 			report.SetResults(reportName, table.Header, table.Data)
 		case UCDCExtLOPowerMatch:
 			table := result.PowerMatchingResultValue.getResultTable()
-			reportName := "LO Monitor Port - External LO Power Match"
-			avail[15] = reportName
 			report.SetResults(reportName, table.Header, table.Data)
 		}
 	}
-	order := make([]string, 0)
-	for i := 0; i < 16; i++ {
-		reportName, ok := avail[i]
-		if ok {
-			order = append(order, reportName)
-		}
-	}
 	report.SetOrder(order)
-	pdf, err := reports.GenerateResult(report, true, false, false, false, true)
+	pdf, err := reports.GenerateResult(report, true, false, false, true, true)
 	if err != nil {
 		return "", false
 	}
