@@ -16,8 +16,8 @@ var g applicationGlobal
 
 func GetSatelliteName() string {
 	satName, ok := g.StringMap.Load("SatelliteName")
-	if !ok {
-		return ""
+	if !ok || satName.(string) == "" {
+		return Config.SatelliteName
 	} else {
 		return satName.(string)
 	}

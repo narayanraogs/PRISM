@@ -285,6 +285,7 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 
 	if len(activePairs) == 1 {
 		p := activePairs[0]
+		report.Header.FreqMap = fmt.Sprintf("In: %.2f MHz, Out: %.2f MHz", p.Input/1e6, p.Output/1e6)
 		report.TestInformation = append(report.TestInformation, reports.ReportInfo{
 			Parameter: "Input Frequency",
 			Value:     fmt.Sprintf("%.2f MHz", p.Input/1e6),
@@ -302,7 +303,9 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 			Value:     "",
 		})
 	} else if len(activePairs) > 1 {
+		var parts []string
 		for idx, p := range activePairs {
+			parts = append(parts, fmt.Sprintf("In: %.1f MHz, Out: %.1f MHz", p.Input/1e6, p.Output/1e6))
 			report.TestInformation = append(report.TestInformation, reports.ReportInfo{
 				Parameter: fmt.Sprintf("Stage %d Frequencies", idx+1),
 				Value:     fmt.Sprintf("In: %.1f MHz, Out: %.1f MHz", p.Input/1e6, p.Output/1e6),
@@ -312,6 +315,7 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 				Value:     fmt.Sprintf("%.1f MHz", p.LO/1e6),
 			})
 		}
+		report.Header.FreqMap = strings.Join(parts, "; ")
 	}
 
 	order := make([]string, 0)
@@ -319,6 +323,10 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 
 	for i := 0; i < len(filteredSessions); i++ {
 		result := filteredSessions[i].result
+		conductionDate := filteredSessions[i].date
+		if strings.TrimSpace(filteredSessions[i].time) != "" {
+			conductionDate = fmt.Sprintf("%s %s", filteredSessions[i].date, filteredSessions[i].time)
+		}
 
 		var baseReportName string
 		switch result.TestCode {
@@ -370,13 +378,13 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCFreqMeas:
 			table := result.FrequencyResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCHarmonicMeas:
 			table := result.HarmonicResultValue.getResultTable()
 			for hIdx := 0; hIdx < len(result.HarmonicResultValue.HarmonicNo); hIdx++ {
@@ -384,25 +392,25 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 					report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[hIdx], Caption: fmt.Sprintf("%s - %d Harmonic", reportName, result.HarmonicResultValue.HarmonicNo[hIdx])})
 				}
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCSpuriousInBand, UCDCSpuriousOutBand:
 			table := result.SpuriousResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCLOLeakage, UCDCInputLeakage, UCDCOutputMonPower, UCDCInputMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCLOMonPower:
 			table := result.PowerOrLeakageResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 
 			reportName2 := "LO Monitor Port - Frequency Measurement"
 			if result.InputFrequency > 0 && result.OutputFrequency > 0 {
@@ -416,16 +424,16 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName2})
 			}
-			report.SetResults(reportName2, table2.Header, table2.Data)
+			report.SetResults(reportName2, table2.Header, table2.Data, conductionDate)
 		case UCDCLOMonPhaseNoise:
 			table := result.PhaseNoiseResultValue.getResultTable()
 			if len(result.SpectrumDump) > 0 {
 				report.Screenshots = append(report.Screenshots, reports.Images{FileData: result.SpectrumDump[0], Caption: reportName})
 			}
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		case UCDCExtLOPowerMatch:
 			table := result.PowerMatchingResultValue.getResultTable()
-			report.SetResults(reportName, table.Header, table.Data)
+			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 		}
 	}
 	report.SetOrder(order)

@@ -32,11 +32,13 @@ type ReportHeader struct {
 	Date         string
 	Time         string
 	TestPhase    string
+	FreqMap      string
 }
 
 type Result struct {
 	Header []string
 	Data   [][]DataCell
+	Date   string
 }
 
 func getColumns(length int) string {
@@ -161,7 +163,7 @@ func (report *Report) SetScreenshots(images []Images) {
 	report.Screenshots = append(report.Screenshots, images...)
 }
 
-func (report *Report) SetResults(reportName string, header []string, data [][]DataCell) {
+func (report *Report) SetResults(reportName string, header []string, data [][]DataCell, date ...string) {
 	var result Result
 	result.Header = make([]string, 0)
 	result.Header = append(result.Header, header...)
@@ -170,6 +172,9 @@ func (report *Report) SetResults(reportName string, header []string, data [][]Da
 		var row = make([]DataCell, 0)
 		row = append(row, data[i]...)
 		result.Data = append(result.Data, row)
+	}
+	if len(date) > 0 {
+		result.Date = date[0]
 	}
 	report.Results[reportName] = result
 }
@@ -233,29 +238,57 @@ func (header *ReportHeader) getString() string {
 	columns: (auto,1fr,auto),
 	align:center,
 	rows: 2,
-	table.cell(align: left, [`)
-	builder.WriteString(header.Spacecraft)
-	builder.WriteString("]),\n")
-	builder.WriteString("text(purple,14pt)[")
-	builder.WriteString(header.TestType)
-	if strings.TrimSpace(header.TestCategory) != "" {
-		builder.WriteString(": _")
-		builder.WriteString(header.TestCategory)
-		builder.WriteString("_")
+`)
+
+	if strings.TrimSpace(header.FreqMap) != "" {
+		builder.WriteString("table.cell(align: left, [")
+		builder.WriteString(header.Spacecraft)
+		builder.WriteString("]),\n")
+		builder.WriteString("text(purple,14pt)[")
+		builder.WriteString(header.TestType)
+		if strings.TrimSpace(header.TestCategory) != "" {
+			builder.WriteString(": _")
+			builder.WriteString(header.TestCategory)
+			builder.WriteString("_")
+		}
+		builder.WriteString("],\n")
+		builder.WriteString("table.cell(align: right, [")
+		builder.WriteString(header.TestPhase)
+		builder.WriteString("]),\n")
+
+		builder.WriteString(`table.cell(align: left, [Page #context(counter(page).display("1/1",both:true,))]),` + "\n")
+		builder.WriteString("[")
+		builder.WriteString(header.Config)
+		builder.WriteString("],\n")
+		builder.WriteString("table.cell(align: right, [")
+		builder.WriteString(header.FreqMap)
+		builder.WriteString("]),\n")
+	} else {
+		builder.WriteString("table.cell(align: left, [")
+		builder.WriteString(header.Spacecraft)
+		builder.WriteString("]),\n")
+		builder.WriteString("text(purple,14pt)[")
+		builder.WriteString(header.TestType)
+		if strings.TrimSpace(header.TestCategory) != "" {
+			builder.WriteString(": _")
+			builder.WriteString(header.TestCategory)
+			builder.WriteString("_")
+		}
+		builder.WriteString("],\n")
+		builder.WriteString("table.cell(align: right, [")
+		builder.WriteString(header.Config)
+		builder.WriteString("]),\n")
+		builder.WriteString("table.cell(align: left, [")
+		builder.WriteString(header.TestPhase)
+		builder.WriteString("]),\n")
+		builder.WriteString("[")
+		builder.WriteString(header.Date)
+		builder.WriteString(" ")
+		builder.WriteString(header.Time)
+		builder.WriteString("],\n")
+		builder.WriteString(`table.cell(align: right, [Page #context(counter(page).display("1/1",both:true,))]),` + "\n")
 	}
-	builder.WriteString("],\n")
-	builder.WriteString("table.cell(align: right, [")
-	builder.WriteString(header.Config)
-	builder.WriteString("]),\n")
-	builder.WriteString("table.cell(align: left, [")
-	builder.WriteString(header.TestPhase)
-	builder.WriteString("]),\n")
-	builder.WriteString("[")
-	builder.WriteString(header.Date)
-	builder.WriteString(" ")
-	builder.WriteString(header.Time)
-	builder.WriteString("],\n")
-	builder.WriteString(`table.cell(align: right, [Page #context(counter(page).display("1/1",both:true,))]),
+	builder.WriteString(`
 		)
 	),
 	footer: table(
@@ -371,8 +404,16 @@ func (report *Report) GetResults() string {
 		}
 		content.WriteString("#text(purple,14pt)[*")
 		content.WriteString(reportName)
-		content.WriteString("*]\n#linebreak()\n")
+		content.WriteString("*]\n")
+		if strings.TrimSpace(result.Date) != "" {
+			content.WriteString("#v(-4pt)\n")
+			content.WriteString("#text(gray.darken(40%), 10.5pt)[*Date of Conduction:* ")
+			content.WriteString(result.Date)
+			content.WriteString("]\n")
+		}
+		content.WriteString("#v(4pt)\n")
 		content.WriteString(result.getString())
+		content.WriteString("\n#v(1.2em)\n")
 	}
 	content.WriteString("\n")
 	return content.String()
