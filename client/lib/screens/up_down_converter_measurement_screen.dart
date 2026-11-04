@@ -1407,17 +1407,62 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      children: [
-        _buildDynamicResult(
-          session.results,
-          TestDefinition(
-            session.testType,
-            code: session.results.testCode,
-            status: "COMPLETE",
+    return ContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics_outlined,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  session.testType.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1E293B),
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              if (session.date.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    "${session.date} ${session.time}".trim(),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          _buildDynamicResult(
+            session.results,
+            TestDefinition(
+              session.testType,
+              code: session.results.testCode,
+              status: "COMPLETE",
+            ),
+            isDark: false,
+          ),
+        ],
+      ),
     );
   }
 
@@ -2099,20 +2144,20 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           const Divider(color: Colors.white10, height: 1),
           Padding(
             padding: const EdgeInsets.all(24),
-            child: _buildDynamicResult(result, test),
+            child: _buildDynamicResult(result, test, isDark: true),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDynamicResult(dynamic result, TestDefinition test) {
+  Widget _buildDynamicResult(dynamic result, TestDefinition test, {bool isDark = false}) {
     if (test.status == "MEASURING" && result == null) {
       return Text(
         "Measuring...",
         style: GoogleFonts.robotoMono(
           fontSize: 18,
-          color: Colors.blue.shade300,
+          color: isDark ? Colors.blue.shade300 : const Color(0xFF0284C7),
         ),
       );
     }
@@ -2123,7 +2168,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         style: GoogleFonts.robotoMono(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.blue.shade300,
+          color: isDark ? Colors.blue.shade300 : const Color(0xFF0284C7),
         ),
       );
     }
@@ -2132,31 +2177,31 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     List<Widget> children = [];
 
     if (res.gainResults && res.gainResultValue != null) {
-      children.add(_buildGainResultTable(res.gainResultValue!));
+      children.add(_buildGainResultTable(res.gainResultValue!, isDark: isDark));
     }
     if (res.frequencyResults && res.frequencyResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildFrequencyResult(res.frequencyResultValue!));
+      children.add(_buildFrequencyResult(res.frequencyResultValue!, isDark: isDark));
     }
     if (res.harmonicsResults && res.harmonicResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildHarmonicResult(res.harmonicResultValue!));
+      children.add(_buildHarmonicResult(res.harmonicResultValue!, isDark: isDark));
     }
     if (res.spuriousResults && res.spuriousResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildSpuriousResult(res.spuriousResultValue!));
+      children.add(_buildSpuriousResult(res.spuriousResultValue!, isDark: isDark));
     }
     if (res.powerOrLeakageResults && res.powerOrLeakageResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildPowerOrLeakageResult(res.powerOrLeakageResultValue!));
+      children.add(_buildPowerOrLeakageResult(res.powerOrLeakageResultValue!, isDark: isDark));
     }
     if (res.phaseNoiseResults && res.phaseNoiseResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildPhaseNoiseResult(res.phaseNoiseResultValue!));
+      children.add(_buildPhaseNoiseResult(res.phaseNoiseResultValue!, isDark: isDark));
     }
     if (res.powerMatchingResults && res.powerMatchingResultValue != null) {
       if (children.isNotEmpty) children.add(const SizedBox(height: 16));
-      children.add(_buildPowerMatchingResult(res.powerMatchingResultValue!));
+      children.add(_buildPowerMatchingResult(res.powerMatchingResultValue!, isDark: isDark));
     }
 
     if (children.isEmpty) {
@@ -2164,7 +2209,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         "Result received: ${res.testName}",
         style: GoogleFonts.robotoMono(
           fontSize: 16,
-          color: Colors.blue.shade300,
+          color: isDark ? Colors.blue.shade300 : const Color(0xFF0284C7),
         ),
       );
     }
@@ -2175,41 +2220,49 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _buildFrequencyResult(FrequencyResults res) {
+  Widget _buildFrequencyResult(FrequencyResults res, {bool isDark = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _resultRow(
           "Expected Freq",
           "${(res.expectedFrequency / 1e6).toStringAsFixed(6)} MHz",
+          isDark: isDark,
         ),
         _resultRow(
           "Measured Freq",
           "${(res.measuredFrequency / 1e6).toStringAsFixed(6)} MHz",
+          isDark: isDark,
         ),
         _resultRow(
           "Deviation",
           "${(res.deviation / 1e3).toStringAsFixed(3)} kHz",
           isError: res.deviation > 1000,
+          isDark: isDark,
         ),
       ],
     );
   }
 
-  Widget _buildPowerOrLeakageResult(PowerOrLeakageResults res) {
+  Widget _buildPowerOrLeakageResult(PowerOrLeakageResults res, {bool isDark = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _resultRow(
           "Frequency",
           "${(res.frequency / 1e6).toStringAsFixed(2)} MHz",
+          isDark: isDark,
         ),
-        _resultRow("Measured Power", "${res.power.toStringAsFixed(2)} dBm"),
+        _resultRow(
+          "Measured Power",
+          "${res.power.toStringAsFixed(2)} dBm",
+          isDark: isDark,
+        ),
       ],
     );
   }
 
-  Widget _resultRow(String label, String value, {bool isError = false}) {
+  Widget _resultRow(String label, String value, {bool isError = false, bool isDark = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -2217,12 +2270,18 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
         children: [
           Text(
             label,
-            style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+            style: GoogleFonts.inter(
+              color: isDark ? Colors.white70 : const Color(0xFF475569),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           Text(
             value,
             style: GoogleFonts.robotoMono(
-              color: isError ? Colors.red.shade300 : Colors.blue.shade300,
+              color: isError
+                  ? (isDark ? Colors.red.shade300 : Colors.red.shade700)
+                  : (isDark ? Colors.blue.shade300 : const Color(0xFF0284C7)),
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -2232,38 +2291,39 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _buildHarmonicResult(HarmonicResults res) {
+  Widget _buildHarmonicResult(HarmonicResults res, {bool isDark = false}) {
     return Table(
       children: [
         TableRow(
           children: [
-            _tableHeader("Harmonic"),
-            _tableHeader("Frequency"),
-            _tableHeader("Level (dBc)"),
+            _tableHeader("Harmonic", isDark: isDark),
+            _tableHeader("Frequency", isDark: isDark),
+            _tableHeader("Level (dBc)", isDark: isDark),
           ],
         ),
         for (int i = 0; i < res.harmonicNo.length; i++)
           TableRow(
             children: [
-              _tableCell("${res.harmonicNo[i]}"),
+              _tableCell("${res.harmonicNo[i]}", isDark: isDark),
               _tableCell(
                 "${(double.parse(res.harmonicFrequency[i]) / 1e6).toStringAsFixed(2)} MHz",
+                isDark: isDark,
               ),
-              _tableCell(res.carrierLevel[i]),
+              _tableCell(res.carrierLevel[i], isDark: isDark),
             ],
           ),
       ],
     );
   }
 
-  Widget _buildSpuriousResult(SpuriousResults res) {
+  Widget _buildSpuriousResult(SpuriousResults res, {bool isDark = false}) {
     return Table(
       children: [
         TableRow(
           children: [
-            _tableHeader("Frequency"),
-            _tableHeader("Level (dBm)"),
-            _tableHeader("dBC"),
+            _tableHeader("Frequency", isDark: isDark),
+            _tableHeader("Level (dBm)", isDark: isDark),
+            _tableHeader("dBC", isDark: isDark),
           ],
         ),
         for (int i = 0; i < res.frequency.length; i++)
@@ -2273,78 +2333,82 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                 res.frequency[i] == "NIL"
                     ? "NIL"
                     : "${(double.parse(res.frequency[i]) / 1e6).toStringAsFixed(2)} MHz",
+                isDark: isDark,
               ),
-              _tableCell(res.measuredPowerdBm[i]),
-              _tableCell(res.spuriousLeveldBC[i]),
+              _tableCell(res.measuredPowerdBm[i], isDark: isDark),
+              _tableCell(res.spuriousLeveldBC[i], isDark: isDark),
             ],
           ),
       ],
     );
   }
 
-  Widget _buildPhaseNoiseResult(PhaseNoiseResults res) {
+  Widget _buildPhaseNoiseResult(PhaseNoiseResults res, {bool isDark = false}) {
     return Column(
       children: [
         for (int i = 0; i < res.frequency.length; i++)
           _resultRow(
             "Offset ${res.frequency[i]}",
             "${res.phaseNoise[i]} dBc/Hz",
+            isDark: isDark,
           ),
       ],
     );
   }
 
-  Widget _buildPowerMatchingResult(PowerMatchingResults res) {
+  Widget _buildPowerMatchingResult(PowerMatchingResults res, {bool isDark = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _resultRow(
           "Internal LO Power",
           "${res.internalLOPowerMeasured.toStringAsFixed(2)} dBm",
+          isDark: isDark,
         ),
         _resultRow(
           "External LO Power",
           "${res.externalLOPowerMeasured.toStringAsFixed(2)} dBm",
+          isDark: isDark,
         ),
         _resultRow(
           "Selected SG Power",
           "${res.externalSGPowerSet.toStringAsFixed(2)} dBm",
+          isDark: isDark,
         ),
       ],
     );
   }
 
-
-  Widget _buildGainResultTable(GainResults res) {
+  Widget _buildGainResultTable(GainResults res, {bool isDark = false}) {
     return Table(
       children: [
         TableRow(
           children: [
-            _tableHeader("In Power (dBm)"),
-            _tableHeader("Out Power (dBm)"),
-            _tableHeader("Gain (dB)"),
+            _tableHeader("In Power (dBm)", isDark: isDark),
+            _tableHeader("Out Power (dBm)", isDark: isDark),
+            _tableHeader("Gain (dB)", isDark: isDark),
           ],
         ),
         for (int i = 0; i < res.setPower.length; i++)
           TableRow(
             children: [
-              _tableCell(res.setPower[i].toStringAsFixed(2)),
-              _tableCell(res.outputPower[i].toStringAsFixed(2)),
+              _tableCell(res.setPower[i].toStringAsFixed(2), isDark: isDark),
+              _tableCell(res.outputPower[i].toStringAsFixed(2), isDark: isDark),
               _tableCell(
                 res.gain[i].toStringAsFixed(2),
                 isBold: true,
-                color: Colors.blue.shade300,
+                color: isDark ? Colors.blue.shade300 : const Color(0xFF0284C7),
               ),
             ],
           ),
         TableRow(
           children: [
-            _tableCell("AVERAGE", isBold: true),
-            _tableCell(""),
+            _tableCell("AVERAGE", isBold: true, isDark: isDark),
+            _tableCell("", isDark: isDark),
             _tableCell(
               res.averageGain.toStringAsFixed(2),
               isBold: true,
-              color: Colors.green.shade400,
+              color: isDark ? Colors.green.shade400 : Colors.green.shade700,
             ),
           ],
         ),
@@ -2352,32 +2416,37 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
-  Widget _tableHeader(String text) => Padding(
+  Widget _tableHeader(String text, {bool isDark = false}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Text(
       text,
-      style: const TextStyle(
-        color: Colors.white54,
+      style: TextStyle(
+        color: isDark ? Colors.white54 : const Color(0xFF64748B),
         fontSize: 10,
         fontWeight: FontWeight.bold,
       ),
     ),
   );
+
   Widget _tableCell(
     String text, {
     bool isBold = false,
-    Color color = Colors.white70,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Text(
-      text,
-      style: GoogleFonts.robotoMono(
-        color: color,
-        fontSize: 13,
-        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+    bool isDark = false,
+    Color? color,
+  }) {
+    final cellColor = color ?? (isDark ? Colors.white70 : const Color(0xFF1E293B));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: GoogleFonts.robotoMono(
+          color: cellColor,
+          fontSize: 13,
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildTextField({
     required String label,
