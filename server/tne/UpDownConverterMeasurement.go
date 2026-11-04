@@ -363,9 +363,6 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 		}
 
 		reportName := baseReportName
-		if result.InputFrequency > 0 && result.OutputFrequency > 0 {
-			reportName = fmt.Sprintf("%s (In: %.2f MHz, Out: %.2f MHz)", baseReportName, result.InputFrequency/1e6, result.OutputFrequency/1e6)
-		}
 
 		if !seen[reportName] {
 			seen[reportName] = true
@@ -413,9 +410,6 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 			report.SetResults(reportName, table.Header, table.Data, conductionDate)
 
 			reportName2 := "LO Monitor Port - Frequency Measurement"
-			if result.InputFrequency > 0 && result.OutputFrequency > 0 {
-				reportName2 = fmt.Sprintf("%s (In: %.2f MHz, Out: %.2f MHz)", reportName2, result.InputFrequency/1e6, result.OutputFrequency/1e6)
-			}
 			if !seen[reportName2] {
 				seen[reportName2] = true
 				order = append(order, reportName2)
