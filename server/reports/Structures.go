@@ -169,7 +169,7 @@ func (report *Report) SetResults(reportName string, header []string, data [][]Da
 	result.Header = append(result.Header, header...)
 	result.Data = make([][]DataCell, 0)
 	for i := 0; i < len(data); i++ {
-		var row = make([]DataCell, 0)
+		var row []DataCell
 		row = append(row, data[i]...)
 		result.Data = append(result.Data, row)
 	}
@@ -465,10 +465,14 @@ func getStringOfBytes(array []byte) string {
 // wrapText inserts zero-width spaces (U+200B) after common delimiter
 // characters so that Typst can wrap long, space-free identifiers (e.g.
 // TM mnemonics) within a fixed-width table column without altering the
-// visible text.
+// visible text. It also escapes underscores (\_) so Typst does not treat
+// them as italics/emphasis markup.
 func wrapText(s string) string {
 	var b strings.Builder
 	for _, r := range s {
+		if r == '_' {
+			b.WriteRune('\\')
+		}
 		b.WriteRune(r)
 		switch r {
 		case ':', '_', '/', '-':
