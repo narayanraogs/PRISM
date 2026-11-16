@@ -1863,6 +1863,40 @@ class GTxResult {
   }
 }
 
+class UCDCCableLoss {
+  final double inputCableLoss;
+  final double loCableLoss;
+  final List<double> outputCableLoss;
+
+  UCDCCableLoss({
+    required this.inputCableLoss,
+    required this.loCableLoss,
+    required this.outputCableLoss,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'InputCableLoss': inputCableLoss,
+    'LOCableLoss': loCableLoss,
+    'OutputCableLoss': outputCableLoss,
+  };
+
+  factory UCDCCableLoss.fromJson(Map<String, dynamic> json) => UCDCCableLoss(
+    inputCableLoss: (json['InputCableLoss'] as num?)?.toDouble() ??
+        (json['inputCableLoss'] as num?)?.toDouble() ??
+        0.0,
+    loCableLoss: (json['LOCableLoss'] as num?)?.toDouble() ??
+        (json['loCableLoss'] as num?)?.toDouble() ??
+        0.0,
+    outputCableLoss: (json['OutputCableLoss'] as List<dynamic>?)
+            ?.map((e) => (e as num).toDouble())
+            .toList() ??
+        (json['outputCableLoss'] as List<dynamic>?)
+            ?.map((e) => (e as num).toDouble())
+            .toList() ??
+        [0.0, 0.0, 0.0],
+  );
+}
+
 class UCDCRequest {
   final String converterName;
   final String deviceProfile;
@@ -1871,6 +1905,7 @@ class UCDCRequest {
   final double inputPower;
   final double loCableLoss;
   final List<double> outputCableLoss;
+  final List<UCDCCableLoss>? cableLosses;
   final GTxSpectrum powerSpectrum;
   final GTxSpectrum frequencySpectrum;
   final GTxSpectrum inBandSpectrum;
@@ -1886,6 +1921,7 @@ class UCDCRequest {
     required this.inputPower,
     required this.loCableLoss,
     required this.outputCableLoss,
+    this.cableLosses,
     required this.powerSpectrum,
     required this.frequencySpectrum,
     required this.inBandSpectrum,
@@ -1902,6 +1938,8 @@ class UCDCRequest {
     'InputPower': inputPower,
     'LOCableLoss': loCableLoss,
     'OutputCableLoss': outputCableLoss,
+    if (cableLosses != null)
+      'CableLosses': cableLosses!.map((e) => e.toJson()).toList(),
     'PowerSpectrum': powerSpectrum.toJson(),
     'FrequencySpectrum': frequencySpectrum.toJson(),
     'InBandSpectrum': inBandSpectrum.toJson(),

@@ -102,9 +102,15 @@ func upDownConverterMeasurement(c *gin.Context) {
 		}
 		return
 	}
-	uc.SetInputCableLoss(req.InputCableLoss, req.InputPower)
-	uc.SetOutputCableLoss(req.OutputCableLoss)
-	uc.SetLOCableLoss(req.LOCableLoss)
+	if len(req.CableLosses) > 0 {
+		uc.SetInputCableLoss(req.CableLosses[0].InputCableLoss, req.InputPower)
+		uc.SetOutputCableLoss(req.CableLosses[0].OutputCableLoss)
+		uc.SetLOCableLoss(req.CableLosses[0].LOCableLoss)
+	} else {
+		uc.SetInputCableLoss(req.InputCableLoss, req.InputPower)
+		uc.SetOutputCableLoss(req.OutputCableLoss)
+		uc.SetLOCableLoss(req.LOCableLoss)
+	}
 
 	uc.SetPowerSpectrum(req.PowerSpectrum.Span, req.PowerSpectrum.RBW, req.PowerSpectrum.VBW)
 	uc.SetFrequencySpectrum(req.FrequencySpectrum.Span, req.FrequencySpectrum.RBW, req.FrequencySpectrum.VBW)
@@ -131,6 +137,16 @@ func upDownConverterMeasurement(c *gin.Context) {
 		for pairIdx, pair := range pairs {
 			if uc.IsStopped() {
 				return
+			}
+			if pairIdx < len(req.CableLosses) {
+				loss := req.CableLosses[pairIdx]
+				uc.SetInputCableLoss(loss.InputCableLoss, req.InputPower)
+				uc.SetOutputCableLoss(loss.OutputCableLoss)
+				uc.SetLOCableLoss(loss.LOCableLoss)
+			} else {
+				uc.SetInputCableLoss(req.InputCableLoss, req.InputPower)
+				uc.SetOutputCableLoss(req.OutputCableLoss)
+				uc.SetLOCableLoss(req.LOCableLoss)
 			}
 			uc.SetFrequencyPair(float64(pair.Input), float64(pair.Output))
 

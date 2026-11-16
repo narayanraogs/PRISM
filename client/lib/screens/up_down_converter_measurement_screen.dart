@@ -10,6 +10,61 @@ import 'package:prism_client/widgets/content_card.dart';
 import 'package:prism_client/widgets/screen_header.dart';
 import 'package:prism_client/widgets/instrument_connection_diagram.dart';
 
+class _PairCableLossControllers {
+  final TextEditingController inputCableIn;
+  final TextEditingController outputCableIn;
+  final TextEditingController outputCableOut;
+  final TextEditingController outputCableLO;
+  final TextEditingController extLOCableLO;
+
+  _PairCableLossControllers({
+    String inputCableIn = "",
+    String outputCableIn = "",
+    String outputCableOut = "",
+    String outputCableLO = "",
+    String extLOCableLO = "",
+  })  : inputCableIn = TextEditingController(text: inputCableIn),
+        outputCableIn = TextEditingController(text: outputCableIn),
+        outputCableOut = TextEditingController(text: outputCableOut),
+        outputCableLO = TextEditingController(text: outputCableLO),
+        extLOCableLO = TextEditingController(text: extLOCableLO);
+
+  void dispose() {
+    inputCableIn.dispose();
+    outputCableIn.dispose();
+    outputCableOut.dispose();
+    outputCableLO.dispose();
+    extLOCableLO.dispose();
+  }
+
+  bool get isComplete {
+    return _isValid(inputCableIn.text) &&
+        _isValid(outputCableIn.text) &&
+        _isValid(outputCableOut.text) &&
+        _isValid(outputCableLO.text) &&
+        _isValid(extLOCableLO.text);
+  }
+
+  static bool _isValid(String s) {
+    final t = s.trim();
+    if (t.isEmpty) return false;
+    final val = double.tryParse(t);
+    return val != null && !val.isNaN && val >= 0;
+  }
+
+  UCDCCableLoss toUCDCCableLoss() {
+    return UCDCCableLoss(
+      inputCableLoss: double.tryParse(inputCableIn.text.trim()) ?? 0.0,
+      loCableLoss: double.tryParse(extLOCableLO.text.trim()) ?? 0.0,
+      outputCableLoss: [
+        double.tryParse(outputCableIn.text.trim()) ?? 0.0,
+        double.tryParse(outputCableOut.text.trim()) ?? 0.0,
+        double.tryParse(outputCableLO.text.trim()) ?? 0.0,
+      ],
+    );
+  }
+}
+
 class UpDownConverterScreen extends StatefulWidget {
   final bool isActive;
   const UpDownConverterScreen({super.key, this.isActive = true});
@@ -102,22 +157,44 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     text: "5.0",
   );
 
-  // --- Controllers for Cable Losses ---
-  final TextEditingController _lossInputCableIn = TextEditingController(
-    text: "0.45",
-  );
-  final TextEditingController _lossOutputCableIn = TextEditingController(
-    text: "0.12",
-  );
-  final TextEditingController _lossOutputCableOut = TextEditingController(
-    text: "0.85",
-  );
-  final TextEditingController _lossOutputCableLO = TextEditingController(
-    text: "0.55",
-  );
-  final TextEditingController _lossExtLOCableLO = TextEditingController(
-    text: "0.35",
-  );
+  // --- Dynamic Controllers for Frequency Pair Cable Losses ---
+  int _selectedLossTab = 0;
+  final Map<String, List<_PairCableLossControllers>> _converterLossControllers = {};
+
+  List<FrequencyPair> _getCurrentFrequencyPairs() {
+    if (_metadata == null) return [];
+    final converterDetails = _metadata!.converterDetails[_selectedConverter];
+    if (converterDetails == null) return [];
+    if (converterDetails.frequencyMap.isNotEmpty) {
+      return converterDetails.frequencyMap;
+    }
+    if (converterDetails.inputFrequency > 0 || converterDetails.outputFrequency > 0) {
+      return [
+        FrequencyPair(
+          input: converterDetails.inputFrequency.round(),
+          output: converterDetails.outputFrequency.round(),
+        ),
+      ];
+    }
+    return [FrequencyPair(input: 0, output: 0)];
+  }
+
+  List<_PairCableLossControllers> _getLossControllersForSelectedConverter() {
+    final pairs = _getCurrentFrequencyPairs();
+    final count = pairs.isEmpty ? 1 : pairs.length;
+
+    var list = _converterLossControllers[_selectedConverter];
+    if (list == null || list.length != count) {
+      if (list != null) {
+        for (var c in list) {
+          c.dispose();
+        }
+      }
+      list = List.generate(count, (_) => _PairCableLossControllers());
+      _converterLossControllers[_selectedConverter] = list;
+    }
+    return list;
+  }
 
   // --- Controllers for Spectrum Settings (GTx Style) ---
   final List<String> _spectrumTabs = [
@@ -182,11 +259,11 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
   void dispose() {
     _inputPowerController.dispose();
     _stepSizeController.dispose();
-    _lossInputCableIn.dispose();
-    _lossOutputCableIn.dispose();
-    _lossOutputCableOut.dispose();
-    _lossOutputCableLO.dispose();
-    _lossExtLOCableLO.dispose();
+    for (var list in _converterLossControllers.values) {
+      for (var c in list) {
+        c.dispose();
+      }
+    }
 
     _powerSpanController.dispose();
     _powerRBWController.dispose();
@@ -307,6 +384,10 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
   void _updateDBParams() {
     if (_metadata == null) return;
+    _getLossControllersForSelectedConverter();
+    if (_selectedLossTab >= _getCurrentFrequencyPairs().length) {
+      _selectedLossTab = 0;
+    }
 
     setState(() {
       // 1. Update Frequencies from Converter Details
@@ -443,8 +524,67 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
     if (selectedTests.isEmpty) return;
 
-    final converterDetails = _metadata?.converterDetails[_selectedConverter];
-    final pairs = converterDetails?.frequencyMap ?? [];
+    final pairs = _getCurrentFrequencyPairs();
+    final lossControllers = _getLossControllersForSelectedConverter();
+
+    // Validate: All cable losses must be entered before proceeding to measurement
+    for (int i = 0; i < lossControllers.length; i++) {
+      final ctrl = lossControllers[i];
+      final pairDesc = (i < pairs.length)
+          ? "Freq Pair ${i + 1} (${(pairs[i].input / 1e6).toStringAsFixed(1)} → ${(pairs[i].output / 1e6).toStringAsFixed(1)} MHz)"
+          : "Freq Pair ${i + 1}";
+
+      if (ctrl.inputCableIn.text.trim().isEmpty || double.tryParse(ctrl.inputCableIn.text.trim()) == null) {
+        setState(() => _selectedLossTab = i);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please enter Input Cable loss at Input Frequency for $pairDesc before proceeding to measurement."),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+      if (ctrl.outputCableIn.text.trim().isEmpty || double.tryParse(ctrl.outputCableIn.text.trim()) == null) {
+        setState(() => _selectedLossTab = i);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please enter Output Cable loss at Input Frequency for $pairDesc before proceeding to measurement."),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+      if (ctrl.outputCableOut.text.trim().isEmpty || double.tryParse(ctrl.outputCableOut.text.trim()) == null) {
+        setState(() => _selectedLossTab = i);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please enter Output Cable loss at Output Frequency for $pairDesc before proceeding to measurement."),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+      if (ctrl.outputCableLO.text.trim().isEmpty || double.tryParse(ctrl.outputCableLO.text.trim()) == null) {
+        setState(() => _selectedLossTab = i);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please enter Output Cable loss at LO Frequency for $pairDesc before proceeding to measurement."),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+      if (ctrl.extLOCableLO.text.trim().isEmpty || double.tryParse(ctrl.extLOCableLO.text.trim()) == null) {
+        setState(() => _selectedLossTab = i);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please enter Ext LO Cable loss at LO Frequency for $pairDesc before proceeding to measurement."),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+    }
 
     final runningList = <TestDefinition>[];
     if (pairs.length > 1) {
@@ -479,18 +619,20 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
 
     final serverService = Provider.of<ServerService>(context, listen: false);
 
+    final cableLossSets = lossControllers.map((c) => c.toUCDCCableLoss()).toList();
+    final firstSet = cableLossSets.isNotEmpty
+        ? cableLossSets.first
+        : UCDCCableLoss(inputCableLoss: 0.0, loCableLoss: 0.0, outputCableLoss: [0.0, 0.0, 0.0]);
+
     final request = UCDCRequest(
       converterName: _selectedConverter,
       deviceProfile: _selectedDeviceProfile,
       externalSGName: _selectedExternalSG,
-      inputCableLoss: double.tryParse(_lossInputCableIn.text) ?? 0.0,
+      inputCableLoss: firstSet.inputCableLoss,
       inputPower: double.tryParse(_inputPowerController.text) ?? 0.0,
-      loCableLoss: double.tryParse(_lossExtLOCableLO.text) ?? 0.0,
-      outputCableLoss: [
-        double.tryParse(_lossOutputCableIn.text) ?? 0.0,
-        double.tryParse(_lossOutputCableOut.text) ?? 0.0,
-        double.tryParse(_lossOutputCableLO.text) ?? 0.0,
-      ],
+      loCableLoss: firstSet.loCableLoss,
+      outputCableLoss: firstSet.outputCableLoss,
+      cableLosses: cableLossSets,
       powerSpectrum: GTxSpectrum(
         span: double.tryParse(_powerSpanController.text) ?? 0.0,
         rbw: double.tryParse(_powerRBWController.text) ?? 0.0,
@@ -1592,6 +1734,7 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
                                 _selectedConverter = v!;
                                 _selectedReportId = null;
                                 _history = [];
+                                _selectedLossTab = 0;
                               });
                               _updateDBParams();
                               _fetchHistory();
@@ -1694,59 +1837,8 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        // Loss Table Card
-        ContentCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.grid_on, color: theme.colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Text(
-                    "CABLE LOSS CALIBRATION (dB)",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.grey.shade500,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Table(
-                columnWidths: const {0: FlexColumnWidth(1.5)},
-                children: [
-                  _buildTableRow([
-                    'Cable',
-                    'At Input Freq',
-                    'At Output Freq',
-                    'At LO Freq',
-                  ], isHeader: true),
-                  _buildEditableLossRow(
-                    'Input Cable',
-                    _lossInputCableIn,
-                    null,
-                    null,
-                  ),
-                  _buildEditableLossRow(
-                    'Output Cable',
-                    _lossOutputCableIn,
-                    _lossOutputCableOut,
-                    _lossOutputCableLO,
-                  ),
-                  _buildEditableLossRow(
-                    'Ext LO Cable',
-                    null,
-                    null,
-                    _lossExtLOCableLO,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        // Loss Table Card with Frequency Pair Tabs
+        _buildCableLossCalibrationCard(theme),
         const SizedBox(height: 24),
         const SizedBox(height: 24),
         // Spectrum Settings Card (GTx Style)
@@ -1859,6 +1951,184 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
     );
   }
 
+  Widget _buildCableLossCalibrationCard(ThemeData theme) {
+    final pairs = _getCurrentFrequencyPairs();
+    final lossControllers = _getLossControllersForSelectedConverter();
+    final safeLossTab = (_selectedLossTab < lossControllers.length) ? _selectedLossTab : 0;
+    final currentCtrl = lossControllers[safeLossTab];
+    final converterDetails = _metadata?.converterDetails[_selectedConverter];
+    final sf = (converterDetails?.stageFactor == null || converterDetails!.stageFactor <= 0) ? 1 : converterDetails.stageFactor;
+
+    final currentPair = (safeLossTab < pairs.length) ? pairs[safeLossTab] : null;
+    final inFreqMHz = currentPair != null ? (currentPair.input / 1e6).toStringAsFixed(1) : "-";
+    final outFreqMHz = currentPair != null ? (currentPair.output / 1e6).toStringAsFixed(1) : "-";
+    final loFreqMHz = currentPair != null
+        ? (((currentPair.input - currentPair.output).abs() / sf) / 1e6).toStringAsFixed(1)
+        : "-";
+
+    return ContentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.grid_on, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(
+                "CABLE LOSS CALIBRATION (dB)",
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.grey.shade500,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: currentCtrl.isComplete
+                      ? Colors.green.shade50
+                      : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: currentCtrl.isComplete
+                        ? Colors.green.shade300
+                        : Colors.orange.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      currentCtrl.isComplete
+                          ? Icons.check_circle_outline
+                          : Icons.pending_outlined,
+                      size: 13,
+                      color: currentCtrl.isComplete
+                          ? Colors.green.shade700
+                          : Colors.orange.shade800,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      currentCtrl.isComplete
+                          ? "Losses Configured"
+                          : "Losses Required",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: currentCtrl.isComplete
+                            ? Colors.green.shade700
+                            : Colors.orange.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Frequency Pair Tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(pairs.length, (index) {
+                final isSelected = _selectedLossTab == index;
+                final pair = pairs[index];
+                final inMHz = (pair.input / 1e6).toStringAsFixed(1);
+                final outMHz = (pair.output / 1e6).toStringAsFixed(1);
+                final isComplete = (index < lossControllers.length) && lossControllers[index].isComplete;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      isComplete ? Icons.check_circle : Icons.radio_button_unchecked,
+                      size: 16,
+                      color: isComplete
+                          ? (isSelected ? theme.colorScheme.primary : Colors.green.shade600)
+                          : (isSelected ? Colors.amber.shade800 : Colors.grey.shade400),
+                    ),
+                    label: Text(
+                      pairs.length > 1
+                          ? "Pair ${index + 1}: $inMHz → $outMHz MHz"
+                          : "$inMHz → $outMHz MHz",
+                    ),
+                    selected: isSelected,
+                    onSelected: (val) {
+                      setState(() => _selectedLossTab = index);
+                    },
+                    selectedColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : Colors.grey.shade700,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 15, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Text(
+                  "Pair ${safeLossTab + 1} Target: In = $inFreqMHz MHz | Out = $outFreqMHz MHz | LO = $loFreqMHz MHz",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Table(
+            columnWidths: const {0: FlexColumnWidth(1.5)},
+            children: [
+              _buildTableRow([
+                'Cable',
+                'At Input Freq ($inFreqMHz MHz)',
+                'At Output Freq ($outFreqMHz MHz)',
+                'At LO Freq ($loFreqMHz MHz)',
+              ], isHeader: true),
+              _buildEditableLossRow(
+                'Input Cable',
+                currentCtrl.inputCableIn,
+                null,
+                null,
+              ),
+              _buildEditableLossRow(
+                'Output Cable',
+                currentCtrl.outputCableIn,
+                currentCtrl.outputCableOut,
+                currentCtrl.outputCableLO,
+              ),
+              _buildEditableLossRow(
+                'Ext LO Cable',
+                null,
+                null,
+                currentCtrl.extLOCableLO,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   TableRow _buildEditableLossRow(
     String cable,
     TextEditingController? c1,
@@ -1892,10 +2162,17 @@ class _UpDownConverterScreenState extends State<UpDownConverterScreen> {
       child: TextFormField(
         controller: controller,
         textAlign: TextAlign.center,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        onChanged: (_) => setState(() {}),
         style: const TextStyle(fontSize: 13),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           isDense: true,
-          border: OutlineInputBorder(),
+          hintText: "Enter dB",
+          hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         ),
       ),
     );

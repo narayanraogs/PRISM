@@ -561,6 +561,12 @@ type SCPICommandResponse struct {
 	Message  string
 }
 
+type UCDCCableLoss struct {
+	InputCableLoss  float64   `json:"InputCableLoss"`
+	LOCableLoss     float64   `json:"LOCableLoss"`
+	OutputCableLoss []float64 `json:"OutputCableLoss"`
+}
+
 type UCDCRequest struct {
 	ConverterName     string
 	DeviceProfile     string
@@ -569,6 +575,7 @@ type UCDCRequest struct {
 	InputPower        float64
 	LOCableLoss       float64
 	OutputCableLoss   []float64
+	CableLosses       []UCDCCableLoss `json:"CableLosses"`
 	PowerSpectrum     GTxSpectrum
 	FrequencySpectrum GTxSpectrum
 	InBandSpectrum    GTxSpectrum
