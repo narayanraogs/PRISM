@@ -442,10 +442,18 @@ func (udc *UpDownConverterMeasurement) GeneratePDF(name string, dates, times []s
 	return base64.StdEncoding.EncodeToString(data), true
 }
 
+func (udc *UpDownConverterMeasurement) PrepareSession() bool {
+	return udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off")
+}
+
+func (udc *UpDownConverterMeasurement) CleanupSession() {
+	udc.sa.SetAlignmentOn()
+	udc.sa.SystemPreset()
+	udc.sg.SetRFOff()
+	udc.sgExt.SetRFOff()
+}
+
 func (udc *UpDownConverterMeasurement) setupBasic(inputFreq, outputFreq float64) bool {
-	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
-		return false
-	}
 	if !udc.check(udc.sg.SetFrequency(inputFreq), "SG: frequency set") {
 		return false
 	}
@@ -575,8 +583,6 @@ func (udc *UpDownConverterMeasurement) Stop() {
 func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, cable bool) {
 	logger.Log.Info("Starting UDC Gain Measurement", "cable", cable)
 	udc.notify("Gain Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -596,7 +602,7 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 	if !udc.check(udc.sa.SetSpectrum(udc.outputFrequency, udc.powerSpectrum.span, udc.powerSpectrum.rbw, udc.powerSpectrum.vbw), "SA: set spectrum") {
 		return
 	}
-	if !udc.check(udc.sg.SetPower(minPower-udc.inputCableLoss), "SG: set start power") {
+	if !udc.check(udc.sg.SetPower(minPower+udc.inputCableLoss), "SG: set start power") {
 		return
 	}
 	if !udc.check(udc.sg.SetRFOn(), "SG: RF on") {
@@ -652,8 +658,6 @@ func (udc *UpDownConverterMeasurement) OutputGainMeasurement(stepSize float64, c
 func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 	logger.Log.Info("Starting UDC Frequency Measurement")
 	udc.notify("Frequency Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -709,8 +713,6 @@ func (udc *UpDownConverterMeasurement) OutputFrequencyMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 	logger.Log.Info("Starting UDC Harmonics Measurement")
 	udc.notify("Harmonics Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -793,8 +795,6 @@ func (udc *UpDownConverterMeasurement) OutputHarmonicsMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 	logger.Log.Info("Starting UDC Spurious Measurement", "inBand", inBand)
 	udc.notify("Spurious Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -898,13 +898,8 @@ func (udc *UpDownConverterMeasurement) OutputSpuriousMeasurement(inBand bool) {
 func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 	logger.Log.Info("Starting UDC LO Leakage Measurement")
 	udc.notify("LO Leakage Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
-	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
-		return
-	}
 	if !udc.check(udc.sg.SetModOff(), "SG: mod off") {
 		return
 	}
@@ -946,8 +941,6 @@ func (udc *UpDownConverterMeasurement) LOLeakageMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 	logger.Log.Info("Starting UDC Input Leakage Measurement")
 	udc.notify("Input Leakage Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -993,8 +986,6 @@ func (udc *UpDownConverterMeasurement) OutputInputLeakageMeasurement() {
 func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float64, cable bool) {
 	logger.Log.Info("Starting UDC External LO Gain Measurement", "cable", cable)
 	udc.notify("External LO Gain Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 	defer udc.sgExt.SetRFOff()
 
@@ -1033,7 +1024,7 @@ func (udc *UpDownConverterMeasurement) OutputExtLOGainMeasurement(stepSize float
 	if !udc.check(udc.sa.SetSpectrum(udc.outputFrequency, udc.powerSpectrum.span, udc.powerSpectrum.rbw, udc.powerSpectrum.vbw), "SA: set spectrum") {
 		return
 	}
-	if !udc.check(udc.sg.SetPower(minPower-udc.inputCableLoss), "SG: set start power") {
+	if !udc.check(udc.sg.SetPower(minPower+udc.inputCableLoss), "SG: set start power") {
 		return
 	}
 	if !udc.check(udc.sg.SetRFOn(), "SG: RF on") {
@@ -1093,8 +1084,6 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 	}
 	logger.Log.Info("Starting UDC Monitor Power Measurement", "isOutput", isOutput)
 	udc.notify(testName + " Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
 	if !udc.setupBasic(udc.inputFrequency, udc.outputFrequency) {
@@ -1146,13 +1135,8 @@ func (udc *UpDownConverterMeasurement) MonitorPowerMeasurement(isOutput bool) {
 func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 	logger.Log.Info("Starting UDC LO Monitor Freq Power Measurement")
 	udc.notify("LO MON Port Frequency & Power Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 
-	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
-		return
-	}
 	if !udc.check(udc.sg.SetModOff(), "SG: mod off") {
 		return
 	}
@@ -1202,14 +1186,9 @@ func (udc *UpDownConverterMeasurement) LOMonFreqPowerMeasurement() {
 func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 	logger.Log.Info("Starting UDC LO Monitor Phase Noise Measurement")
 	udc.notify("LO Mon Port Phase Noise Measurement Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 	defer udc.sa.SetSAMode()
 
-	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
-		return
-	}
 	if !udc.check(udc.sg.SetModOff(), "SG: mod off") {
 		return
 	}
@@ -1262,8 +1241,6 @@ func (udc *UpDownConverterMeasurement) LOMonPhaseNoiseMeasurement() {
 func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 	logger.Log.Info("Starting UDC External LO Power Match")
 	udc.notify("External LO Power Matching Started")
-	defer udc.sa.SetAlignmentOn()
-	defer udc.sa.SystemPreset()
 	defer udc.sg.SetRFOff()
 	defer udc.sgExt.SetRFOff()
 
@@ -1289,9 +1266,6 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 		return
 	}
 
-	if !udc.check(udc.sa.SetAlignmentOff(), "SA: alignment off") {
-		return
-	}
 	if !udc.check(udc.sa.SetSpectrum(loFreq, udc.powerSpectrum.span, udc.powerSpectrum.rbw, udc.powerSpectrum.vbw), "SA: spectrum set") {
 		return
 	}
@@ -1349,9 +1323,16 @@ func (udc *UpDownConverterMeasurement) ExtLOPowerMatch() {
 }
 
 func (udc *UpDownConverterMeasurement) getLOPower() (float64, error) {
-	r, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, "LO MON Port - Frequency & Power Measurement")
+	decoratedTest := fmt.Sprintf("LO MON Port - Frequency & Power Measurement (In: %.2f MHz, Out: %.2f MHz)", udc.inputFrequency/1e6, udc.outputFrequency/1e6)
+	r, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, decoratedTest)
 	if err != nil {
-		return 0, err
+		r, err = resultsDB.GetUpDownConverterResult(udc.converter.Name, "LO MON Port - Frequency & Power Measurement%")
+		if err != nil {
+			r, err = resultsDB.GetUpDownConverterResult(udc.converter.Name, "LO MON Port - Frequency & Power Measurement")
+			if err != nil {
+				return 0, err
+			}
+		}
 	}
 	var res ConvertorResults
 	if err := json.Unmarshal([]byte(r.Results), &res); err != nil {
@@ -1361,9 +1342,16 @@ func (udc *UpDownConverterMeasurement) getLOPower() (float64, error) {
 }
 
 func (udc *UpDownConverterMeasurement) getExtLOPower() (float64, error) {
-	r, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, "External LO Power Matching")
+	decoratedTest := fmt.Sprintf("External LO Power Matching (In: %.2f MHz, Out: %.2f MHz)", udc.inputFrequency/1e6, udc.outputFrequency/1e6)
+	r, err := resultsDB.GetUpDownConverterResult(udc.converter.Name, decoratedTest)
 	if err != nil {
-		return 0, err
+		r, err = resultsDB.GetUpDownConverterResult(udc.converter.Name, "External LO Power Matching%")
+		if err != nil {
+			r, err = resultsDB.GetUpDownConverterResult(udc.converter.Name, "External LO Power Matching")
+			if err != nil {
+				return 0, err
+			}
+		}
 	}
 	var res ConvertorResults
 	if err := json.Unmarshal([]byte(r.Results), &res); err != nil {

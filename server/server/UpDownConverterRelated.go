@@ -133,6 +133,14 @@ func upDownConverterMeasurement(c *gin.Context) {
 
 	pairs := uc.GetFrequencyPairs()
 
+	defer uc.CleanupSession()
+	if !uc.PrepareSession() {
+		for stsMsg := range sts {
+			conn.WriteJSON(stsMsg)
+		}
+		return
+	}
+
 	for _, test := range req.TestsSelected {
 		for pairIdx, pair := range pairs {
 			if uc.IsStopped() {
